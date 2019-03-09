@@ -1,0 +1,12 @@
+# ignore data files
+/data
+
+# ignore pycache
+__pycache__
+
+# ignore saved model
+*.pkl
+*.pt
+
+# ignore vscode
+.vscode
