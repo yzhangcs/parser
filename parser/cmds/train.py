@@ -35,6 +35,7 @@ class Train(object):
         embed = Embedding.load(args.fembed)
         vocab = Vocab.from_corpus(corpus=train, min_freq=2)
         vocab.read_embeddings(embed=embed, unk='unk')
+        torch.save(vocab, args.vocab)
         print(vocab)
 
         print("Load the dataset")
@@ -58,25 +59,29 @@ class Train(object):
 
         print("Create the model")
         params = {
+            'n_words': vocab.n_train_words,
             'n_embed': Config.n_embed,
-            'n_char_embed': Config.n_char_embed,
-            'n_char_out': Config.n_char_out,
+            'n_tags': vocab.n_tags,
+            'n_tag_embed': Config.n_tag_embed,
             'embed_dropout': Config.embed_dropout,
             'n_lstm_hidden': Config.n_lstm_hidden,
             'n_lstm_layers': Config.n_lstm_layers,
             'lstm_dropout': Config.lstm_dropout,
             'n_mlp_arc': Config.n_mlp_arc,
             'n_mlp_rel': Config.n_mlp_rel,
-            'mlp_dropout': Config.mlp_dropout
+            'mlp_dropout': Config.mlp_dropout,
+            'n_rels': vocab.n_rels,
+            'pad_index': vocab.pad_index,
+            'unk_index': vocab.unk_index
         }
         for k, v in params.items():
             print(f"  {k}: {v}")
-        parser = BiaffineParser(vocab, params)
+        network = BiaffineParser(params, vocab.embeddings)
         if torch.cuda.is_available():
-            parser = parser.cuda()
-        print(f"{parser}\n")
+            network = network.cuda()
+        print(f"{network}\n")
 
-        model = Model(parser=parser)
+        model = Model(vocab, network)
         model(loaders=(train_loader, dev_loader, test_loader),
               epochs=Config.epochs,
               patience=Config.patience,
