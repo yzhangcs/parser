@@ -7,7 +7,7 @@
 
 An implementation of "Deep Biaffine Attention for Neural Dependency Parsing".
 
-Details and [hyperparameter choices](#Hyperparameters) are almost the same as those described in the paper. The difference is that the pos tag embedding is replaced by a character-level BiLSTM structure, which avoids looking for additional pos tag information during the prediction phrase.
+Details and [hyperparameter choices](#Hyperparameters) are almost the same as those described in the paper. 
 
 ## Requirements
 
@@ -99,8 +99,7 @@ optional arguments:
 | Param         | Description                             |                                 Value                                  |
 | :------------ | :-------------------------------------- | :--------------------------------------------------------------------: |
 | n_embed       | dimension of word embedding             |                                  100                                   |
-| n_char_embed  | dimension of char embedding             |                                   50                                   |
-| n_char_out    | dimension of char level lstm output     |                                  100                                   |
+| n_tag_embed   | dimension of tag embedding              |                                  100                                   |
 | embed_dropout | dropout ratio of embeddings             |                                  0.33                                  |
 | n_lstm_hidden | dimension of lstm hidden state          |                                  400                                   |
 | n_lstm_layers | number of lstm layers                   |                                   3                                    |
