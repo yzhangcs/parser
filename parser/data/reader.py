@@ -1,71 +1,117 @@
 # -*- coding: utf-8 -*-
 
-from collections import Counter
+from collections import Counter, namedtuple
 
 import torch
 
 
-class Corpus(object):
+CONLL = namedtuple(typename='CONLL',
+                   field_names=['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS',
+                                'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'],
+                   defaults=[None]*10)
+
+
+class Sentence(object):
     ROOT = '<ROOT>'
 
-    def __init__(self, fname):
-        super(Corpus, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(Sentence, self).__init__()
 
-        self.fname = fname
-        self.word_seqs, self.head_seqs, self.label_seqs = self.read(fname)
+        self.conll = CONLL(*args, **kwargs)
+
+    def __getitem__(self, index):
+        return tuple(field[index] for field in self.conll)
+
+    def __repr__(self):
+        return '\n'.join('\t'.join(map(str, field)) for field in self) + '\n'
 
     @property
     def words(self):
-        return Counter(w for seq in self.word_seqs for w in seq)
+        return [self.ROOT] + [word.lower() for word in self.conll.FORM]
+
+    @property
+    def heads(self):
+        return [0] + list(map(int, self.conll.HEAD))
 
     @property
     def labels(self):
-        return Counter(l for seq in self.label_seqs for l in seq)
+        return [self.ROOT] + list(self.conll.DEPREL)
+
+    @heads.setter
+    def heads(self, sequence):
+        self.conll = self.conll._replace(HEAD=sequence)
+
+    @labels.setter
+    def labels(self, sequence):
+        self.conll = self.conll._replace(DEPREL=sequence)
+
+
+class Corpus(object):
+
+    def __init__(self, sentences):
+        super(Corpus, self).__init__()
+
+        self.sentences = sentences
+
+    def __getitem__(self, index):
+        return self.sentences[index]
+
+    @property
+    def words(self):
+        return Counter(word for sentence in self.sentences
+                       for word in sentence.words[1:])
+
+    @property
+    def labels(self):
+        return Counter(label for sentence in self.sentences
+                       for label in sentence.labels[1:])
 
     @classmethod
-    def read(cls, fname):
-        start = 0
-        word_seqs, head_seqs, label_seqs = [], [], []
+    def load(cls, fname, field_names=CONLL._fields):
+        start, sentences = 0, []
         with open(fname, 'r') as f:
             lines = [line for line in f]
         for i, line in enumerate(lines):
-            if len(lines[i]) <= 1:
-                cols = list(zip(*[l.split() for l in lines[start:i]]))
-                word_seqs.append([cls.ROOT] + list(cols[1]))
-                head_seqs.append([0] + list(map(int, cols[6])))
-                label_seqs.append([cls.ROOT] + list(cols[7]))
+            if len(line) <= 1:
+                cols = zip(*[l.split() for l in lines[start:i]])
+                fields = dict(zip(field_names, cols))
+                sentences.append(Sentence(**fields))
                 start = i + 1
+        corpus = cls(sentences)
 
-        return word_seqs, head_seqs, label_seqs
+        return corpus
+
+    def dump(self, fname):
+        with open(fname, 'w') as f:
+            for sentence in self:
+                f.write(f"{sentence}\n")
 
 
 class Embedding(object):
 
-    def __init__(self, fname):
+    def __init__(self, words, vectors):
         super(Embedding, self).__init__()
 
-        self.fname = fname
-        self.words, self.vectors = self.read(fname)
-        self.pretrained = {w: v for w, v in zip(self.words, self.vectors)}
+        self.words = words
+        self.vectors = vectors
+        self.pretrained = {w: v for w, v in zip(words, vectors)}
 
     def __contains__(self, word):
         return word in self.pretrained
 
     def __getitem__(self, word):
-        return torch.tensor(self.pretrained[word], dtype=torch.float)
+        return torch.tensor(self.pretrained[word])
 
     @property
     def dim(self):
         return len(self.vectors[0])
 
     @classmethod
-    def read(cls, fname):
+    def load(cls, fname):
         with open(fname, 'r') as f:
             lines = [line for line in f]
         splits = [line.split() for line in lines]
-        reprs = [
-            (split[0], list(map(float, split[1:]))) for split in splits
-        ]
-        words, vectors = map(list, zip(*reprs))
+        reprs = [(s[0], list(map(float, s[1:]))) for s in splits]
+        embedding = cls(*map(list, zip(*reprs)))
 
-        return words, vectors
+        return embedding
