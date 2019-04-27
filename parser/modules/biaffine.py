@@ -4,10 +4,10 @@ import torch
 import torch.nn as nn
 
 
-class BiAffine(nn.Module):
+class Biaffine(nn.Module):
 
     def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
-        super(BiAffine, self).__init__()
+        super(Biaffine, self).__init__()
 
         self.n_in = n_in
         self.n_out = n_out
@@ -28,14 +28,13 @@ class BiAffine(nn.Module):
         return info
 
     def reset_parameters(self):
-        bias = 1. / self.weight.size(1) ** 0.5
-        nn.init.uniform_(self.weight, -bias, bias)
+        nn.init.zeros_(self.weight)
 
     def forward(self, x, y):
         if self.bias_x:
-            x = self.add_bias(x)
+            x = torch.cat([x, x.new_ones(x.shape[:-1]).unsqueeze(-1)], -1)
         if self.bias_y:
-            y = self.add_bias(y)
+            y = torch.cat([y, y.new_ones(y.shape[:-1]).unsqueeze(-1)], -1)
         # [batch_size, 1, seq_len, d]
         x = x.unsqueeze(1)
         # [batch_size, 1, seq_len, d]
@@ -46,9 +45,3 @@ class BiAffine(nn.Module):
         s = s.squeeze(1)
 
         return s
-
-    def add_bias(self, x):
-        b = x.new_ones(x.shape[:-1]).unsqueeze(-1)
-        x = torch.cat([x, b], -1)
-
-        return x

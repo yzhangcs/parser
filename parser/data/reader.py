@@ -20,7 +20,7 @@ class Corpus(object):
 
     @property
     def labels(self):
-        return Counter(t for seq in self.label_seqs for t in seq)
+        return Counter(l for seq in self.label_seqs for l in seq)
 
     @classmethod
     def read(cls, fname):
