@@ -49,7 +49,7 @@ if __name__ == '__main__':
     test = Corpus(fname=Config.ftest)
     embed = Embedding(fname=Config.fembed)
     vocab = Vocab.from_corpus(corpus=train, min_freq=2)
-    vocab.read_embeddings(embed=embed)
+    vocab.read_embeddings(embed=embed, unk='unk')
     print(vocab)
 
     print("Load the dataset")
