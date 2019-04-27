@@ -104,5 +104,5 @@ class Vocab(object):
     def load(cls, fname):
         return torch.load(fname)
 
-    def save(fname):
+    def save(self, fname):
         torch.save(self, fname)

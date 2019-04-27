@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from parser.modules import MLP, BiAffine, CharLSTM, ParserLSTM
+from parser.modules import MLP, Biaffine, CharLSTM, ParserLSTM
 from parser.modules.dropout import IndependentDropout, SharedDropout
 
 import torch
@@ -9,12 +9,11 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 
 
-class BiAffineParser(nn.Module):
+class BiaffineParser(nn.Module):
     def __init__(self, vocab,
                  n_embed, n_char_embed, n_char_out,
-                 n_lstm_hidden, n_lstm_layers, n_mlp_arc, n_mlp_lab,
-                 n_labels, drop):
-        super(BiAffineParser, self).__init__()
+                 n_lstm_hidden, n_lstm_layers, n_mlp_arc, n_mlp_lab, dropout):
+        super(BiaffineParser, self).__init__()
 
         self.vocab = vocab
         # the embedding layer
@@ -24,37 +23,37 @@ class BiAffineParser(nn.Module):
         self.char_lstm = CharLSTM(n_char=vocab.n_chars,
                                   n_embed=n_char_embed,
                                   n_out=n_char_out)
-        self.embed_drop = IndependentDropout(p=drop)
+        self.embed_drop = IndependentDropout(p=dropout)
 
         # the word-lstm layer
-        self.lstm = ParserLSTM(input_size=n_embed + n_char_out,
+        self.lstm = ParserLSTM(input_size=n_embed+n_char_out,
                                hidden_size=n_lstm_hidden,
                                num_layers=n_lstm_layers,
                                batch_first=True,
-                               dropout=drop,
+                               dropout=dropout,
                                bidirectional=True)
-        self.lstm_drop = SharedDropout(p=drop)
+        self.lstm_drop = SharedDropout(p=dropout)
 
         # the MLP layers
-        self.mlp_arc_h = MLP(n_in=n_lstm_hidden * 2,
+        self.mlp_arc_h = MLP(n_in=n_lstm_hidden*2,
                              n_hidden=n_mlp_arc,
-                             drop=drop)
-        self.mlp_arc_d = MLP(n_in=n_lstm_hidden * 2,
+                             dropout=dropout)
+        self.mlp_arc_d = MLP(n_in=n_lstm_hidden*2,
                              n_hidden=n_mlp_arc,
-                             drop=drop)
-        self.mlp_lab_h = MLP(n_in=n_lstm_hidden * 2,
+                             dropout=dropout)
+        self.mlp_lab_h = MLP(n_in=n_lstm_hidden*2,
                              n_hidden=n_mlp_lab,
-                             drop=drop)
-        self.mlp_lab_d = MLP(n_in=n_lstm_hidden * 2,
+                             dropout=dropout)
+        self.mlp_lab_d = MLP(n_in=n_lstm_hidden*2,
                              n_hidden=n_mlp_lab,
-                             drop=drop)
+                             dropout=dropout)
 
-        # the BiAffine layers
-        self.arc_attn = BiAffine(n_in=n_mlp_arc,
+        # the Biaffine layers
+        self.arc_attn = Biaffine(n_in=n_mlp_arc,
                                  bias_x=True,
                                  bias_y=False)
-        self.lab_attn = BiAffine(n_in=n_mlp_lab,
-                                 n_out=n_labels,
+        self.lab_attn = Biaffine(n_in=n_mlp_lab,
+                                 n_out=vocab.n_labels,
                                  bias_x=True,
                                  bias_y=True)
 

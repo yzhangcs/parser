@@ -2,7 +2,7 @@
 
 import argparse
 import os
-from parser import BiAffineParser, Trainer
+from parser import BiaffineParser, Trainer
 from parser.data import Corpus, Embedding, TextDataset, Vocab, collate_fn
 from parser.utils import numericalize
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     }
     for k, v in params.items():
         print(f"  {k}: {v}")
-    model = BiAffineParser(vocab, **params)
+    model = BiaffineParser(vocab, **params)
     if torch.cuda.is_available():
         model = model.cuda()
     print(f"{model}\n")
