@@ -12,7 +12,7 @@ class MLP(nn.Module):
 
         self.linear = nn.Linear(n_in, n_hidden)
         self.activation = nn.LeakyReLU(negative_slope=0.1)
-        self.dropout = SharedDropout(dropout)
+        self.dropout = SharedDropout(p=dropout)
 
         self.reset_parameters()
 
