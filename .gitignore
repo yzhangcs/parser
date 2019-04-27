@@ -1,13 +1,17 @@
 # ignore data files
-/data
+data
 
 # ignore results
 results
+
+# ignore log files
+log*
 
 # ignore pycache
 __pycache__
 
 # ignore saved model
+*.pkl
 *.pt
 
 # ignore vscode
