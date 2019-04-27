@@ -16,9 +16,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Create the Biaffine Parser model.'
     )
-    parser.add_argument('--drop', action='store', default=0.33, type=float,
+    parser.add_argument('--dropout', action='store', default=0.33, type=float,
                         help='set the prob of dropout')
-    parser.add_argument('--batch_size', action='store', default=200, type=int,
+    parser.add_argument('--batch-size', action='store', default=200, type=int,
                         help='set the size of batch')
     parser.add_argument('--epochs', action='store', default=1000, type=int,
                         help='set the max num of epochs')
@@ -26,14 +26,26 @@ if __name__ == '__main__':
                         help='set the num of epochs to be patient')
     parser.add_argument('--lr', action='store', default=2e-3, type=float,
                         help='set the learning rate of training')
-    parser.add_argument('--threads', '-t', action='store', default=4, type=int,
-                        help='set the max num of threads')
-    parser.add_argument('--seed', '-s', action='store', default=1, type=int,
-                        help='set the seed for generating random numbers')
     parser.add_argument('--device', '-d', action='store', default='-1',
                         help='set which device to use')
     parser.add_argument('--file', '-f', action='store', default='model.pt',
                         help='set where to store the model')
+    parser.add_argument('--seed', '-s', action='store', default=1, type=int,
+                        help='set the seed for generating random numbers')
+    parser.add_argument('--threads', '-t', action='store', default=4, type=int,
+                        help='set the max num of threads')
+    parser.add_argument('--ftrain', action='store',
+                        default='data/train.conllx',
+                        help='set the path to train file')
+    parser.add_argument('--fdev', action='store',
+                        default='data/dev.conllx',
+                        help='set the path to dev file')
+    parser.add_argument('--ftest', action='store',
+                        default='data/test.conllx',
+                        help='set the path to test file')
+    parser.add_argument('--fembed', action='store',
+                        default='data/glove.6B.100d.txt',
+                        help='set the path to the pretrained embedding file')
     args = parser.parse_args()
 
     print(f"Set the max num of threads to {args.threads}")
@@ -44,10 +56,10 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
 
     print("Preprocess the data")
-    train = Corpus(fname=Config.ftrain)
-    dev = Corpus(fname=Config.fdev)
-    test = Corpus(fname=Config.ftest)
-    embed = Embedding(fname=Config.fembed)
+    train = Corpus(fname=args.ftrain)
+    dev = Corpus(fname=args.fdev)
+    test = Corpus(fname=args.ftest)
+    embed = Embedding(fname=args.fembed)
     vocab = Vocab.from_corpus(corpus=train, min_freq=2)
     vocab.read_embeddings(embed=embed, unk='unk')
     print(vocab)
@@ -80,8 +92,7 @@ if __name__ == '__main__':
         'n_lstm_layers': Config.n_lstm_layers,
         'n_mlp_arc': Config.n_mlp_arc,
         'n_mlp_lab': Config.n_mlp_lab,
-        'n_labels': vocab.n_labels,
-        'drop': args.drop
+        'dropout': args.dropout
     }
     for k, v in params.items():
         print(f"  {k}: {v}")
