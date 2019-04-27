@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 from parser import BiaffineParser, Model
 from parser.utils import Corpus, Embedding, TextDataset, Vocab, collate_fn
 
@@ -24,27 +23,11 @@ class Train(object):
                                help='path to test file')
         subparser.add_argument('--fembed', default='data/glove.6B.100d.txt',
                                help='path to pretrained embedding file')
-        subparser.add_argument('--file', '-f', default='model.pt',
-                               help='path to model file')
-        subparser.add_argument('--seed', '-s', default=1, type=int,
-                               help='seed for generating random numbers')
-        subparser.add_argument('--threads', '-t', default=4, type=int,
-                               help='max num of threads')
-        subparser.add_argument('--device', '-d', default='-1',
-                               help='ID of GPU to use')
         subparser.set_defaults(func=self)
 
         return subparser
 
     def __call__(self, args):
-        print(f"Set the max num of threads to {args.threads}")
-        print(f"Set the seed for generating random numbers to {args.seed}")
-        torch.set_num_threads(args.threads)
-        torch.manual_seed(args.seed)
-
-        print(f"Set the device with ID {args.device} visible")
-        os.environ['CUDA_VISIBLE_DEVICES'] = args.device
-
         print("Preprocess the data")
         train = Corpus.load(args.ftrain)
         dev = Corpus.load(args.fdev)
