@@ -7,6 +7,8 @@ from parser.data import Corpus, Embedding, TextDataset, Vocab, collate_fn
 import torch
 from torch.utils.data import DataLoader
 
+from config import Config
+
 
 class Train(object):
 
@@ -14,36 +16,6 @@ class Train(object):
         subparser = parser.add_parser(
             name, help='Train a model.'
         )
-        subparser.add_argument('--epsilon', default=1e-12, type=float,
-                               help='epsilon')
-        subparser.add_argument('--betas', default=(0.9, 0.9),
-                               help='betas')
-        subparser.add_argument('--annealing', default=lambda x: .75**(x/5000),
-                               help='annealing')
-        subparser.add_argument('--batch-size', default=200, type=int,
-                               help='batch size')
-        subparser.add_argument('--epochs', default=1000, type=int,
-                               help='max num of epochs')
-        subparser.add_argument('--patience', default=100, type=int,
-                               help='patience for early stop')
-        subparser.add_argument('--lr', default=2e-3, type=float,
-                               help='learning rate of training')
-        subparser.add_argument('--n-embed', default=100, type=int,
-                               help='dim of word embedding')
-        subparser.add_argument('--n-char-embed', default=50, type=int,
-                               help='dim of char embedding')
-        subparser.add_argument('--n-char-out', default=100, type=int,
-                               help='dim of char level lstm output')
-        subparser.add_argument('--n-lstm-hidden', default=400, type=int,
-                               help='dim of lstm hidden state')
-        subparser.add_argument('--n-lstm-layers', default=3, type=int,
-                               help='num of lstm layers')
-        subparser.add_argument('--n-mlp-arc', default=500, type=int,
-                               help='arc mlp size')
-        subparser.add_argument('--n-mlp-lab', default=100, type=int,
-                               help='label mlp size')
-        subparser.add_argument('--dropout', default=0.33, type=float,
-                               help='dropout ratio')
         subparser.add_argument('--ftrain', default='data/train.conllx',
                                help='path to train file')
         subparser.add_argument('--fdev', default='data/dev.conllx',
@@ -88,14 +60,14 @@ class Train(object):
         testset = TextDataset(vocab.numericalize(test))
         # set the data loaders
         train_loader = DataLoader(dataset=trainset,
-                                  batch_size=args.batch_size,
+                                  batch_size=Config.batch_size,
                                   shuffle=True,
                                   collate_fn=collate_fn)
         dev_loader = DataLoader(dataset=devset,
-                                batch_size=args.batch_size,
+                                batch_size=Config.batch_size,
                                 collate_fn=collate_fn)
         test_loader = DataLoader(dataset=testset,
-                                 batch_size=args.batch_size,
+                                 batch_size=Config.batch_size,
                                  collate_fn=collate_fn)
         print(f"  size of trainset: {len(trainset)}")
         print(f"  size of devset: {len(devset)}")
@@ -103,14 +75,16 @@ class Train(object):
 
         print("Create the model")
         params = {
-            'n_embed': args.n_embed,
-            'n_char_embed': args.n_char_embed,
-            'n_char_out': args.n_char_out,
-            'n_lstm_hidden': args.n_lstm_hidden,
-            'n_lstm_layers': args.n_lstm_layers,
-            'n_mlp_arc': args.n_mlp_arc,
-            'n_mlp_lab': args.n_mlp_lab,
-            'dropout': args.dropout
+            'n_embed': Config.n_embed,
+            'n_char_embed': Config.n_char_embed,
+            'n_char_out': Config.n_char_out,
+            'embed_dropout': Config.embed_dropout,
+            'n_lstm_hidden': Config.n_lstm_hidden,
+            'n_lstm_layers': Config.n_lstm_layers,
+            'lstm_dropout': Config.lstm_dropout,
+            'n_mlp_arc': Config.n_mlp_arc,
+            'n_mlp_lab': Config.n_mlp_lab,
+            'mlp_dropout': Config.mlp_dropout
         }
         for k, v in params.items():
             print(f"  {k}: {v}")
@@ -121,10 +95,10 @@ class Train(object):
 
         model = Model(parser=parser)
         model(loaders=(train_loader, dev_loader, test_loader),
-              epochs=args.epochs,
-              patience=args.patience,
-              betas=args.betas,
-              lr=args.lr,
-              epsilon=args.epsilon,
-              annealing=args.annealing,
+              epochs=Config.epochs,
+              patience=Config.patience,
+              lr=Config.lr,
+              betas=(Config.beta_1, Config.beta_2),
+              epsilon=Config.epsilon,
+              annealing=lambda x: Config.decay ** (x / Config.decay_steps),
               file=args.file)
