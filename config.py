@@ -5,8 +5,7 @@ class Config(object):
 
     # [Network]
     n_embed = 100
-    n_char_embed = 50
-    n_char_out = 100
+    n_tag_embed = 100
     embed_dropout = 0.33
     n_lstm_hidden = 400
     n_lstm_layers = 3
