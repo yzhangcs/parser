@@ -40,7 +40,7 @@ class Biaffine(nn.Module):
         # [batch_size, 1, seq_len, d]
         y = y.unsqueeze(1)
         # [batch_size, n_out, seq_len, seq_len]
-        s = x @ self.weight @ torch.transpose(y, -1, -2)
+        s = x @ self.weight @ y.transpose(-1, -2)
         # remove dim 1 if n_out == 1
         s = s.squeeze(1)
 
