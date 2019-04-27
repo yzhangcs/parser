@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import torch
-
 
 class Metric(object):
 
@@ -36,15 +34,15 @@ class AttachmentMethod(Metric):
         self.eps = eps
         self.total = 0.0
         self.correct_arcs = 0.0
-        self.correct_labels = 0.0
+        self.correct_rels = 0.0
 
-    def __call__(self, pred_heads, pred_labels, gold_heads, gold_labels):
-        arc_mask = pred_heads.eq(gold_heads)
-        lab_mask = pred_labels.eq(gold_labels) & arc_mask
+    def __call__(self, pred_arcs, pred_rels, gold_arcs, gold_rels):
+        arc_mask = pred_arcs.eq(gold_arcs)
+        rel_mask = pred_rels.eq(gold_rels) & arc_mask
 
         self.total += len(arc_mask)
         self.correct_arcs += arc_mask.sum().item()
-        self.correct_labels += lab_mask.sum().item()
+        self.correct_rels += rel_mask.sum().item()
 
     def __repr__(self):
         return f"UAS: {self.uas:.2%} LAS: {self.las:.2%}"
@@ -59,4 +57,4 @@ class AttachmentMethod(Metric):
 
     @property
     def las(self):
-        return self.correct_labels / (self.total + self.eps)
+        return self.correct_rels / (self.total + self.eps)

@@ -3,35 +3,34 @@
 from collections import Counter
 
 import torch
-import torch.nn as nn
 
 
 class Vocab(object):
     PAD = '<PAD>'
     UNK = '<UNK>'
 
-    def __init__(self, words, chars, labels):
+    def __init__(self, words, chars, rels):
         self.pad_index = 0
         self.unk_index = 1
 
         self.words = [self.PAD, self.UNK] + sorted(words)
         self.chars = [self.PAD, self.UNK] + sorted(chars)
-        self.labels = sorted(labels)
+        self.rels = sorted(rels)
 
         self.word_dict = {w: i for i, w in enumerate(self.words)}
         self.char_dict = {c: i for i, c in enumerate(self.chars)}
-        self.label_dict = {l: i for i, l in enumerate(self.labels)}
+        self.rel_dict = {l: i for i, l in enumerate(self.rels)}
 
         self.n_words = len(self.words)
         self.n_chars = len(self.chars)
-        self.n_labels = len(self.labels)
+        self.n_rels = len(self.rels)
         self.n_train_words = self.n_words
 
     def __repr__(self):
         info = f"{self.__class__.__name__}(\n"
         info += f"  num of words: {self.n_words}\n"
         info += f"  num of chars: {self.n_chars}\n"
-        info += f"  num of labels: {self.n_labels}\n"
+        info += f"  num of rels: {self.n_rels}\n"
         info += f")"
 
         return info
@@ -49,12 +48,12 @@ class Vocab(object):
 
         return char_ids
 
-    def label2id(self, sequence):
-        return torch.tensor([self.label_dict.get(label, 0)
-                             for label in sequence])
+    def rel2id(self, sequence):
+        return torch.tensor([self.rel_dict.get(rel, 0)
+                             for rel in sequence])
 
-    def id2label(self, ids):
-        return [self.labels[i] for i in ids]
+    def id2rel(self, ids):
+        return [self.rels[i] for i in ids]
 
     def read_embeddings(self, embed, unk=None):
         words = embed.words
@@ -82,17 +81,17 @@ class Vocab(object):
     def numericalize(self, corpus):
         words = [self.word2id(seq) for seq in corpus.word_seqs]
         chars = [self.char2id(seq) for seq in corpus.word_seqs]
-        heads = [torch.tensor(seq) for seq in corpus.head_seqs]
-        labels = [self.label2id(seq) for seq in corpus.label_seqs]
+        arcs = [torch.tensor(seq) for seq in corpus.head_seqs]
+        rels = [self.rel2id(seq) for seq in corpus.rel_seqs]
 
-        return words, chars, heads, labels
+        return words, chars, arcs, rels
 
     @classmethod
     def from_corpus(cls, corpus, min_freq=1):
         words = Counter(word.lower() for word in corpus.words.elements())
         words = list(word for word, freq in words.items() if freq >= min_freq)
         chars = list({char for char in ''.join(corpus.words)})
-        labels = list(corpus.labels)
-        vocab = cls(words, chars, labels)
+        rels = list(corpus.rels)
+        vocab = cls(words, chars, rels)
 
         return vocab

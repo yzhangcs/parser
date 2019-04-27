@@ -40,19 +40,19 @@ class BiaffineParser(nn.Module):
         self.mlp_arc_d = MLP(n_in=params['n_lstm_hidden']*2,
                              n_hidden=params['n_mlp_arc'],
                              dropout=params['mlp_dropout'])
-        self.mlp_lab_h = MLP(n_in=params['n_lstm_hidden']*2,
-                             n_hidden=params['n_mlp_lab'],
+        self.mlp_rel_h = MLP(n_in=params['n_lstm_hidden']*2,
+                             n_hidden=params['n_mlp_rel'],
                              dropout=params['mlp_dropout'])
-        self.mlp_lab_d = MLP(n_in=params['n_lstm_hidden']*2,
-                             n_hidden=params['n_mlp_lab'],
+        self.mlp_rel_d = MLP(n_in=params['n_lstm_hidden']*2,
+                             n_hidden=params['n_mlp_rel'],
                              dropout=params['mlp_dropout'])
 
         # the Biaffine layers
         self.arc_attn = Biaffine(n_in=params['n_mlp_arc'],
                                  bias_x=True,
                                  bias_y=False)
-        self.lab_attn = Biaffine(n_in=params['n_mlp_lab'],
-                                 n_out=vocab.n_labels,
+        self.rel_attn = Biaffine(n_in=params['n_mlp_rel'],
+                                 n_out=vocab.n_rels,
                                  bias_x=True,
                                  bias_y=True)
 
@@ -87,18 +87,18 @@ class BiaffineParser(nn.Module):
         # apply MLPs to the LSTM output states
         arc_h = self.mlp_arc_h(x)
         arc_d = self.mlp_arc_d(x)
-        lab_h = self.mlp_lab_h(x)
-        lab_d = self.mlp_lab_d(x)
+        rel_h = self.mlp_rel_h(x)
+        rel_d = self.mlp_rel_d(x)
 
-        # get arc and label scores from the bilinear attention
+        # get arc and rel scores from the bilinear attention
         # [batch_size, seq_len, seq_len]
         s_arc = self.arc_attn(arc_d, arc_h)
-        # [batch_size, seq_len, seq_len, n_labels]
-        s_lab = self.lab_attn(lab_d, lab_h).permute(0, 2, 3, 1)
+        # [batch_size, seq_len, seq_len, n_rels]
+        s_rel = self.rel_attn(rel_d, rel_h).permute(0, 2, 3, 1)
         # set the scores that exceed the length of each sentence to -inf
         s_arc.masked_fill_((1 - mask).unsqueeze(1), float('-inf'))
 
-        return s_arc, s_lab
+        return s_arc, s_rel
 
     @classmethod
     def load(cls, fname):

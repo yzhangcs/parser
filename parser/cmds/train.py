@@ -66,7 +66,7 @@ class Train(object):
             'n_lstm_layers': Config.n_lstm_layers,
             'lstm_dropout': Config.lstm_dropout,
             'n_mlp_arc': Config.n_mlp_arc,
-            'n_mlp_lab': Config.n_mlp_lab,
+            'n_mlp_rel': Config.n_mlp_rel,
             'mlp_dropout': Config.mlp_dropout
         }
         for k, v in params.items():
