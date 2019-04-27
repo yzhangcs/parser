@@ -25,8 +25,9 @@ class Predict(object):
 
     def __call__(self, args):
         print("Load the model")
-        parser = BiaffineParser.load(args.file)
-        vocab = parser.vocab
+        vocab = torch.load(args.vocab)
+        network = BiaffineParser.load(args.file)
+        model = Model(vocab, network)
 
         print("Load the dataset")
         corpus = Corpus.load(args.fdata)
@@ -37,10 +38,9 @@ class Predict(object):
                             collate_fn=collate_fn)
 
         print("Predict the dataset")
-        model = Model(parser=parser)
         all_arcs, all_rels = model.predict(loader)
-        corpus.head_seqs = [seq.tolist() for seq in all_arcs]
-        corpus.rel_seqs = [vocab.id2rel(seq) for seq in all_rels]
+        corpus.heads = all_arcs
+        corpus.rels = all_rels
 
         print(f"Save the predicted result")
-        corpus.dump(args.fpred)
+        corpus.save(args.fpred)

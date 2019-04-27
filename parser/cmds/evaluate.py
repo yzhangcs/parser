@@ -23,8 +23,9 @@ class Evaluate(object):
 
     def __call__(self, args):
         print("Load the model")
-        parser = BiaffineParser.load(args.file)
-        vocab = parser.vocab
+        vocab = torch.load(args.vocab)
+        network = BiaffineParser.load(args.file)
+        model = Model(vocab, network)
 
         print("Load the dataset")
         corpus = Corpus.load(args.fdata)
@@ -35,6 +36,5 @@ class Evaluate(object):
                             collate_fn=collate_fn)
 
         print("Evaluate the dataset")
-        model = Model(parser=parser)
         loss, metric = model.evaluate(loader)
         print(f"Loss: {loss:.4f} {metric}")

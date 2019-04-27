@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from collections import Counter, namedtuple
+from collections import namedtuple
 
 import torch
 
 
 Sentence = namedtuple(typename='Sentence',
-                      field_names=['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS',
-                                   'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'])
+                      field_names=['ID', 'FORM', 'LEMMA', 'CPOS',
+                                   'POS', 'FEATS', 'HEAD', 'DEPREL',
+                                   'PHEAD', 'PDEPREL'])
 
 
 class Corpus(object):
@@ -17,6 +18,9 @@ class Corpus(object):
         super(Corpus, self).__init__()
 
         self.sentences = sentences
+
+    def __len__(self):
+        return len(self.sentences)
 
     def __repr__(self):
         return '\n'.join(
@@ -29,36 +33,31 @@ class Corpus(object):
 
     @property
     def words(self):
-        return Counter(word for seq in self.word_seqs
-                       for word in seq[1:])
-
-    @property
-    def rels(self):
-        return Counter(rel for seq in self.rel_seqs
-                       for rel in seq[1:])
-
-    @property
-    def word_seqs(self):
         return [[self.ROOT] + list(sentence.FORM)
                 for sentence in self.sentences]
 
     @property
-    def head_seqs(self):
+    def tags(self):
+        return [[self.ROOT] + list(sentence.POS)
+                for sentence in self.sentences]
+
+    @property
+    def heads(self):
         return [[0] + list(map(int, sentence.HEAD))
                 for sentence in self.sentences]
 
     @property
-    def rel_seqs(self):
+    def rels(self):
         return [[self.ROOT] + list(sentence.DEPREL)
                 for sentence in self.sentences]
 
-    @head_seqs.setter
-    def head_seqs(self, sequences):
+    @heads.setter
+    def heads(self, sequences):
         self.sentences = [sentence._replace(HEAD=sequence)
                           for sentence, sequence in zip(self, sequences)]
 
-    @rel_seqs.setter
-    def rel_seqs(self, sequences):
+    @rels.setter
+    def rels(self, sequences):
         self.sentences = [sentence._replace(DEPREL=sequence)
                           for sentence, sequence in zip(self, sequences)]
 
@@ -76,7 +75,7 @@ class Corpus(object):
 
         return corpus
 
-    def dump(self, fname):
+    def save(self, fname):
         with open(fname, 'w') as f:
             f.write(f"{self}\n")
 
@@ -89,6 +88,9 @@ class Embedding(object):
         self.words = words
         self.vectors = vectors
         self.pretrained = {w: v for w, v in zip(words, vectors)}
+
+    def __len__(self):
+        return len(self.words)
 
     def __contains__(self, word):
         return word in self.pretrained
