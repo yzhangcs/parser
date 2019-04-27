@@ -34,11 +34,11 @@ class Vocab(object):
 
         return info
 
-    def word_to_id(self, sequence):
+    def word2id(self, sequence):
         return torch.tensor([self.word_dict.get(word.lower(), self.unk_index)
                              for word in sequence])
 
-    def char_to_id(self, sequence, fix_length=20):
+    def char2id(self, sequence, fix_length=20):
         char_ids = torch.zeros(len(sequence), fix_length, dtype=torch.long)
         for i, word in enumerate(sequence):
             ids = torch.tensor([self.char_dict.get(c, self.unk_index)
@@ -47,11 +47,11 @@ class Vocab(object):
 
         return char_ids
 
-    def label_to_id(self, sequence):
+    def label2id(self, sequence):
         return torch.tensor([self.label_dict.get(label, 0)
                              for label in sequence])
 
-    def id_to_label(self, ids):
+    def id2label(self, ids):
         return [self.labels[i] for i in ids]
 
     def read_embeddings(self, embed, unk=None):
@@ -78,12 +78,10 @@ class Vocab(object):
         self.n_chars = len(self.chars)
 
     def numericalize(self, corpus):
-        words, chars, heads, labels = [], [], [], []
-        for sentence in corpus:
-            words.append(self.word_to_id(sentence.words))
-            chars.append(self.char_to_id(sentence.words))
-            heads.append(torch.tensor(sentence.heads))
-            labels.append(self.label_to_id(sentence.labels))
+        words = [self.word2id(seq) for seq in corpus.word_seqs]
+        chars = [self.char2id(seq) for seq in corpus.word_seqs]
+        heads = [torch.tensor(seq) for seq in corpus.head_seqs]
+        labels = [self.label2id(seq) for seq in corpus.label_seqs]
 
         return words, chars, heads, labels
 

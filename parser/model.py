@@ -18,12 +18,12 @@ class Model(object):
         self.criterion = nn.CrossEntropyLoss()
 
     def __call__(self, loaders, epochs, patience,
-                 betas, lr, epsilon, annealing, file):
+                 lr, betas, epsilon, annealing, file):
         total_time = timedelta()
         max_e, max_metric = 0, 0.0
         train_loader, dev_loader, test_loader = loaders
         self.optimizer = optim.Adam(params=self.parser.parameters(),
-                                    betas=betas, lr=lr, eps=epsilon)
+                                    lr=lr, betas=betas,  eps=epsilon)
         self.scheduler = optim.lr_scheduler.LambdaLR(optimizer=self.optimizer,
                                                      lr_lambda=annealing)
 

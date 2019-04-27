@@ -56,9 +56,8 @@ class Predict(object):
         print("Predict the dataset")
         model = Model(parser=parser)
         all_heads, all_labels = model.predict(loader)
-        for i, sentence in enumerate(corpus):
-            sentence.heads = all_heads[i].tolist()
-            sentence.labels = vocab.id_to_label(all_labels[i])
+        corpus.head_seqs = [seq.tolist() for seq in all_heads]
+        corpus.label_seqs = [vocab.id2label(seq) for seq in all_labels]
 
-        print(f"Save the predicted result to {args.fpred}")
+        print(f"Save the predicted result")
         corpus.dump(args.fpred)
