@@ -7,8 +7,7 @@ import torch
 
 Sentence = namedtuple(typename='Sentence',
                       field_names=['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS',
-                                   'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'],
-                      defaults=[None]*10)
+                                   'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'])
 
 
 class Corpus(object):
@@ -30,7 +29,7 @@ class Corpus(object):
 
     @property
     def words(self):
-        return Counter(word.lower() for seq in self.word_seqs
+        return Counter(word for seq in self.word_seqs
                        for word in seq[1:])
 
     @property
@@ -40,7 +39,7 @@ class Corpus(object):
 
     @property
     def word_seqs(self):
-        return [[self.ROOT] + [word for word in sentence.FORM]
+        return [[self.ROOT] + list(sentence.FORM)
                 for sentence in self.sentences]
 
     @property
@@ -64,15 +63,14 @@ class Corpus(object):
                           for sentence, sequence in zip(self, sequences)]
 
     @classmethod
-    def load(cls, fname, field_names=Sentence._fields):
+    def load(cls, fname):
         start, sentences = 0, []
         with open(fname, 'r') as f:
             lines = [line for line in f]
         for i, line in enumerate(lines):
             if len(line) <= 1:
-                cols = zip(*[l.split() for l in lines[start:i]])
-                fields = dict(zip(field_names, cols))
-                sentences.append(Sentence(**fields))
+                sentence = Sentence(*zip(*[l.split() for l in lines[start:i]]))
+                sentences.append(sentence)
                 start = i + 1
         corpus = cls(sentences)
 

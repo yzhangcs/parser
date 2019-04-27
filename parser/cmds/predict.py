@@ -2,7 +2,7 @@
 
 import os
 from parser import BiaffineParser, Model
-from parser.data import Corpus, TextDataset, collate_fn
+from parser.utils import Corpus, TextDataset, collate_fn
 
 import torch
 from torch.utils.data import DataLoader
@@ -18,7 +18,7 @@ class Predict(object):
                                help='batch size')
         subparser.add_argument('--fdata', default='data/test.conllx',
                                help='path to dataset')
-        subparser.add_argument('--fpred', default='predict.conllx',
+        subparser.add_argument('--fpred', default='pred.conllx',
                                help='path to predicted result')
         subparser.add_argument('--file', '-f', default='model.pt',
                                help='path to model file')
