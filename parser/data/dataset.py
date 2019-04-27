@@ -6,11 +6,7 @@ from torch.utils.data import Dataset
 
 
 def collate_fn(data):
-    reprs = zip(
-        *sorted(data, key=lambda x: len(x[0]), reverse=True)
-    )
-    reprs = (pad_sequence(i, True) for i in reprs)
-
+    reprs = (pad_sequence(i, True) for i in zip(*data))
     if torch.cuda.is_available():
         reprs = (i.cuda() for i in reprs)
 
