@@ -8,6 +8,12 @@ An implementation of "Deep Biaffine Attention for Neural Dependency Parsing".
 
 Details and [hyperparameter choices](#Hyperparameters) are almost the same as those described in the paper. The difference is that the pos tag embedding is replaced by a character-level BiLSTM structure, which avoids looking for additional pos tag information during the prediction phrase.
 
+## Performance
+
+On PTB-SD 3.3.0, the model achieves **UAS: 95.70** and **LAS: 94.26** (**UAS: 95.74** and **LAS: 94.08** in the parer).
+
+On PTB-SD 3.5.0, the model achieves **UAS: 95.74** and **LAS: 94.41** (**UAS: 95.75** and **LAS: 94.22** in the parer).
+
 ## Requirements
 
 ```txt
@@ -88,25 +94,25 @@ optional arguments:
 
 ## Hyperparameters
 
-| Param         | Description                         |                                                Value                                                 |
-| :------------ | :---------------------------------- | :--------------------------------------------------------------------------------------------------: |
-| n_embed       | dimension of word embedding         |                                                 100                                                  |
-| n_char_embed  | dimension of char embedding         |                                                  50                                                  |
-| n_char_out    | dimension of char level lstm output |                                                 100                                                  |
-| embed_dropout | dropout ratio of embeddings         |                                                 0.33                                                 |
-| n_lstm_hidden | dimension of lstm hidden state      |                                                 400                                                  |
-| n_lstm_layers | number of lstm layers               |                                                  3                                                   |
-| lstm_dropout  | dropout ratio of lstm               |                                                 0.33                                                 |
-| n_mlp_arc     | arc mlp size                        |                                                 500                                                  |
-| n_mlp_lab     | label mlp size                      |                                                 100                                                  |
-| mlp_dropout   | dropout ratio of mlp                |                                                 0.33                                                 |
-| lr            | learning rate of training           |                                                 2e-3                                                 |
-| betas         | betas                               |                                              (0.9, 0.9)                                              |
-| epsilon       | epsilon                             |                                                1e-12                                                 |
-| annealing     | formula of learning rate annealing  | <img src="https://latex.codecogs.com/gif.latex?.75^{\frac{t}{5000}}" title=".75^{\frac{t}{5000}}" /> |
-| batch_size    | batch size                          |                                                 200                                                  |
-| epochs        | max number of epochs                |                                                 1000                                                 |
-| patience      | patience for early stop             |                                                 100                                                  |
+| Param         | Description                             |                                                Value                                                 |
+| :------------ | :-------------------------------------- | :--------------------------------------------------------------------------------------------------: |
+| n_embed       | dimension of word embedding             |                                                 100                                                  |
+| n_char_embed  | dimension of char embedding             |                                                  50                                                  |
+| n_char_out    | dimension of char level lstm output     |                                                 100                                                  |
+| embed_dropout | dropout ratio of embeddings             |                                                 0.33                                                 |
+| n_lstm_hidden | dimension of lstm hidden state          |                                                 400                                                  |
+| n_lstm_layers | number of lstm layers                   |                                                  3                                                   |
+| lstm_dropout  | dropout ratio of lstm                   |                                                 0.33                                                 |
+| n_mlp_arc     | arc mlp size                            |                                                 500                                                  |
+| n_mlp_lab     | label mlp size                          |                                                 100                                                  |
+| mlp_dropout   | dropout ratio of mlp                    |                                                 0.33                                                 |
+| lr            | starting learning rate of training      |                                                 2e-3                                                 |
+| betas         | hyperparameter of momentum and L2 norm  |                                              (0.9, 0.9)                                              |
+| epsilon       | stability constant                      |                                                1e-12                                                 |
+| annealing     | formula of learning rate annealing      | <img src="https://latex.codecogs.com/gif.latex?.75^{\frac{t}{5000}}" title=".75^{\frac{t}{5000}}" /> |
+| batch_size    | number of sentences per training update |                                                 200                                                  |
+| epochs        | max number of epochs                    |                                                 1000                                                 |
+| patience      | patience for early stop                 |                                                 100                                                  |
 
 Aside from using consistent hyperparameters, there are some keypoints that significantly affect the performance of the model:
 
