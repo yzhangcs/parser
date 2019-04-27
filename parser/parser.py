@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from parser.modules import LSTM, MLP, Biaffine
-from parser.modules.dropout import IndependentDropout, SharedDropout
+from parser.modules import (MLP, Biaffine, BiLSTM, IndependentDropout,
+                            SharedDropout)
 
 import torch
 import torch.nn as nn
@@ -23,11 +23,10 @@ class BiaffineParser(nn.Module):
         self.embed_dropout = IndependentDropout(p=params['embed_dropout'])
 
         # the word-lstm layer
-        self.lstm = LSTM(input_size=params['n_embed']+params['n_tag_embed'],
-                         hidden_size=params['n_lstm_hidden'],
-                         num_layers=params['n_lstm_layers'],
-                         dropout=params['lstm_dropout'],
-                         bidirectional=True)
+        self.lstm = BiLSTM(input_size=params['n_embed']+params['n_tag_embed'],
+                           hidden_size=params['n_lstm_hidden'],
+                           num_layers=params['n_lstm_layers'],
+                           dropout=params['lstm_dropout'])
         self.lstm_dropout = SharedDropout(p=params['lstm_dropout'])
 
         # the MLP layers
@@ -82,7 +81,7 @@ class BiaffineParser(nn.Module):
         x, _ = pad_packed_sequence(x, True)
         x = self.lstm_dropout(x)[inverse_indices]
 
-        # apply MLPs to the LSTM output states
+        # apply MLPs to the BiLSTM output states
         arc_h = self.mlp_arc_h(x)
         arc_d = self.mlp_arc_d(x)
         rel_h = self.mlp_rel_h(x)
@@ -94,7 +93,7 @@ class BiaffineParser(nn.Module):
         # [batch_size, seq_len, seq_len, n_rels]
         s_rel = self.rel_attn(rel_d, rel_h).permute(0, 2, 3, 1)
         # set the scores that exceed the length of each sentence to -inf
-        s_arc.masked_fill_((1 - mask).unsqueeze(1), float('-inf'))
+        s_arc.masked_fill_(~mask.unsqueeze(1), float('-inf'))
 
         return s_arc, s_rel
 
