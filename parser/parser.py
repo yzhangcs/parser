@@ -1,58 +1,57 @@
 # -*- coding: utf-8 -*-
 
-from parser.modules import MLP, Biaffine, CharLSTM, ParserLSTM
+from parser.modules import CHAR_LSTM, LSTM, MLP, Biaffine
 from parser.modules.dropout import IndependentDropout, SharedDropout
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_sequence
+from torch.nn.utils.rnn import (pack_padded_sequence, pad_packed_sequence,
+                                pad_sequence)
 
 
 class BiaffineParser(nn.Module):
-    def __init__(self, vocab,
-                 n_embed, n_char_embed, n_char_out,
-                 n_lstm_hidden, n_lstm_layers, n_mlp_arc, n_mlp_lab, dropout):
+
+    def __init__(self, vocab, params):
         super(BiaffineParser, self).__init__()
 
         self.vocab = vocab
+        self.params = params
         # the embedding layer
-        self.embed = nn.Embedding(vocab.n_train_words, n_embed)
+        self.embed = nn.Embedding(vocab.n_train_words, params['n_embed'])
         self.pretrained = nn.Embedding.from_pretrained(vocab.embeddings)
         # the char-lstm layer
-        self.char_lstm = CharLSTM(n_char=vocab.n_chars,
-                                  n_embed=n_char_embed,
-                                  n_out=n_char_out)
-        self.embed_drop = IndependentDropout(p=dropout)
+        self.char_lstm = CHAR_LSTM(n_char=vocab.n_chars,
+                                   n_embed=params['n_char_embed'],
+                                   n_out=params['n_char_out'])
+        self.embed_drop = IndependentDropout(p=params['dropout'])
 
         # the word-lstm layer
-        self.lstm = ParserLSTM(input_size=n_embed+n_char_out,
-                               hidden_size=n_lstm_hidden,
-                               num_layers=n_lstm_layers,
-                               batch_first=True,
-                               dropout=dropout,
-                               bidirectional=True)
-        self.lstm_drop = SharedDropout(p=dropout)
+        self.lstm = LSTM(input_size=params['n_embed']+params['n_char_out'],
+                         hidden_size=params['n_lstm_hidden'],
+                         num_layers=params['n_lstm_layers'],
+                         dropout=params['dropout'],
+                         bidirectional=True)
+        self.lstm_drop = SharedDropout(p=params['dropout'])
 
         # the MLP layers
-        self.mlp_arc_h = MLP(n_in=n_lstm_hidden*2,
-                             n_hidden=n_mlp_arc,
-                             dropout=dropout)
-        self.mlp_arc_d = MLP(n_in=n_lstm_hidden*2,
-                             n_hidden=n_mlp_arc,
-                             dropout=dropout)
-        self.mlp_lab_h = MLP(n_in=n_lstm_hidden*2,
-                             n_hidden=n_mlp_lab,
-                             dropout=dropout)
-        self.mlp_lab_d = MLP(n_in=n_lstm_hidden*2,
-                             n_hidden=n_mlp_lab,
-                             dropout=dropout)
+        self.mlp_arc_h = MLP(n_in=params['n_lstm_hidden']*2,
+                             n_hidden=params['n_mlp_arc'],
+                             dropout=params['dropout'])
+        self.mlp_arc_d = MLP(n_in=params['n_lstm_hidden']*2,
+                             n_hidden=params['n_mlp_arc'],
+                             dropout=params['dropout'])
+        self.mlp_lab_h = MLP(n_in=params['n_lstm_hidden']*2,
+                             n_hidden=params['n_mlp_lab'],
+                             dropout=params['dropout'])
+        self.mlp_lab_d = MLP(n_in=params['n_lstm_hidden']*2,
+                             n_hidden=params['n_mlp_lab'],
+                             dropout=params['dropout'])
 
         # the Biaffine layers
-        self.arc_attn = Biaffine(n_in=n_mlp_arc,
+        self.arc_attn = Biaffine(n_in=params['n_mlp_arc'],
                                  bias_x=True,
                                  bias_y=False)
-        self.lab_attn = Biaffine(n_in=n_mlp_lab,
+        self.lab_attn = Biaffine(n_in=params['n_mlp_lab'],
                                  n_out=vocab.n_labels,
                                  bias_x=True,
                                  bias_y=True)
@@ -60,26 +59,30 @@ class BiaffineParser(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        bias = (3. / self.embed.weight.size(1)) ** 0.5
-        nn.init.uniform_(self.embed.weight, -bias, bias)
+        nn.init.zeros_(self.embed.weight)
 
-    def forward(self, x, char_x):
+    def forward(self, words, chars):
         # get the mask and lengths of given batch
-        mask = x.gt(0)
+        mask = words.gt(0)
         lens = mask.sum(dim=1)
         # get outputs from embedding layers
-        embed_x = self.pretrained(x)
-        embed_x += self.embed(x.masked_fill_(x >= self.vocab.n_train_words,
-                                             self.vocab.unk_index))
-
-        char_x = self.char_lstm(char_x[mask])
-        char_x = pad_sequence(torch.split(char_x, lens.tolist()), True)
-        embed_x, char_x = self.embed_drop(embed_x, char_x)
+        word_embed = self.pretrained(words)
+        word_embed += self.embed(
+            words.masked_fill_(words.ge(self.vocab.n_train_words),
+                               self.vocab.unk_index)
+        )
+        char_embed = self.char_lstm(chars[mask])
+        char_embed = pad_sequence(torch.split(char_embed, lens.tolist()), True)
+        word_embed, char_embed = self.embed_drop(word_embed, char_embed)
         # concatenate the word and char representations
-        x = torch.cat((embed_x, char_x), dim=-1)
+        x = torch.cat((word_embed, char_embed), dim=-1)
 
-        x = self.lstm(x, mask)
-        x = self.lstm_drop(x)
+        sorted_lens, indices = torch.sort(lens, descending=True)
+        inverse_indices = indices.argsort()
+        x = pack_padded_sequence(x[indices], sorted_lens, True)
+        x = self.lstm(x)
+        x, _ = pad_packed_sequence(x, True)
+        x = self.lstm_drop(x)[inverse_indices]
 
         # apply MLPs to the LSTM output states
         arc_h = self.mlp_arc_h(x)
@@ -97,15 +100,20 @@ class BiaffineParser(nn.Module):
 
         return s_arc, s_lab
 
-    def get_loss(self, s_arc, s_lab, heads, labels, mask):
-        s_arc = s_arc[mask]
-        s_lab = s_lab[mask]
-        heads = heads[mask]
-        labels = labels[mask]
-        s_lab = s_lab[torch.arange(len(s_arc)), heads]
+    @classmethod
+    def load(cls, fname):
+        state = torch.load(fname)
+        parser = cls(state['vocab'], state['params'])
+        parser.load_state_dict(state['state_dict'])
+        if torch.cuda.is_available():
+            parser = parser.cuda()
 
-        arc_loss = F.cross_entropy(s_arc, heads)
-        lab_loss = F.cross_entropy(s_lab, labels)
-        loss = arc_loss + lab_loss
+        return parser
 
-        return loss
+    def save(self, fname):
+        state = {
+            'vocab': self.vocab,
+            'params': self.params,
+            'state_dict': self.state_dict(),
+        }
+        torch.save(state, fname)
