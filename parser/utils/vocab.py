@@ -2,6 +2,7 @@
 
 from collections import Counter
 
+import regex
 import torch
 
 
@@ -20,6 +21,10 @@ class Vocab(object):
         self.word_dict = {word: i for i, word in enumerate(self.words)}
         self.tag_dict = {tag: i for i, tag in enumerate(self.tags)}
         self.rel_dict = {rel: i for i, rel in enumerate(self.rels)}
+
+        # ids of punctuation that appear in words
+        self.puncts = sorted(i for word, i in self.word_dict.items()
+                             if regex.match(r'\p{P}+$', word))
 
         self.n_words = len(self.words)
         self.n_tags = len(self.tags)
@@ -68,6 +73,8 @@ class Vocab(object):
     def extend(self, words):
         self.words.extend(sorted(set(words).difference(self.word_dict)))
         self.word_dict = {word: i for i, word in enumerate(self.words)}
+        self.puncts = sorted(i for word, i in self.word_dict.items()
+                             if regex.match(r'\p{P}+$', word))
         self.n_words = len(self.words)
 
     def numericalize(self, corpus):

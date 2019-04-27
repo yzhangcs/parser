@@ -15,6 +15,8 @@ class Evaluate(object):
         )
         subparser.add_argument('--batch-size', default=200, type=int,
                                help='batch size')
+        subparser.add_argument('--include-punct', action='store_true',
+                               help='whether to include punctuation')
         subparser.add_argument('--fdata', default='data/test.conllx',
                                help='path to dataset')
         subparser.set_defaults(func=self)
@@ -36,5 +38,5 @@ class Evaluate(object):
                             collate_fn=collate_fn)
 
         print("Evaluate the dataset")
-        loss, metric = model.evaluate(loader)
+        loss, metric = model.evaluate(loader, include_punct=args.include_punct)
         print(f"Loss: {loss:.4f} {metric}")

@@ -34,11 +34,11 @@ class Model(object):
             self.train(train_loader)
 
             print(f"Epoch {epoch} / {epochs}:")
-            loss, train_metric = self.evaluate(train_loader)
+            loss, train_metric = self.evaluate(train_loader, False)
             print(f"{'train:':<6} Loss: {loss:.4f} {train_metric}")
-            loss, dev_metric = self.evaluate(dev_loader)
+            loss, dev_metric = self.evaluate(dev_loader, False)
             print(f"{'dev:':<6} Loss: {loss:.4f} {dev_metric}")
-            loss, test_metric = self.evaluate(test_loader)
+            loss, test_metric = self.evaluate(test_loader, False)
             print(f"{'test:':<6} Loss: {loss:.4f} {test_metric}")
             t = datetime.now() - start
             print(f"{t}s elapsed\n")
@@ -78,7 +78,7 @@ class Model(object):
             self.scheduler.step()
 
     @torch.no_grad()
-    def evaluate(self, loader):
+    def evaluate(self, loader, include_punct=True):
         self.network.eval()
 
         loss, metric = 0, AttachmentMethod()
@@ -87,6 +87,10 @@ class Model(object):
             mask = words.ne(self.vocab.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
+            # ignore all punctuation if specified
+            if not include_punct:
+                puncts = words.new_tensor(self.vocab.puncts)
+                mask &= words.unsqueeze(-1).ne(puncts).all(-1)
             s_arc, s_rel = self.network(words, tags)
             s_arc, s_rel = s_arc[mask], s_rel[mask]
             gold_arcs, gold_rels = arcs[mask], rels[mask]
