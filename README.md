@@ -1,4 +1,4 @@
-# Parser
+# Biaffine Parser
 
 An implementation of "Deep Biaffine Attention for Neural Dependency Parsing"
 
@@ -8,7 +8,6 @@ An implementation of "Deep Biaffine Attention for Neural Dependency Parsing"
 python == 3.7.0
 pytorch == 0.4.1
 ```
-
 
 ## References
 
