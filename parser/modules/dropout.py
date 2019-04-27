@@ -25,7 +25,7 @@ class SharedDropout(nn.Module):
                 mask = self.get_mask(x[:, 0], self.p)
             else:
                 mask = self.get_mask(x[0], self.p)
-            x = x * mask.unsqueeze(1) if self.batch_first else x * mask
+            x *= mask.unsqueeze(1) if self.batch_first else mask
 
         return x
 
@@ -54,7 +54,7 @@ class IndependentDropout(nn.Module):
             scale = 3.0 / (2.0 * x_mask + y_mask + eps)
             x_mask *= scale
             y_mask *= scale
-            x = x * x_mask.unsqueeze(dim=2)
-            y = y * y_mask.unsqueeze(dim=2)
+            x *= x_mask.unsqueeze(dim=-1)
+            y *= y_mask.unsqueeze(dim=-1)
 
         return x, y

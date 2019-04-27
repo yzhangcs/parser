@@ -38,9 +38,7 @@ class Predict(object):
                             collate_fn=collate_fn)
 
         print("Predict the dataset")
-        all_arcs, all_rels = model.predict(loader)
-        corpus.heads = all_arcs
-        corpus.rels = all_rels
+        corpus.heads, corpus.rels = model.predict(loader)
 
         print(f"Save the predicted result")
         corpus.save(args.fpred)
