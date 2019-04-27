@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from collections import Counter
+
 import torch
 import torch.nn as nn
 
@@ -8,12 +10,12 @@ class Vocab(object):
     PAD = '<PAD>'
     UNK = '<UNK>'
 
-    def __init__(self, words, labels):
+    def __init__(self, words, chars, labels):
         self.pad_index = 0
         self.unk_index = 1
 
         self.words = [self.PAD, self.UNK] + sorted(words)
-        self.chars = [self.PAD, self.UNK] + sorted(set(''.join(words)))
+        self.chars = [self.PAD, self.UNK] + sorted(chars)
         self.labels = sorted(labels)
 
         self.word_dict = {w: i for i, w in enumerate(self.words)}
@@ -87,8 +89,10 @@ class Vocab(object):
 
     @classmethod
     def from_corpus(cls, corpus, min_freq=1):
-        words = list(w for w, f in corpus.words.items() if f >= min_freq)
+        words = Counter(word.lower() for word in corpus.words.elements())
+        words = list(word for word, freq in words.items() if freq >= min_freq)
+        chars = list({char for char in ''.join(corpus.words)})
         labels = list(corpus.labels)
-        vocab = cls(words, labels)
+        vocab = cls(words, chars, labels)
 
         return vocab
