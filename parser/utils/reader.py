@@ -33,9 +33,9 @@ class Corpus(object):
                        for word in seq[1:])
 
     @property
-    def labels(self):
-        return Counter(label for seq in self.label_seqs
-                       for label in seq[1:])
+    def rels(self):
+        return Counter(rel for seq in self.rel_seqs
+                       for rel in seq[1:])
 
     @property
     def word_seqs(self):
@@ -48,7 +48,7 @@ class Corpus(object):
                 for sentence in self.sentences]
 
     @property
-    def label_seqs(self):
+    def rel_seqs(self):
         return [[self.ROOT] + list(sentence.DEPREL)
                 for sentence in self.sentences]
 
@@ -57,8 +57,8 @@ class Corpus(object):
         self.sentences = [sentence._replace(HEAD=sequence)
                           for sentence, sequence in zip(self, sequences)]
 
-    @label_seqs.setter
-    def label_seqs(self, sequences):
+    @rel_seqs.setter
+    def rel_seqs(self, sequences):
         self.sentences = [sentence._replace(DEPREL=sequence)
                           for sentence, sequence in zip(self, sequences)]
 

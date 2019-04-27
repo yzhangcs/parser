@@ -38,9 +38,9 @@ class Predict(object):
 
         print("Predict the dataset")
         model = Model(parser=parser)
-        all_heads, all_labels = model.predict(loader)
-        corpus.head_seqs = [seq.tolist() for seq in all_heads]
-        corpus.label_seqs = [vocab.id2label(seq) for seq in all_labels]
+        all_arcs, all_rels = model.predict(loader)
+        corpus.head_seqs = [seq.tolist() for seq in all_arcs]
+        corpus.rel_seqs = [vocab.id2rel(seq) for seq in all_rels]
 
         print(f"Save the predicted result")
         corpus.dump(args.fpred)

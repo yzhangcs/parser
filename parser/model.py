@@ -60,17 +60,17 @@ class Model(object):
     def train(self, loader):
         self.parser.train()
 
-        for words, chars, heads, labels in loader:
+        for words, chars, arcs, rels in loader:
             self.optimizer.zero_grad()
 
             mask = words.gt(0)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_lab = self.parser(words, chars)
-            s_arc, s_lab = s_arc[mask], s_lab[mask]
-            gold_heads, gold_labels = heads[mask], labels[mask]
+            s_arc, s_rel = self.parser(words, chars)
+            s_arc, s_rel = s_arc[mask], s_rel[mask]
+            gold_arcs, gold_rels = arcs[mask], rels[mask]
 
-            loss = self.get_loss(s_arc, s_lab, gold_heads, gold_labels)
+            loss = self.get_loss(s_arc, s_rel, gold_arcs, gold_rels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parser.parameters(), 5.0)
             self.optimizer.step()
@@ -82,17 +82,17 @@ class Model(object):
 
         loss, metric = 0, AttachmentMethod()
 
-        for words, chars, heads, labels in loader:
+        for words, chars, arcs, rels in loader:
             mask = words.gt(0)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_lab = self.parser(words, chars)
-            s_arc, s_lab = s_arc[mask], s_lab[mask]
-            gold_heads, gold_labels = heads[mask], labels[mask]
-            pred_heads, pred_labels = self.decode(s_arc, s_lab)
+            s_arc, s_rel = self.parser(words, chars)
+            s_arc, s_rel = s_arc[mask], s_rel[mask]
+            gold_arcs, gold_rels = arcs[mask], rels[mask]
+            pred_arcs, pred_rels = self.decode(s_arc, s_rel)
 
-            loss += self.get_loss(s_arc, s_lab, gold_heads, gold_labels)
-            metric(pred_heads, pred_labels, gold_heads, gold_labels)
+            loss += self.get_loss(s_arc, s_rel, gold_arcs, gold_rels)
+            metric(pred_arcs, pred_rels, gold_arcs, gold_rels)
         loss /= len(loader)
 
         return loss, metric
@@ -101,33 +101,33 @@ class Model(object):
     def predict(self, loader):
         self.parser.eval()
 
-        all_heads, all_labels = [], []
-        for words, chars, heads, labels in loader:
+        all_arcs, all_rels = [], []
+        for words, chars, arcs, rels in loader:
             mask = words.gt(0)
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(dim=1).tolist()
-            s_arc, s_lab = self.parser(words, chars)
-            s_arc, s_lab = s_arc[mask], s_lab[mask]
-            pred_heads, pred_labels = self.decode(s_arc, s_lab)
+            s_arc, s_rel = self.parser(words, chars)
+            s_arc, s_rel = s_arc[mask], s_rel[mask]
+            pred_arcs, pred_rels = self.decode(s_arc, s_rel)
 
-            all_heads.extend(torch.split(pred_heads, lens))
-            all_labels.extend(torch.split(pred_labels, lens))
+            all_arcs.extend(torch.split(pred_arcs, lens))
+            all_rels.extend(torch.split(pred_rels, lens))
 
-        return all_heads, all_labels
+        return all_arcs, all_rels
 
-    def get_loss(self, s_arc, s_lab, gold_heads, gold_labels):
-        s_lab = s_lab[torch.arange(len(s_lab)), gold_heads]
+    def get_loss(self, s_arc, s_rel, gold_arcs, gold_rels):
+        s_rel = s_rel[torch.arange(len(s_rel)), gold_arcs]
 
-        arc_loss = self.criterion(s_arc, gold_heads)
-        lab_loss = self.criterion(s_lab, gold_labels)
-        loss = arc_loss + lab_loss
+        arc_loss = self.criterion(s_arc, gold_arcs)
+        rel_loss = self.criterion(s_rel, gold_rels)
+        loss = arc_loss + rel_loss
 
         return loss
 
-    def decode(self, s_arc, s_lab):
-        pred_heads = s_arc.argmax(dim=-1)
-        s_lab = s_lab[torch.arange(len(s_lab)), pred_heads]
-        pred_labels = s_lab.argmax(dim=-1)
+    def decode(self, s_arc, s_rel):
+        pred_arcs = s_arc.argmax(dim=-1)
+        s_rel = s_rel[torch.arange(len(s_rel)), pred_arcs]
+        pred_rels = s_rel.argmax(dim=-1)
 
-        return pred_heads, pred_labels
+        return pred_arcs, pred_rels

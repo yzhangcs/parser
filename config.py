@@ -12,7 +12,7 @@ class Config(object):
     n_lstm_layers = 3
     lstm_dropout = 0.33
     n_mlp_arc = 500
-    n_mlp_lab = 100
+    n_mlp_rel = 100
     mlp_dropout = 0.33
 
     # [Optimizer]
