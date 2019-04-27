@@ -6,4 +6,4 @@ from .lstm import LSTM
 from .mlp import MLP
 
 
-__all__ = ('Biaffine', 'CHAR_LSTM', 'LSTM', 'MLP')
+__all__ = ('CHAR_LSTM', 'LSTM', 'MLP', 'Biaffine')

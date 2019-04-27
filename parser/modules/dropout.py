@@ -5,6 +5,7 @@ import torch.nn as nn
 
 
 class SharedDropout(nn.Module):
+
     def __init__(self, p=0.5, batch_first=True):
         super(SharedDropout, self).__init__()
 
