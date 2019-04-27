@@ -16,9 +16,9 @@ class Vocab(object):
         self.chars = [self.PAD, self.UNK] + sorted(set(''.join(words)))
         self.labels = sorted(labels)
 
-        self.wdict = {w: i for i, w in enumerate(self.words)}
-        self.cdict = {c: i for i, c in enumerate(self.chars)}
-        self.ldict = {l: i for i, l in enumerate(self.labels)}
+        self.word_dict = {w: i for i, w in enumerate(self.words)}
+        self.char_dict = {c: i for i, c in enumerate(self.chars)}
+        self.label_dict = {l: i for i, l in enumerate(self.labels)}
 
         self.n_words = len(self.words)
         self.n_chars = len(self.chars)
@@ -35,34 +35,26 @@ class Vocab(object):
         return info
 
     def word_to_id(self, sequence):
-        ids = [self.wdict[w] if w in self.wdict
-               else self.wdict.get(w.lower(), self.unk_index)
-               for w in sequence]
-        ids = torch.tensor(ids, dtype=torch.long)
-
-        return ids
+        return torch.tensor([self.word_dict.get(word.lower(), self.unk_index)
+                             for word in sequence])
 
     def char_to_id(self, sequence, fix_length=20):
         char_ids = torch.zeros(len(sequence), fix_length, dtype=torch.long)
         for i, word in enumerate(sequence):
-            ids = torch.tensor([self.cdict.get(c, self.unk_index)
-                                for c in word[:fix_length]], dtype=torch.long)
+            ids = torch.tensor([self.char_dict.get(c, self.unk_index)
+                                for c in word[:fix_length]])
             char_ids[i, :len(ids)] = ids
 
         return char_ids
 
     def label_to_id(self, sequence):
-        ids = [self.ldict.get(l, 0) for l in sequence]
-        ids = torch.tensor(ids, dtype=torch.long)
-
-        return ids
+        return torch.tensor([self.label_dict.get(label, 0)
+                             for label in sequence])
 
     def id_to_label(self, ids):
-        labels = (self.labels[i] for i in ids)
+        return [self.labels[i] for i in ids]
 
-        return labels
-
-    def read_embeddings(self, embed, unk=None, smooth=True):
+    def read_embeddings(self, embed, unk=None):
         words = embed.words
         # if the UNK token has existed in pretrained vocab,
         # then replace it with a self-defined one
@@ -70,39 +62,35 @@ class Vocab(object):
             words[words.index(unk)] = self.UNK
 
         self.extend(words)
-        self.embeddings = torch.Tensor(self.n_words, embed.dim)
+        self.embeddings = torch.zeros(self.n_words, embed.dim)
 
         for i, word in enumerate(self.words):
             if word in embed:
                 self.embeddings[i] = embed[word]
-            elif word.lower() in embed:
-                self.embeddings[i] = embed[word.lower()]
-            else:
-                self.embeddings[i].zero_()
-        if smooth:
-            self.embeddings /= torch.std(self.embeddings)
+        self.embeddings /= torch.std(self.embeddings)
 
     def extend(self, words):
-        self.words.extend({w for w in words if w not in self.wdict})
-        self.chars.extend({c for c in ''.join(words) if c not in self.cdict})
-        self.wdict = {w: i for i, w in enumerate(self.words)}
-        self.cdict = {c: i for i, c in enumerate(self.chars)}
+        self.words.extend(set(words).difference(self.word_dict))
+        self.chars.extend(set(''.join(words)).difference(self.char_dict))
+        self.word_dict = {w: i for i, w in enumerate(self.words)}
+        self.char_dict = {c: i for i, c in enumerate(self.chars)}
         self.n_words = len(self.words)
         self.n_chars = len(self.chars)
+
+    def numericalize(self, corpus):
+        words, chars, heads, labels = [], [], [], []
+        for sentence in corpus:
+            words.append(self.word_to_id(sentence.words))
+            chars.append(self.char_to_id(sentence.words))
+            heads.append(torch.tensor(sentence.heads))
+            labels.append(self.label_to_id(sentence.labels))
+
+        return words, chars, heads, labels
 
     @classmethod
     def from_corpus(cls, corpus, min_freq=1):
         words = list(w for w, f in corpus.words.items() if f >= min_freq)
         labels = list(corpus.labels)
-        words.remove(corpus.ROOT)
-        labels.remove(corpus.ROOT)
         vocab = cls(words, labels)
 
         return vocab
-
-    @classmethod
-    def load(cls, fname):
-        return torch.load(fname)
-
-    def save(self, fname):
-        torch.save(self, fname)
