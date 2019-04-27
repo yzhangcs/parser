@@ -7,7 +7,9 @@
 
 An implementation of "Deep Biaffine Attention for Neural Dependency Parsing".
 
-Details and [hyperparameter choices](#Hyperparameters) are almost the same as those described in the paper. 
+Details and [hyperparameter choices](#Hyperparameters) are almost identical to those described in the paper, except for some training settings. Also, we do not provide a decoding algorithm to ensure well-formedness, and this does not seriously affect the results.
+
+Another version of the implementation is available on [char](https://github.com/zysite/biaffine-parser/tree/char) branch, which replaces the tag embedding with char lstm and achieves better performance.
 
 ## Requirements
 
@@ -16,7 +18,38 @@ python == 3.7.0
 pytorch == 1.0.0
 ```
 
+## Datasets
+
+The model is evaluated on the Stanford Dependency conversion ([v3.3.0](https://nlp.stanford.edu/software/stanford-parser-full-2013-11-12.zip)) of the English Penn Treebank with POS tags predicted by [Stanford POS tagger](https://nlp.stanford.edu/software/stanford-postagger-full-2018-10-16.zip).
+
+For all datasets, we follow the conventional data splits:
+
+* Train: 02-21 (39,832 sentences)
+* Dev: 22 (1,700 sentences)
+* Test: 23 (2,416 sentences)
+
+## Performance
+
+|               |  UAS  |  LAS  |
+| ------------- | :---: | :---: |
+| tag embedding | 95.87 | 94.19 |
+| char lstm     | 96.17 | 94.53 |
+
+Note that punctuation is excluded in all evaluation metrics. 
+
+Aside from using consistent hyperparameters, there are some keypoints that significantly affect the performance:
+
+- Dividing the pretrained embedding by its standard-deviation
+- Applying the same dropout mask at every recurrent timestep
+- Jointly dropping the words and tags
+
+For the above reasons, we may have to give up some native modules in pytorch (e.g., `LSTM` and `Dropout`), and use self-implemented ones instead.
+
+As shown above, our results, especially on char lstm version, have outperformed the [offical implementation](https://github.com/tdozat/Parser-v1) (95.74 and 94.08).
+
 ## Usage
+
+You can start the training, evaluation and prediction process by using subcommands registered in `parser.cmds`.
 
 ```sh
 $ python run.py -h
@@ -32,7 +65,13 @@ Commands:
     evaluate            Evaluate the specified model and dataset.
     predict             Use a trained model to make predictions.
     train               Train a model.
+```
 
+Before triggering the subparser, please make sure that the data files must be in CoNLL-X format. If some fields are missing, you can use underscores as placeholders.
+
+Optional arguments of the subparsers are as follows:
+
+```sh
 $ python run.py train -h
 usage: run.py train [-h] [--ftrain FTRAIN] [--fdev FDEV] [--ftest FTEST]
                     [--fembed FEMBED] [--device DEVICE] [--seed SEED]
@@ -115,14 +154,7 @@ optional arguments:
 | epochs        | max number of epochs                    |                                  1000                                  |
 | patience      | patience for early stop                 |                                  100                                   |
 
-Aside from using consistent hyperparameters, there are some keypoints that significantly affect the performance of the model:
-
-- Dividing the pretrained embedding by its standard-deviation
-- Applying the same dropout mask at every recurrent timestep
-- Jointly dropping the words and tags
-
-For the above reasons, we may have to give up using some native modules in pytorch (e.g., `LSTM` and `Dropout`), and use self-implemented ones instead.
-
 ## References
 
 * [Deep Biaffine Attention for Neural Dependency Parsing](https://arxiv.org/abs/1611.01734)
+ 
