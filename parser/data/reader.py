@@ -5,69 +5,66 @@ from collections import Counter, namedtuple
 import torch
 
 
-CONLL = namedtuple(typename='CONLL',
-                   field_names=['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS',
-                                'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'],
-                   defaults=[None]*10)
-
-
-class Sentence(object):
-    ROOT = '<ROOT>'
-
-    def __init__(self, *args, **kwargs):
-        super(Sentence, self).__init__()
-
-        self.conll = CONLL(*args, **kwargs)
-
-    def __getitem__(self, index):
-        return tuple(field[index] for field in self.conll)
-
-    def __repr__(self):
-        return '\n'.join('\t'.join(map(str, field)) for field in self) + '\n'
-
-    @property
-    def words(self):
-        return [self.ROOT] + [word.lower() for word in self.conll.FORM]
-
-    @property
-    def heads(self):
-        return [0] + list(map(int, self.conll.HEAD))
-
-    @property
-    def labels(self):
-        return [self.ROOT] + list(self.conll.DEPREL)
-
-    @heads.setter
-    def heads(self, sequence):
-        self.conll = self.conll._replace(HEAD=sequence)
-
-    @labels.setter
-    def labels(self, sequence):
-        self.conll = self.conll._replace(DEPREL=sequence)
+Sentence = namedtuple(typename='Sentence',
+                      field_names=['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS',
+                                   'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'],
+                      defaults=[None]*10)
 
 
 class Corpus(object):
+    ROOT = '<ROOT>'
 
     def __init__(self, sentences):
         super(Corpus, self).__init__()
 
         self.sentences = sentences
 
+    def __repr__(self):
+        return '\n'.join(
+            '\n'.join('\t'.join(map(str, i)) for i in zip(*sentence)) + '\n'
+            for sentence in self
+        )
+
     def __getitem__(self, index):
         return self.sentences[index]
 
     @property
     def words(self):
-        return Counter(word for sentence in self.sentences
-                       for word in sentence.words[1:])
+        return Counter(word.lower() for seq in self.word_seqs
+                       for word in seq[1:])
 
     @property
     def labels(self):
-        return Counter(label for sentence in self.sentences
-                       for label in sentence.labels[1:])
+        return Counter(label for seq in self.label_seqs
+                       for label in seq[1:])
+
+    @property
+    def word_seqs(self):
+        return [[self.ROOT] + [word for word in sentence.FORM]
+                for sentence in self.sentences]
+
+    @property
+    def head_seqs(self):
+        return [[0] + list(map(int, sentence.HEAD))
+                for sentence in self.sentences]
+
+    @property
+    def label_seqs(self):
+        return [[self.ROOT] + list(sentence.DEPREL)
+                for sentence in self.sentences]
+
+    @head_seqs.setter
+    def head_seqs(self, sequences):
+        self.sentences = [sentence._replace(HEAD=sequence)
+                          for sentence, sequence in zip(self, sequences)]
+
+    @label_seqs.setter
+    def label_seqs(self, sequences):
+        self.sentences = [sentence._replace(DEPREL=sequence)
+                          for sentence, sequence in zip(self, sequences)]
 
     @classmethod
-    def load(cls, fname, field_names=CONLL._fields):
+    def load(cls, fname, field_names=Sentence._fields):
         start, sentences = 0, []
         with open(fname, 'r') as f:
             lines = [line for line in f]
@@ -83,8 +80,7 @@ class Corpus(object):
 
     def dump(self, fname):
         with open(fname, 'w') as f:
-            for sentence in self:
-                f.write(f"{sentence}\n")
+            f.write(f"{self}\n")
 
 
 class Embedding(object):
@@ -112,6 +108,7 @@ class Embedding(object):
             lines = [line for line in f]
         splits = [line.split() for line in lines]
         reprs = [(s[0], list(map(float, s[1:]))) for s in splits]
-        embedding = cls(*map(list, zip(*reprs)))
+        words, vectors = map(list, zip(*reprs))
+        embedding = cls(words, vectors)
 
         return embedding
