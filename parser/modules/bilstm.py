@@ -7,28 +7,24 @@ import torch.nn as nn
 from torch.nn.utils.rnn import PackedSequence
 
 
-class LSTM(nn.Module):
+class BiLSTM(nn.Module):
 
-    def __init__(self, input_size, hidden_size, num_layers=1,
-                 dropout=0, bidirectional=False):
-        super(LSTM, self).__init__()
+    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
+        super(BiLSTM, self).__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dropout = dropout
-        self.bidirectional = bidirectional
-        self.num_directions = 2 if bidirectional else 1
 
         self.f_cells = nn.ModuleList()
         self.b_cells = nn.ModuleList()
         for layer in range(self.num_layers):
             self.f_cells.append(nn.LSTMCell(input_size=input_size,
                                             hidden_size=hidden_size))
-            if bidirectional:
-                self.b_cells.append(nn.LSTMCell(input_size=input_size,
-                                                hidden_size=hidden_size))
-            input_size = hidden_size * self.num_directions
+            self.b_cells.append(nn.LSTMCell(input_size=input_size,
+                                            hidden_size=hidden_size))
+            input_size = hidden_size * 2
 
         self.reset_parameters()
 
@@ -88,17 +84,12 @@ class LSTM(nn.Module):
                                           cell=self.f_cells[layer],
                                           batch_sizes=batch_sizes,
                                           reverse=False)
-
-            if self.bidirectional:
-                b_output = self.layer_forward(x=x,
-                                              hx=hx,
-                                              cell=self.b_cells[layer],
-                                              batch_sizes=batch_sizes,
-                                              reverse=True)
-            if self.bidirectional:
-                x = torch.cat([f_output, b_output], -1)
-            else:
-                x = f_output
+            b_output = self.layer_forward(x=x,
+                                          hx=hx,
+                                          cell=self.b_cells[layer],
+                                          batch_sizes=batch_sizes,
+                                          reverse=True)
+            x = torch.cat([f_output, b_output], -1)
         x = PackedSequence(x, batch_sizes)
 
         return x
