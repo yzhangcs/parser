@@ -23,29 +23,29 @@ class BiaffineParser(nn.Module):
         self.char_lstm = CHAR_LSTM(n_char=vocab.n_chars,
                                    n_embed=params['n_char_embed'],
                                    n_out=params['n_char_out'])
-        self.embed_drop = IndependentDropout(p=params['dropout'])
+        self.embed_dropout = IndependentDropout(p=params['embed_dropout'])
 
         # the word-lstm layer
         self.lstm = LSTM(input_size=params['n_embed']+params['n_char_out'],
                          hidden_size=params['n_lstm_hidden'],
                          num_layers=params['n_lstm_layers'],
-                         dropout=params['dropout'],
+                         dropout=params['lstm_dropout'],
                          bidirectional=True)
-        self.lstm_drop = SharedDropout(p=params['dropout'])
+        self.lstm_dropout = SharedDropout(p=params['lstm_dropout'])
 
         # the MLP layers
         self.mlp_arc_h = MLP(n_in=params['n_lstm_hidden']*2,
                              n_hidden=params['n_mlp_arc'],
-                             dropout=params['dropout'])
+                             dropout=params['mlp_dropout'])
         self.mlp_arc_d = MLP(n_in=params['n_lstm_hidden']*2,
                              n_hidden=params['n_mlp_arc'],
-                             dropout=params['dropout'])
+                             dropout=params['mlp_dropout'])
         self.mlp_lab_h = MLP(n_in=params['n_lstm_hidden']*2,
                              n_hidden=params['n_mlp_lab'],
-                             dropout=params['dropout'])
+                             dropout=params['mlp_dropout'])
         self.mlp_lab_d = MLP(n_in=params['n_lstm_hidden']*2,
                              n_hidden=params['n_mlp_lab'],
-                             dropout=params['dropout'])
+                             dropout=params['mlp_dropout'])
 
         # the Biaffine layers
         self.arc_attn = Biaffine(n_in=params['n_mlp_arc'],
@@ -73,7 +73,7 @@ class BiaffineParser(nn.Module):
         )
         char_embed = self.char_lstm(chars[mask])
         char_embed = pad_sequence(torch.split(char_embed, lens.tolist()), True)
-        word_embed, char_embed = self.embed_drop(word_embed, char_embed)
+        word_embed, char_embed = self.embed_dropout(word_embed, char_embed)
         # concatenate the word and char representations
         x = torch.cat((word_embed, char_embed), dim=-1)
 
@@ -82,7 +82,7 @@ class BiaffineParser(nn.Module):
         x = pack_padded_sequence(x[indices], sorted_lens, True)
         x = self.lstm(x)
         x, _ = pad_packed_sequence(x, True)
-        x = self.lstm_drop(x)[inverse_indices]
+        x = self.lstm_dropout(x)[inverse_indices]
 
         # apply MLPs to the LSTM output states
         arc_h = self.mlp_arc_h(x)
