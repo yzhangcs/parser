@@ -1,28 +1,37 @@
 # -*- coding: utf-8 -*-
 
+from ast import literal_eval
+from configparser import ConfigParser
+
 
 class Config(object):
 
-    # [Network]
-    n_embed = 100
-    n_tag_embed = 100
-    embed_dropout = 0.33
-    n_lstm_hidden = 400
-    n_lstm_layers = 3
-    lstm_dropout = 0.33
-    n_mlp_arc = 500
-    n_mlp_rel = 100
-    mlp_dropout = 0.33
+    def __init__(self, fname):
+        super(Config, self).__init__()
 
-    # [Optimizer]
-    lr = 2e-3
-    beta_1 = 0.9
-    beta_2 = 0.9
-    epsilon = 1e-12
-    decay = .75
-    decay_steps = 5000
+        self.config = ConfigParser()
+        self.config.read(fname)
+        self.kwargs = dict((option, literal_eval(value))
+                           for section in self.config.sections()
+                           for option, value in self.config.items(section))
 
-    # [Run]
-    batch_size = 200
-    epochs = 1000
-    patience = 100
+    def __repr__(self):
+        info = f"{self.__class__.__name__}:\n"
+        for i, (option, value) in enumerate(self.kwargs.items()):
+            info += f"{option:15} {value:<25}" + ('\n' if i % 2 > 0 else '')
+        if i % 2 == 0:
+            info += '\n'
+
+        return info
+
+    def __getattr__(self, attr):
+        return self.kwargs.get(attr, None)
+
+    def __getstate__(self):
+        return vars(self)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+    def update(self, kwargs):
+        self.kwargs.update(kwargs)
