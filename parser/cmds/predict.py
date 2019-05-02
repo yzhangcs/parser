@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from parser import BiaffineParser, Model
-from parser.utils import Corpus, TextDataset, collate_fn
+from parser.utils import Corpus
+from parser.utils.data import TextDataset, batchify
 
 import torch
-from torch.utils.data import DataLoader
 
 
 class Predict(object):
@@ -13,32 +13,29 @@ class Predict(object):
         subparser = parser.add_parser(
             name, help='Use a trained model to make predictions.'
         )
-        subparser.add_argument('--batch-size', default=200, type=int,
+        subparser.add_argument('--batch-size', default=5000, type=int,
                                help='batch size')
-        subparser.add_argument('--fdata', default='data/test.conllx',
+        subparser.add_argument('--fdata', default='data/ptb/test.conllx',
                                help='path to dataset')
         subparser.add_argument('--fpred', default='pred.conllx',
                                help='path to predicted result')
-        subparser.set_defaults(func=self)
 
         return subparser
 
-    def __call__(self, args):
+    def __call__(self, config):
         print("Load the model")
-        vocab = torch.load(args.vocab)
-        network = BiaffineParser.load(args.file)
-        model = Model(vocab, network)
+        vocab = torch.load(config.vocab)
+        parser = BiaffineParser.load(config.model)
+        model = Model(vocab, parser)
 
         print("Load the dataset")
-        corpus = Corpus.load(args.fdata)
-        dataset = TextDataset(vocab.numericalize(corpus))
+        corpus = Corpus.load(config.fdata)
+        dataset = TextDataset(vocab.numericalize(corpus, False))
         # set the data loader
-        loader = DataLoader(dataset=dataset,
-                            batch_size=args.batch_size,
-                            collate_fn=collate_fn)
+        loader = batchify(dataset, config.batch_size)
 
-        print("Predict the dataset")
+        print("Make predictions on the dataset")
         corpus.heads, corpus.rels = model.predict(loader)
 
-        print(f"Save the predicted result")
-        corpus.save(args.fpred)
+        print(f"Save the predicted result to {config.fpred}")
+        corpus.save(config.fpred)
