@@ -32,11 +32,10 @@ class Vocab(object):
         self.n_train_words = self.n_words
 
     def __repr__(self):
-        info = f"{self.__class__.__name__}(\n"
-        info += f"  num of words: {self.n_words}\n"
-        info += f"  num of tags: {self.n_tags}\n"
-        info += f"  num of rels: {self.n_rels}\n"
-        info += f")"
+        info = f"{self.__class__.__name__}: "
+        info += f"{self.n_words} words, "
+        info += f"{self.n_tags} tags, "
+        info += f"{self.n_rels} rels"
 
         return info
 
@@ -55,20 +54,20 @@ class Vocab(object):
     def id2rel(self, ids):
         return [self.rels[i] for i in ids]
 
-    def read_embeddings(self, embed, unk=None):
-        words = embed.words
-        # if the UNK token has existed in pretrained vocab,
-        # then replace it with a self-defined one
-        if unk in embed:
-            words[words.index(unk)] = self.UNK
+    def read_embeddings(self, embed, smooth=True):
+        # if the UNK token has existed in the pretrained,
+        # then use it to replace the one in the vocab
+        if embed.unk:
+            self.UNK = embed.unk
 
-        self.extend(words)
+        self.extend(embed.tokens)
         self.embeddings = torch.zeros(self.n_words, embed.dim)
 
         for i, word in enumerate(self.words):
             if word in embed:
                 self.embeddings[i] = embed[word]
-        self.embeddings /= torch.std(self.embeddings)
+        if smooth:
+            self.embeddings /= torch.std(self.embeddings)
 
     def extend(self, words):
         self.words.extend(sorted(set(words).difference(self.word_dict)))
@@ -77,9 +76,11 @@ class Vocab(object):
                              if regex.match(r'\p{P}+$', word))
         self.n_words = len(self.words)
 
-    def numericalize(self, corpus):
+    def numericalize(self, corpus, training=True):
         words = [self.word2id(seq) for seq in corpus.words]
         tags = [self.tag2id(seq) for seq in corpus.tags]
+        if not training:
+            return words, tags
         arcs = [torch.tensor(seq) for seq in corpus.heads]
         rels = [self.rel2id(seq) for seq in corpus.rels]
 
