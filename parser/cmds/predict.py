@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from parser import BiaffineParser, Model
-from parser.utils import Corpus
+from datetime import datetime
+from parser import Model
+from parser.cmds.cmd import CMD
+from parser.utils.corpus import Corpus
 from parser.utils.data import TextDataset, batchify
 
-import torch
 
-
-class Predict(object):
+class Predict(CMD):
 
     def add_subparser(self, name, parser):
         subparser = parser.add_parser(
@@ -22,20 +22,26 @@ class Predict(object):
 
         return subparser
 
-    def __call__(self, config):
-        print("Load the model")
-        vocab = torch.load(config.vocab)
-        parser = BiaffineParser.load(config.model)
-        model = Model(vocab, parser)
+    def __call__(self, args):
+        super(Predict, self).__call__(args)
 
         print("Load the dataset")
-        corpus = Corpus.load(config.fdata)
-        dataset = TextDataset(vocab.numericalize(corpus, False))
+        corpus = Corpus.load(args.fdata, self.fields)
+        dataset = TextDataset(corpus, [self.WORD, self.FEAT])
         # set the data loader
-        loader = batchify(dataset, config.batch_size)
+        dataset.loader = batchify(dataset, args.batch_size)
+        print(f"{len(dataset)} sentences, "
+              f"{len(dataset.loader)} batches")
+
+        print("Load the model")
+        self.model = Model.load(args.model)
+        print(f"{self.model}\n")
 
         print("Make predictions on the dataset")
-        corpus.heads, corpus.rels = model.predict(loader)
-
-        print(f"Save the predicted result to {config.fpred}")
-        corpus.save(config.fpred)
+        start = datetime.now()
+        corpus.heads, corpus.rels = self.predict(dataset.loader)
+        print(f"Save the predicted result to {args.fpred}")
+        corpus.save(args.fpred)
+        total_time = datetime.now() - start
+        print(f"{total_time}s elapsed, "
+              f"{len(dataset) / total_time.total_seconds():.2f} Sents/s")

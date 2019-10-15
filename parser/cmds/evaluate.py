@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from parser import BiaffineParser, Model
-from parser.utils import Corpus
+from datetime import datetime
+from parser import Model
+from parser.cmds.cmd import CMD
+from parser.utils.corpus import Corpus
 from parser.utils.data import TextDataset, batchify
 
-import torch
 
-
-class Evaluate(object):
+class Evaluate(CMD):
 
     def add_subparser(self, name, parser):
         subparser = parser.add_parser(
@@ -15,7 +15,7 @@ class Evaluate(object):
         )
         subparser.add_argument('--batch-size', default=5000, type=int,
                                help='batch size')
-        subparser.add_argument('--buckets', default=64, type=int,
+        subparser.add_argument('--buckets', default=32, type=int,
                                help='max num of buckets to use')
         subparser.add_argument('--punct', action='store_true',
                                help='whether to include punctuation')
@@ -24,18 +24,26 @@ class Evaluate(object):
 
         return subparser
 
-    def __call__(self, config):
-        print("Load the model")
-        vocab = torch.load(config.vocab)
-        parser = BiaffineParser.load(config.model)
-        model = Model(vocab, parser)
+    def __call__(self, args):
+        super(Evaluate, self).__call__(args)
 
         print("Load the dataset")
-        corpus = Corpus.load(config.fdata)
-        dataset = TextDataset(vocab.numericalize(corpus))
+        corpus = Corpus.load(args.fdata, self.fields)
+        dataset = TextDataset(corpus, self.fields, args.buckets)
         # set the data loader
-        loader = batchify(dataset, config.batch_size, config.buckets)
+        dataset.loader = batchify(dataset, args.batch_size)
+        print(f"{len(dataset)} sentences, "
+              f"{len(dataset.loader)} batches, "
+              f"{len(dataset.buckets)} buckets")
+
+        print("Load the model")
+        self.model = Model.load(args.model)
+        print(f"{self.model}\n")
 
         print("Evaluate the dataset")
-        loss, metric = model.evaluate(loader, config.punct)
+        start = datetime.now()
+        loss, metric = self.evaluate(dataset.loader)
+        total_time = datetime.now() - start
         print(f"Loss: {loss:.4f} {metric}")
+        print(f"{total_time}s elapsed, "
+              f"{len(dataset) / total_time.total_seconds():.2f} Sents/s")

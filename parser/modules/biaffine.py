@@ -19,13 +19,13 @@ class Biaffine(nn.Module):
         self.reset_parameters()
 
     def extra_repr(self):
-        info = f"n_in={self.n_in}, n_out={self.n_out}"
+        s = f"n_in={self.n_in}, n_out={self.n_out}"
         if self.bias_x:
-            info += f", bias_x={self.bias_x}"
+            s += f", bias_x={self.bias_x}"
         if self.bias_y:
-            info += f", bias_y={self.bias_y}"
+            s += f", bias_y={self.bias_y}"
 
-        return info
+        return s
 
     def reset_parameters(self):
         nn.init.zeros_(self.weight)

@@ -14,9 +14,9 @@ class Metric(object):
     def __repr__(self):
         return f"UAS: {self.uas:.2%} LAS: {self.las:.2%}"
 
-    def __call__(self, pred_arcs, pred_rels, gold_arcs, gold_rels):
-        arc_mask = pred_arcs.eq(gold_arcs)
-        rel_mask = pred_rels.eq(gold_rels) & arc_mask
+    def __call__(self, arc_preds, rel_preds, arc_golds, rel_golds, mask):
+        arc_mask = arc_preds.eq(arc_golds)[mask]
+        rel_mask = rel_preds.eq(rel_golds)[mask] & arc_mask
 
         self.total += len(arc_mask)
         self.correct_arcs += arc_mask.sum().item()
