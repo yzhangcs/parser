@@ -4,6 +4,7 @@ from parser.modules.dropout import SharedDropout
 
 import torch
 import torch.nn as nn
+from torch.nn.modules.rnn import apply_permutation
 from torch.nn.utils.rnn import PackedSequence
 
 
@@ -19,7 +20,7 @@ class BiLSTM(nn.Module):
 
         self.f_cells = nn.ModuleList()
         self.b_cells = nn.ModuleList()
-        for layer in range(self.num_layers):
+        for _ in range(self.num_layers):
             self.f_cells.append(nn.LSTMCell(input_size=input_size,
                                             hidden_size=hidden_size))
             self.b_cells.append(nn.LSTMCell(input_size=input_size,
@@ -28,67 +29,99 @@ class BiLSTM(nn.Module):
 
         self.reset_parameters()
 
+    def __repr__(self):
+        s = self.__class__.__name__ + '('
+        s += f"{self.input_size}, {self.hidden_size}"
+        if self.num_layers > 1:
+            s += f", num_layers={self.num_layers}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
+        s += ')'
+
+        return s
+
     def reset_parameters(self):
-        for i in self.parameters():
+        for param in self.parameters():
             # apply orthogonal_ to weight
-            if len(i.shape) > 1:
-                nn.init.orthogonal_(i)
+            if len(param.shape) > 1:
+                nn.init.orthogonal_(param)
             # apply zeros_ to bias
             else:
-                nn.init.zeros_(i)
+                nn.init.zeros_(param)
+
+    def permute_hidden(self, hx, permutation):
+        if permutation is None:
+            return hx
+        h = apply_permutation(hx[0], permutation)
+        c = apply_permutation(hx[1], permutation)
+
+        return h, c
 
     def layer_forward(self, x, hx, cell, batch_sizes, reverse=False):
-        h, c = hx
-        init_h, init_c = h, c
-        output, seq_len = [], len(x)
-        steps = reversed(range(seq_len)) if reverse else range(seq_len)
+        hx_0 = hx_i = hx
+        hx_n, output = [], []
+        steps = reversed(range(len(x))) if reverse else range(len(x))
         if self.training:
-            hid_mask = SharedDropout.get_mask(h, self.dropout)
+            hid_mask = SharedDropout.get_mask(hx_0[0], self.dropout)
 
         for t in steps:
-            last_batch_size, batch_size = len(h), batch_sizes[t]
+            last_batch_size, batch_size = len(hx_i[0]), batch_sizes[t]
             if last_batch_size < batch_size:
-                h = torch.cat((h, init_h[last_batch_size:batch_size]))
-                c = torch.cat((c, init_c[last_batch_size:batch_size]))
+                hx_i = [torch.cat((h, ih[last_batch_size:batch_size]))
+                        for h, ih in zip(hx_i, hx_0)]
             else:
-                h = h[:batch_size]
-                c = c[:batch_size]
-            h, c = cell(input=x[t], hx=(h, c))
-            output.append(h)
+                hx_n.append([h[batch_size:] for h in hx_i])
+                hx_i = [h[:batch_size] for h in hx_i]
+            hx_i = [h for h in cell(x[t], hx_i)]
+            output.append(hx_i[0])
             if self.training:
-                h = h * hid_mask[:batch_size]
+                hx_i[0] = hx_i[0] * hid_mask[:batch_size]
         if reverse:
+            hx_n = hx_i
             output.reverse()
+        else:
+            hx_n.append(hx_i)
+            hx_n.reverse()
+            hx_n = [torch.cat(h) for h in zip(*hx_n)]
         output = torch.cat(output)
 
-        return output
+        return output, hx_n
 
-    def forward(self, x, hx=None):
-        x, batch_sizes = x
+    def forward(self, sequence, hx=None):
+        x, batch_sizes = sequence.data, sequence.batch_sizes.tolist()
         batch_size = batch_sizes[0]
+        h_n, c_n = [], []
 
         if hx is None:
-            init = x.new_zeros(batch_size, self.hidden_size)
-            hx = (init, init)
+            ih = x.new_zeros(self.num_layers * 2, batch_size, self.hidden_size)
+            h, c = ih, ih
+        else:
+            h, c = self.permute_hidden(hx, sequence.sorted_indices)
+        h = h.view(self.num_layers, 2, batch_size, self.hidden_size)
+        c = c.view(self.num_layers, 2, batch_size, self.hidden_size)
 
-        for layer in range(self.num_layers):
+        for i in range(self.num_layers):
+            x = torch.split(x, batch_sizes)
             if self.training:
-                mask = SharedDropout.get_mask(x[:batch_size], self.dropout)
-                mask = torch.cat([mask[:batch_size]
-                                  for batch_size in batch_sizes])
-                x *= mask
-            x = torch.split(x, batch_sizes.tolist())
-            f_output = self.layer_forward(x=x,
-                                          hx=hx,
-                                          cell=self.f_cells[layer],
-                                          batch_sizes=batch_sizes,
-                                          reverse=False)
-            b_output = self.layer_forward(x=x,
-                                          hx=hx,
-                                          cell=self.b_cells[layer],
-                                          batch_sizes=batch_sizes,
-                                          reverse=True)
-            x = torch.cat([f_output, b_output], -1)
-        x = PackedSequence(x, batch_sizes)
+                mask = SharedDropout.get_mask(x[0], self.dropout)
+                x = [i * mask[:len(i)] for i in x]
+            x_f, (h_f, c_f) = self.layer_forward(x=x,
+                                                 hx=(h[i, 0], c[i, 0]),
+                                                 cell=self.f_cells[i],
+                                                 batch_sizes=batch_sizes)
+            x_b, (h_b, c_b) = self.layer_forward(x=x,
+                                                 hx=(h[i, 1], c[i, 1]),
+                                                 cell=self.b_cells[i],
+                                                 batch_sizes=batch_sizes,
+                                                 reverse=True)
+            x = torch.cat((x_f, x_b), -1)
+            h_n.append(torch.stack((h_f, h_b)))
+            c_n.append(torch.stack((c_f, c_b)))
+        x = PackedSequence(x,
+                           sequence.batch_sizes,
+                           sequence.sorted_indices,
+                           sequence.unsorted_indices)
+        hx = torch.cat(h_n, 0), torch.cat(c_n, 0)
+        hx = self.permute_hidden(hx, sequence.unsorted_indices)
 
-        return x
+        return x, hx
