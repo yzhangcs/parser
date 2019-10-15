@@ -13,8 +13,9 @@ before_install:
 
 # Install packages
 install:
-  - conda install --quiet pytorch=1.0.0 -c pytorch
-  - conda install --quiet pycodestyle
+  - conda install --quiet pytorch=1.3.0 -c pytorch
+  - conda install --quiet flake8
+  - pip install -r requirements.txt
 
 script:
-  - pycodestyle .
+  - flake8 .
