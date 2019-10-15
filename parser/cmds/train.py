@@ -1,24 +1,25 @@
 # -*- coding: utf-8 -*-
 
-import os
 from datetime import datetime, timedelta
-from parser import BiaffineParser, Model
-from parser.metric import Metric
-from parser.utils import Corpus, Embedding, Vocab
+from parser import Model
+from parser.cmds.cmd import CMD
+from parser.utils.corpus import Corpus
 from parser.utils.data import TextDataset, batchify
+from parser.utils.metric import Metric
 
 import torch
+import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 
-class Train(object):
+class Train(CMD):
 
     def add_subparser(self, name, parser):
         subparser = parser.add_parser(
             name, help='Train a model.'
         )
-        subparser.add_argument('--buckets', default=64, type=int,
+        subparser.add_argument('--buckets', default=32, type=int,
                                help='max num of buckets to use')
         subparser.add_argument('--punct', action='store_true',
                                help='whether to include punctuation')
@@ -35,91 +36,75 @@ class Train(object):
 
         return subparser
 
-    def __call__(self, config):
-        print("Preprocess the data")
-        train = Corpus.load(config.ftrain)
-        dev = Corpus.load(config.fdev)
-        test = Corpus.load(config.ftest)
-        if os.path.exists(config.vocab):
-            vocab = torch.load(config.vocab)
-        else:
-            vocab = Vocab.from_corpus(corpus=train, min_freq=2)
-            vocab.read_embeddings(Embedding.load(config.fembed, config.unk))
-            torch.save(vocab, config.vocab)
-        config.update({
-            'n_words': vocab.n_train_words,
-            'n_tags': vocab.n_tags,
-            'n_rels': vocab.n_rels,
-            'pad_index': vocab.pad_index,
-            'unk_index': vocab.unk_index
-        })
-        print(vocab)
+    def __call__(self, args):
+        super(Train, self).__call__(args)
 
-        print("Load the dataset")
-        trainset = TextDataset(vocab.numericalize(train))
-        devset = TextDataset(vocab.numericalize(dev))
-        testset = TextDataset(vocab.numericalize(test))
+        train = Corpus.load(args.ftrain, self.fields)
+        dev = Corpus.load(args.fdev, self.fields)
+        test = Corpus.load(args.ftest, self.fields)
+
+        train = TextDataset(train, self.fields, args.buckets)
+        dev = TextDataset(dev, self.fields, args.buckets)
+        test = TextDataset(test, self.fields, args.buckets)
         # set the data loaders
-        train_loader = batchify(dataset=trainset,
-                                batch_size=config.batch_size,
-                                n_buckets=config.buckets,
-                                shuffle=True)
-        dev_loader = batchify(dataset=devset,
-                              batch_size=config.batch_size,
-                              n_buckets=config.buckets)
-        test_loader = batchify(dataset=testset,
-                               batch_size=config.batch_size,
-                               n_buckets=config.buckets)
-        print(f"{'train:':6} {len(trainset):5} sentences in total, "
-              f"{len(train_loader):3} batches provided")
-        print(f"{'dev:':6} {len(devset):5} sentences in total, "
-              f"{len(dev_loader):3} batches provided")
-        print(f"{'test:':6} {len(testset):5} sentences in total, "
-              f"{len(test_loader):3} batches provided")
+        train.loader = batchify(train, args.batch_size, True)
+        dev.loader = batchify(dev, args.batch_size)
+        test.loader = batchify(test, args.batch_size)
+        print(f"{'train:':6} {len(train):5} sentences, "
+              f"{len(train.loader):3} batches, "
+              f"{len(train.buckets)} buckets")
+        print(f"{'dev:':6} {len(dev):5} sentences, "
+              f"{len(dev.loader):3} batches, "
+              f"{len(train.buckets)} buckets")
+        print(f"{'test:':6} {len(test):5} sentences, "
+              f"{len(test.loader):3} batches, "
+              f"{len(train.buckets)} buckets")
 
         print("Create the model")
-        parser = BiaffineParser(config, vocab.embeddings)
-        if torch.cuda.is_available():
-            parser = parser.cuda()
-        print(f"{parser}\n")
-
-        model = Model(vocab, parser)
+        self.model = Model(args).load_pretrained(self.WORD.embed)
+        print(f"{self.model}\n")
+        self.model = self.model.to(args.device)
+        if torch.cuda.device_count() > 1:
+            self.model = nn.DataParallel(self.model)
+        self.optimizer = Adam(self.model.parameters(),
+                              args.lr,
+                              (args.mu, args.nu),
+                              args.epsilon)
+        self.scheduler = ExponentialLR(self.optimizer,
+                                       args.decay**(1/args.decay_steps))
 
         total_time = timedelta()
         best_e, best_metric = 1, Metric()
-        model.optimizer = Adam(model.parser.parameters(),
-                               config.lr,
-                               (config.beta_1, config.beta_2),
-                               config.epsilon)
-        model.scheduler = ExponentialLR(model.optimizer,
-                                        config.decay ** (1 / config.steps))
 
-        for epoch in range(1, config.epochs + 1):
+        for epoch in range(1, args.epochs + 1):
             start = datetime.now()
             # train one epoch and update the parameters
-            model.train(train_loader)
+            self.train(train.loader)
 
-            print(f"Epoch {epoch} / {config.epochs}:")
-            loss, train_metric = model.evaluate(train_loader, config.punct)
+            print(f"Epoch {epoch} / {args.epochs}:")
+            loss, train_metric = self.evaluate(train.loader)
             print(f"{'train:':6} Loss: {loss:.4f} {train_metric}")
-            loss, dev_metric = model.evaluate(dev_loader, config.punct)
+            loss, dev_metric = self.evaluate(dev.loader)
             print(f"{'dev:':6} Loss: {loss:.4f} {dev_metric}")
-            loss, test_metric = model.evaluate(test_loader, config.punct)
+            loss, test_metric = self.evaluate(test.loader)
             print(f"{'test:':6} Loss: {loss:.4f} {test_metric}")
 
             t = datetime.now() - start
             # save the model if it is the best so far
-            if dev_metric > best_metric and epoch > config.patience:
+            if dev_metric > best_metric and epoch > args.patience:
                 best_e, best_metric = epoch, dev_metric
-                model.parser.save(config.model + f".{best_e}")
+                if hasattr(self.model, 'module'):
+                    self.model.module.save(args.model)
+                else:
+                    self.model.save(args.model)
                 print(f"{t}s elapsed (saved)\n")
             else:
                 print(f"{t}s elapsed\n")
             total_time += t
-            if epoch - best_e >= config.patience:
+            if epoch - best_e >= args.patience:
                 break
-        model.parser = BiaffineParser.load(config.model + f".{best_e}")
-        loss, metric = model.evaluate(test_loader, config.punct)
+        self.model = Model.load(args.model)
+        loss, metric = self.evaluate(test.loader)
 
         print(f"max score of dev is {best_metric.score:.2%} at epoch {best_e}")
         print(f"the score of test at epoch {best_e} is {metric.score:.2%}")
