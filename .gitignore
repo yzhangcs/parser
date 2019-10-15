@@ -1,7 +1,11 @@
 # ignore data files
 data
 
-# ignore results
+# ignore bash scripts
+*.sh
+
+# ignore experimental results
+exp
 results
 
 # ignore log files
