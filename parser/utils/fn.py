@@ -31,3 +31,7 @@ def isprojective(sequence):
             if hi >= 0 and hj >= 0 and (hj - hi) * (hj - i) > 0:
                 return False
     return True
+
+
+def numericalize(sequence):
+    return [int(i) for i in sequence]

@@ -6,7 +6,7 @@ from parser.utils.alg import eisner
 from parser.utils.common import bos, pad, unk
 from parser.utils.corpus import CoNLL, Corpus
 from parser.utils.field import BertField, CharField, Field
-from parser.utils.fn import ispunct
+from parser.utils.fn import ispunct, numericalize
 from parser.utils.metric import Metric
 
 import torch
@@ -32,7 +32,8 @@ class CMD(object):
                                       tokenize=tokenizer.encode)
             else:
                 self.FEAT = Field('tags', bos=bos)
-            self.HEAD = Field('heads', bos=bos, use_vocab=False, fn=int)
+            self.HEAD = Field('heads', bos=bos, use_vocab=False,
+                              fn=numericalize)
             self.REL = Field('rels', bos=bos)
             if args.feat in ('char', 'bert'):
                 self.fields = CoNLL(FORM=(self.WORD, self.FEAT),

@@ -64,7 +64,7 @@ class Field(object):
         if self.lower:
             sequence = [str.lower(token) for token in sequence]
         if self.fn is not None:
-            sequence = [self.fn(token) for token in sequence]
+            sequence = self.fn(sequence)
 
         return sequence
 
