@@ -15,9 +15,7 @@ def kmeans(x, k):
     # assign labels to each datapoint based on centroids
     dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
     # make sure number of datapoints is greater than that of clusters
-    if len(d) < k:
-        raise AssertionError(f"unable to assign {len(d)} datapoints to "
-                             f"{k} clusters")
+    assert len(d) >= k, f"unable to assign {len(d)} datapoints to {k} clusters"
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,

@@ -12,7 +12,7 @@ except that we provide the Eisner rather than MST algorithm to ensure well-forme
 Practically, projective decoding like Eisner is the best choice since PTB contains mostly (99.9%) projective trees.
 
 Besides the basic implementations, we also provide other features to replace the POS tags (TAG), 
-i.e., character-level embeddings (CHAR) and BERT.
+e.g., character-level embeddings (CHAR) and BERT.
 
 ## Requirements
 
