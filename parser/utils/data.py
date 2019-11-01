@@ -86,7 +86,7 @@ class TextSampler(Sampler):
         ]
 
     def __iter__(self):
-        # if shuffle, shffule both the buckets and samples in each bucket
+        # if shuffle, shuffle both the buckets and samples in each bucket
         range_fn = torch.randperm if self.shuffle else torch.arange
         for i in range_fn(len(self.buckets)).tolist():
             split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
