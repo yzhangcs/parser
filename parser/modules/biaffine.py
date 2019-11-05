@@ -32,9 +32,9 @@ class Biaffine(nn.Module):
 
     def forward(self, x, y):
         if self.bias_x:
-            x = torch.cat([x, x.new_ones(x.shape[:-1]).unsqueeze(-1)], -1)
+            x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:
-            y = torch.cat([y, y.new_ones(y.shape[:-1]).unsqueeze(-1)], -1)
+            y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
         # [batch_size, n_out, seq_len, seq_len]
         s = torch.einsum('bxi,oij,byj->boxy', x, self.weight, y)
         # remove dim 1 if n_out == 1

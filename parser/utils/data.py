@@ -43,9 +43,9 @@ class TextDataset(Dataset):
             value = field.numericalize(getattr(corpus, field.name))
             setattr(self, field.name, value)
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.centroids, self.clusters = kmeans(x=[len(i) for i in corpus],
-                                               k=n_buckets)
-        self.buckets = dict(zip(self.centroids, self.clusters))
+        self.lengths = [len(i) + sum([bool(field.bos), bool(field.bos)])
+                        for i in corpus]
+        self.buckets = dict(zip(*kmeans(self.lengths, n_buckets)))
 
     def __getitem__(self, index):
         for field in self.fields:
