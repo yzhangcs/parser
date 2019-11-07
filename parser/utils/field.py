@@ -166,6 +166,6 @@ class BertField(Field):
             subwords.append(sum(sequence, []))
             lens.append(torch.tensor([len(piece) for piece in sequence]))
         subwords = [torch.tensor(pieces) for pieces in subwords]
-        mask = [torch.ones(len(pieces)).ge(0) for pieces in subwords]
+        mask = [torch.ones(len(pieces)).gt(0) for pieces in subwords]
 
         return list(zip(subwords, lens, mask))
