@@ -39,17 +39,17 @@ class Model(nn.Module):
         self.lstm_dropout = SharedDropout(p=args.lstm_dropout)
 
         # the MLP layers
-        self.mlp_arc_h = MLP(n_in=args.n_lstm_hidden*2,
-                             n_hidden=args.n_mlp_arc,
-                             dropout=args.mlp_dropout)
         self.mlp_arc_d = MLP(n_in=args.n_lstm_hidden*2,
-                             n_hidden=args.n_mlp_arc,
+                             n_out=args.n_mlp_arc,
                              dropout=args.mlp_dropout)
-        self.mlp_rel_h = MLP(n_in=args.n_lstm_hidden*2,
-                             n_hidden=args.n_mlp_rel,
+        self.mlp_arc_h = MLP(n_in=args.n_lstm_hidden*2,
+                             n_out=args.n_mlp_arc,
                              dropout=args.mlp_dropout)
         self.mlp_rel_d = MLP(n_in=args.n_lstm_hidden*2,
-                             n_hidden=args.n_mlp_rel,
+                             n_out=args.n_mlp_rel,
+                             dropout=args.mlp_dropout)
+        self.mlp_rel_h = MLP(n_in=args.n_lstm_hidden*2,
+                             n_out=args.n_mlp_rel,
                              dropout=args.mlp_dropout)
 
         # the Biaffine layers
@@ -100,12 +100,11 @@ class Model(nn.Module):
         x = self.lstm_dropout(x)
 
         # apply MLPs to the BiLSTM output states
-        arc_h = self.mlp_arc_h(x)
         arc_d = self.mlp_arc_d(x)
-        rel_h = self.mlp_rel_h(x)
+        arc_h = self.mlp_arc_h(x)
         rel_d = self.mlp_rel_d(x)
+        rel_h = self.mlp_rel_h(x)
 
-        # get arc and rel scores from the bilinear attention
         # [batch_size, seq_len, seq_len]
         s_arc = self.arc_attn(arc_d, arc_h)
         # [batch_size, seq_len, seq_len, n_rels]
