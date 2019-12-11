@@ -12,7 +12,7 @@ class Metric(object):
         self.correct_rels = 0.0
 
     def __repr__(self):
-        return f"UAS: {self.uas:.2%} LAS: {self.las:.2%}"
+        return f"UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
 
     def __call__(self, arc_preds, rel_preds, arc_golds, rel_golds, mask):
         arc_mask = arc_preds.eq(arc_golds)[mask]

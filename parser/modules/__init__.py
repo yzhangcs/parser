@@ -7,5 +7,5 @@ from .bilstm import BiLSTM
 from .char_lstm import CHAR_LSTM
 from .mlp import MLP
 
-__all__ = ['MLP', 'BertEmbedding', 'Biaffine',
-           'BiLSTM', 'CHAR_LSTM', 'dropout']
+__all__ = ['CHAR_LSTM', 'MLP', 'BertEmbedding',
+           'Biaffine', 'BiLSTM', 'dropout']
