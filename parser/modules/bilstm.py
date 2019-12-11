@@ -81,8 +81,7 @@ class BiLSTM(nn.Module):
             output.reverse()
         else:
             hx_n.append(hx_i)
-            hx_n.reverse()
-            hx_n = [torch.cat(h) for h in zip(*hx_n)]
+            hx_n = [torch.cat(h) for h in zip(*reversed(hx_n))]
         output = torch.cat(output)
 
         return output, hx_n

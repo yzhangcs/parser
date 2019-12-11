@@ -15,9 +15,7 @@ def kmeans(x, k):
     # assign labels to each datapoint based on centroids
     dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
     # make sure number of datapoints is greater than that of clusters
-    if len(d) < k:
-        raise AssertionError(f"unable to assign {len(d)} datapoints to "
-                             f"{k} clusters")
+    assert len(d) >= k, f"unable to assign {len(d)} datapoints to {k} clusters"
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,
@@ -59,27 +57,27 @@ def eisner(scores, mask):
     for w in range(1, seq_len):
         n = seq_len - w
         starts = p_i.new_tensor(range(n)).unsqueeze(0)
-        # ilr = C(i, r) + C(j, r+1)
+        # ilr = C(i->r) + C(j->r+1)
         ilr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
         # [batch_size, n, w]
         ilr = ilr.permute(2, 0, 1)
         il = ilr + scores.diagonal(-w).unsqueeze(-1)
-        # I(j, i) = max(C(i, r) + C(j, r+1) + S(j, i)), i <= r < j
+        # I(j->i) = max(C(i->r) + C(j->r+1) + s(j->i)), i <= r < j
         il_span, il_path = il.max(-1)
         s_i.diagonal(-w).copy_(il_span)
         p_i.diagonal(-w).copy_(il_path + starts)
         ir = ilr + scores.diagonal(w).unsqueeze(-1)
-        # I(i, j) = max(C(i, r) + C(j, r+1) + S(i, j)), i <= r < j
+        # I(i->j) = max(C(i->r) + C(j->r+1) + s(i->j)), i <= r < j
         ir_span, ir_path = ir.max(-1)
         s_i.diagonal(w).copy_(ir_span)
         p_i.diagonal(w).copy_(ir_path + starts)
 
-        # C(j, i) = max(C(r, i) + I(j, r)), i <= r < j
-        cl = stripe(s_c, n, w, dim=0) + stripe(s_i, n, w, (w, 0))
+        # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
+        cl = stripe(s_c, n, w, (0, 0), 0) + stripe(s_i, n, w, (w, 0))
         cl_span, cl_path = cl.permute(2, 0, 1).max(-1)
         s_c.diagonal(-w).copy_(cl_span)
         p_c.diagonal(-w).copy_(cl_path + starts)
-        # C(i, j) = max(I(i, r) + C(r, j)), i < r <= j
+        # C(i->j) = max(I(i->r) + C(r->j)), i < r <= j
         cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
         cr_span, cr_path = cr.permute(2, 0, 1).max(-1)
         s_c.diagonal(w).copy_(cr_span)
@@ -136,7 +134,7 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
     tensor([[ 0,  5, 10],
             [ 6, 11, 16]])
     '''
-    seq_len = x.size(1)
+    x, seq_len = x.contiguous(), x.size(1)
     stride, numel = list(x.stride()), x[0, 0].numel()
     stride[0] = (seq_len + 1) * numel
     stride[1] = (1 if dim == 1 else seq_len) * numel
