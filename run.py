@@ -36,6 +36,10 @@ if __name__ == '__main__':
         subparser.add_argument('--feat', default='tag',
                                choices=['tag', 'char', 'bert'],
                                help='choices of additional features')
+        subparser.add_argument('--batch-size', default=5000, type=int,
+                               help='batch size')
+        subparser.add_argument('--buckets', default=32, type=int,
+                               help='max num of buckets to use')
     args = parser.parse_args()
 
     print(f"Set the max num of threads to {args.threads}")

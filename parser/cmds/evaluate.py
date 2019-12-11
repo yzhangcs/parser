@@ -13,10 +13,6 @@ class Evaluate(CMD):
         subparser = parser.add_parser(
             name, help='Evaluate the specified model and dataset.'
         )
-        subparser.add_argument('--batch-size', default=5000, type=int,
-                               help='batch size')
-        subparser.add_argument('--buckets', default=32, type=int,
-                               help='max num of buckets to use')
         subparser.add_argument('--punct', action='store_true',
                                help='whether to include punctuation')
         subparser.add_argument('--fdata', default='data/ptb/test.conllx',

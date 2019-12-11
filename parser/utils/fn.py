@@ -23,12 +23,19 @@ def isdigit(token):
                for char in token)
 
 
+def tohalfwidth(token):
+    return unicodedata.normalize('NFKC', token)
+
+
 def isprojective(sequence):
-    for i in range(1, len(sequence)):
-        hi = sequence[i]
-        for j in range(i + 1, hi):
-            hj = sequence[j]
-            if hi >= 0 and hj >= 0 and (hj - hi) * (hj - i) > 0:
+    sequence = [0] + list(sequence)
+    arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
+    for i, (hi, di) in enumerate(arcs):
+        for hj, dj in arcs[i+1:]:
+            (li, ri), (lj, rj) = sorted([hi, di]), sorted([hj, dj])
+            if (li <= hj <= ri and hi == dj) or (lj <= hi <= rj and hj == di):
+                return False
+            if (li < lj < ri or li < rj < ri) and (li - lj) * (ri - rj) > 0:
                 return False
     return True
 

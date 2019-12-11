@@ -21,18 +21,18 @@ class Model(nn.Module):
         if args.feat == 'char':
             self.feat_embed = CHAR_LSTM(n_chars=args.n_feats,
                                         n_embed=args.n_char_embed,
-                                        n_out=args.n_embed)
+                                        n_out=args.n_feat_embed)
         elif args.feat == 'bert':
             self.feat_embed = BertEmbedding(model=args.bert_model,
                                             n_layers=args.n_bert_layers,
-                                            n_out=args.n_embed)
+                                            n_out=args.n_feat_embed)
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
-                                           embedding_dim=args.n_embed)
+                                           embedding_dim=args.n_feat_embed)
         self.embed_dropout = IndependentDropout(p=args.embed_dropout)
 
         # the word-lstm layer
-        self.lstm = BiLSTM(input_size=args.n_embed*2,
+        self.lstm = BiLSTM(input_size=args.n_embed+args.n_feat_embed,
                            hidden_size=args.n_lstm_hidden,
                            num_layers=args.n_lstm_layers,
                            dropout=args.lstm_dropout)
