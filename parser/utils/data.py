@@ -43,9 +43,9 @@ class TextDataset(Dataset):
             value = field.numericalize(getattr(corpus, field.name))
             setattr(self, field.name, value)
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.centroids, self.clusters = kmeans(x=[len(i) for i in corpus],
-                                               k=n_buckets)
-        self.buckets = dict(zip(self.centroids, self.clusters))
+        self.lengths = [len(i) + sum([bool(field.bos), bool(field.bos)])
+                        for i in corpus]
+        self.buckets = dict(zip(*kmeans(self.lengths, n_buckets)))
 
     def __getitem__(self, index):
         for field in self.fields:
@@ -86,7 +86,7 @@ class TextSampler(Sampler):
         ]
 
     def __iter__(self):
-        # if shuffle, shffule both the buckets and samples in each bucket
+        # if shuffle, shuffle both the buckets and samples in each bucket
         range_fn = torch.randperm if self.shuffle else torch.arange
         for i in range_fn(len(self.buckets)).tolist():
             split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
