@@ -47,7 +47,8 @@ class Predict(CMD):
         pred_arcs, pred_rels, pred_probs = self.predict(dataset.loader)
         total_time = datetime.now() - start
         # restore the order of sentences in the buckets
-        indices = torch.tensor([i for bucket in dataset.buckets.values()
+        indices = torch.tensor([i
+                                for bucket in dataset.buckets.values()
                                 for i in bucket]).argsort()
         corpus.arcs = [pred_arcs[i] for i in indices]
         corpus.rels = [pred_rels[i] for i in indices]

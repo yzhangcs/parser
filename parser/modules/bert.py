@@ -20,7 +20,8 @@ class BertEmbedding(nn.Module):
         self.hidden_size = self.bert.config.hidden_size
 
         self.scalar_mix = ScalarMix(n_layers)
-        self.projection = nn.Linear(self.hidden_size, n_out, False)
+        if self.hidden_size != n_out:
+            self.projection = nn.Linear(self.hidden_size, n_out, False)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
@@ -44,6 +45,7 @@ class BertEmbedding(nn.Module):
         bert = torch.stack([i.mean(0) for i in bert])
         bert_embed = bert.new_zeros(batch_size, seq_len, self.hidden_size)
         bert_embed = bert_embed.masked_scatter_(mask.unsqueeze(-1), bert)
-        bert_embed = self.projection(bert_embed)
+        if hasattr(self, 'projection'):
+            bert_embed = self.projection(bert_embed)
 
         return bert_embed

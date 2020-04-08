@@ -87,7 +87,7 @@ class Train(CMD):
 
             t = datetime.now() - start
             # save the model if it is the best so far
-            if dev_metric > best_metric and epoch > args.patience:
+            if dev_metric > best_metric and epoch > args.patience//10:
                 best_e, best_metric = epoch, dev_metric
                 if hasattr(self.model, 'module'):
                     self.model.module.save(args.model)

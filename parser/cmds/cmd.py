@@ -7,11 +7,10 @@ from parser.utils.common import bos, pad, unk
 from parser.utils.corpus import CoNLL, Corpus
 from parser.utils.field import BertField, CharField, Field
 from parser.utils.fn import ispunct, numericalize
-from parser.utils.metric import Metric
+from parser.utils.metric import AttachmentMetric
 
 import torch
 import torch.nn as nn
-from transformers import BertTokenizer
 
 
 class CMD(object):
@@ -27,6 +26,7 @@ class CMD(object):
                 self.FEAT = CharField('chars', pad=pad, unk=unk, bos=bos,
                                       fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
+                from transformers import BertTokenizer
                 tokenizer = BertTokenizer.from_pretrained(args.bert_model)
                 self.FEAT = BertField('bert', pad='[PAD]', bos='[CLS]',
                                       tokenize=tokenizer.encode)
@@ -62,7 +62,6 @@ class CMD(object):
                                     if ispunct(s)]).to(args.device)
         self.criterion = nn.CrossEntropyLoss()
 
-        print(f"{self.WORD}\n{self.FEAT}\n{self.ARC}\n{self.REL}")
         args.update({
             'n_words': self.WORD.vocab.n_init,
             'n_feats': len(self.FEAT.vocab),
@@ -72,10 +71,13 @@ class CMD(object):
             'bos_index': self.WORD.bos_index
         })
 
+        print(f"Override the default configs\n{args}")
+        print(f"{self.WORD}\n{self.FEAT}\n{self.ARC}\n{self.REL}")
+
     def train(self, loader):
         self.model.train()
 
-        total_loss, metric = 0, Metric()
+        total_loss, metric = 0, AttachmentMetric()
 
         for words, feats, arcs, rels in loader:
             self.optimizer.zero_grad()
@@ -105,7 +107,7 @@ class CMD(object):
     def evaluate(self, loader):
         self.model.eval()
 
-        total_loss, metric = 0, Metric()
+        total_loss, metric = 0, AttachmentMetric()
 
         for words, feats, arcs, rels in loader:
             mask = words.ne(self.args.pad_index)

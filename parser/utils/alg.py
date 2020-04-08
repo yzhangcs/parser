@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from parser.utils.fn import stripe
+
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
@@ -84,6 +86,19 @@ def eisner(scores, mask):
         s_c[0, w][lens.ne(w)] = float('-inf')
         p_c.diagonal(w).copy_(cr_path + starts + 1)
 
+    def backtrack(p_i, p_c, heads, i, j, complete):
+        if i == j:
+            return
+        if complete:
+            r = p_c[i, j]
+            backtrack(p_i, p_c, heads, i, r, False)
+            backtrack(p_i, p_c, heads, r, j, True)
+        else:
+            r, heads[j] = p_i[i, j], i
+            i, j = sorted((i, j))
+            backtrack(p_i, p_c, heads, i, r, True)
+            backtrack(p_i, p_c, heads, j, r + 1, True)
+
     predicts = []
     p_c = p_c.permute(2, 0, 1).cpu()
     p_i = p_i.permute(2, 0, 1).cpu()
@@ -93,51 +108,3 @@ def eisner(scores, mask):
         predicts.append(heads.to(mask.device))
 
     return pad_sequence(predicts, True)
-
-
-def backtrack(p_i, p_c, heads, i, j, complete):
-    if i == j:
-        return
-    if complete:
-        r = p_c[i, j]
-        backtrack(p_i, p_c, heads, i, r, False)
-        backtrack(p_i, p_c, heads, r, j, True)
-    else:
-        r, heads[j] = p_i[i, j], i
-        i, j = sorted((i, j))
-        backtrack(p_i, p_c, heads, i, r, True)
-        backtrack(p_i, p_c, heads, j, r + 1, True)
-
-
-def stripe(x, n, w, offset=(0, 0), dim=1):
-    r'''Returns a diagonal stripe of the tensor.
-
-    Parameters:
-        x (Tensor): the input tensor with 2 or more dims.
-        n (int): the length of the stripe.
-        w (int): the width of the stripe.
-        offset (tuple): the offset of the first two dims.
-        dim (int): 0 if returns a horizontal stripe; 1 else.
-
-    Example::
-    >>> x = torch.arange(25).view(5, 5)
-    >>> x
-    tensor([[ 0,  1,  2,  3,  4],
-            [ 5,  6,  7,  8,  9],
-            [10, 11, 12, 13, 14],
-            [15, 16, 17, 18, 19],
-            [20, 21, 22, 23, 24]])
-    >>> stripe(x, 2, 3, (1, 1))
-    tensor([[ 6,  7,  8],
-            [12, 13, 14]])
-    >>> stripe(x, 2, 3, dim=0)
-    tensor([[ 0,  5, 10],
-            [ 6, 11, 16]])
-    '''
-    x, seq_len = x.contiguous(), x.size(1)
-    stride, numel = list(x.stride()), x[0, 0].numel()
-    stride[0] = (seq_len + 1) * numel
-    stride[1] = (1 if dim == 1 else seq_len) * numel
-    return x.as_strided(size=(n, w, *x.shape[2:]),
-                        stride=stride,
-                        storage_offset=(offset[0]*seq_len+offset[1])*numel)

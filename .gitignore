@@ -18,5 +18,8 @@ __pycache__
 *.pkl
 *.pt
 
+# ignore hidden files
+.*
+
 # ignore vscode
 .vscode

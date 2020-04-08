@@ -31,7 +31,7 @@ class Model(nn.Module):
                                            embedding_dim=args.n_feat_embed)
         self.embed_dropout = IndependentDropout(p=args.embed_dropout)
 
-        # the word-lstm layer
+        # the lstm layer
         self.lstm = BiLSTM(input_size=args.n_embed+args.n_feat_embed,
                            hidden_size=args.n_lstm_hidden,
                            num_layers=args.n_lstm_layers,
@@ -75,9 +75,11 @@ class Model(nn.Module):
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
         lens = mask.sum(dim=1)
+        ext_words = words
         # set the indices larger than num_embeddings to unk_index
-        ext_mask = words.ge(self.word_embed.num_embeddings)
-        ext_words = words.masked_fill(ext_mask, self.unk_index)
+        if hasattr(self, 'pretrained'):
+            ext_mask = words.ge(self.word_embed.num_embeddings)
+            ext_words = words.masked_fill(ext_mask, self.unk_index)
 
         # get outputs from embedding layers
         word_embed = self.word_embed(ext_words)
