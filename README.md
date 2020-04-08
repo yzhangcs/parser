@@ -1,9 +1,9 @@
 # Biaffine Parser
 
-[![Travis](https://img.shields.io/travis/zysite/biaffine-parser.svg)](https://travis-ci.org/zysite/biaffine-parser)
-[![LICENSE](https://img.shields.io/github/license/zysite/biaffine-parser.svg)](https://github.com/zysite/biaffine-parser/blob/master/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/zysite/biaffine-parser.svg)](https://github.com/zysite/biaffine-parser/stargazers)		
-[![GitHub forks](https://img.shields.io/github/forks/zysite/biaffine-parser.svg)](https://github.com/zysite/biaffine-parser/network/members)
+[![Travis](https://img.shields.io/travis/yzhangcs/biaffine-parser.svg)](https://travis-ci.org/yzhangcs/biaffine-parser)
+[![LICENSE](https://img.shields.io/github/license/yzhangcs/biaffine-parser.svg)](https://github.com/yzhangcs/biaffine-parser/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/yzhangcs/biaffine-parser.svg)](https://github.com/yzhangcs/biaffine-parser/stargazers)		
+[![GitHub forks](https://img.shields.io/github/forks/yzhangcs/biaffine-parser.svg)](https://github.com/yzhangcs/biaffine-parser/network/members)
 
 An implementation of "Deep Biaffine Attention for Neural Dependency Parsing".
 
