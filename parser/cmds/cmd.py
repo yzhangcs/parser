@@ -136,7 +136,6 @@ class CMD(object):
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
             arc_scores, rel_scores = self.model(words, feats)
-            arc_scores = arc_scores.softmax(-1)
             arc_preds, rel_preds = self.decode(arc_scores, rel_scores, mask)
             all_arcs.extend(arc_preds[mask].split(lens))
             all_rels.extend(rel_preds[mask].split(lens))
