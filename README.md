@@ -104,15 +104,16 @@ $ python run.py predict -d=0 -f=exp/ptb.char --feat=char --tree  \
       --fdata=data/naive.conllx  \
       --fpred=naive.conllx
 
+# support for outputting the probabilities of predicted arcs, triggered by `--prob`
 $ cat naive.conllx
-1       Too     _       _       _       _       2       advmod  _       _
-2       young   _       _       _       _       0       root    _       _
-3       too     _       _       _       _       4       advmod  _       _
-4       simple  _       _       _       _       2       dep     _       _
-5       ,       _       _       _       _       2       punct   _       _
-6       sometimes       _       _       _       _       7       advmod  _       _
-7       naive   _       _       _       _       2       dep     _       _
-8       .       _       _       _       _       2       punct   _       _
+1	Too	_	_	_	_	2	advmod	0.8894	_
+2	young	_	_	_	_	0	root	0.9322	_
+3	too	_	_	_	_	4	advmod	0.8722	_
+4	simple	_	_	_	_	2	dep	0.8948	_
+5	,	_	_	_	_	2	punct	0.8664	_
+6	sometimes	_	_	_	_	7	advmod	0.8406	_
+7	naive	_	_	_	_	2	dep	0.971	_
+8	.	_	_	_	_	2	punct	0.9741	_
 
 ```
 
