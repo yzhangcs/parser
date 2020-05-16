@@ -12,12 +12,12 @@ def kmeans(x, k):
     d, indices, f = x.unique(return_inverse=True, return_counts=True)
     # calculate the sum of the values of the same datapoints
     total = d * f
+    # the number of clusters must not be greater than that of datapoints
+    k = min(len(d), k)
     # initialize k centroids randomly
     c, old = d[torch.randperm(len(d))[:k]], None
     # assign labels to each datapoint based on centroids
     dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
-    # make sure number of datapoints is greater than that of clusters
-    assert len(d) >= k, f"unable to assign {len(d)} datapoints to {k} clusters"
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,
@@ -44,6 +44,47 @@ def kmeans(x, k):
     clusters = [torch.where(y.eq(i))[0].tolist() for i in assigned]
 
     return centroids, clusters
+
+
+def tarjan(sequence):
+    sequence[0] = -1
+    # record the search order, i.e., the timestep
+    dfn = [-1] * len(sequence)
+    # record the the smallest timestep in a SCC
+    low = [-1] * len(sequence)
+    # push the visited into the stack
+    stack, onstack = [], [False] * len(sequence)
+
+    def connect(i, timestep):
+        dfn[i] = low[i] = timestep[0]
+        timestep[0] += 1
+        stack.append(i)
+        onstack[i] = True
+
+        for j, head in enumerate(sequence):
+            if head != i:
+                continue
+            if dfn[j] == -1:
+                yield from connect(j, timestep)
+                low[i] = min(low[i], low[j])
+            elif onstack[j]:
+                low[i] = min(low[i], dfn[j])
+
+        # a SCC is completed
+        if low[i] == dfn[i]:
+            cycle = [stack.pop()]
+            while cycle[-1] != i:
+                onstack[cycle[-1]] = False
+                cycle.append(stack.pop())
+            onstack[i] = False
+            # ignore the self-loop
+            if len(cycle) > 1:
+                yield cycle
+
+    timestep = [0]
+    for i in range(len(sequence)):
+        if dfn[i] == -1:
+            yield from connect(i, timestep)
 
 
 def eisner(scores, mask):

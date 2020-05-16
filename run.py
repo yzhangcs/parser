@@ -33,6 +33,8 @@ if __name__ == '__main__':
                                help='max num of threads')
         subparser.add_argument('--tree', action='store_true',
                                help='whether to ensure well-formedness')
+        subparser.add_argument('--proj', action='store_true',
+                               help='whether to projectivise the data')
         subparser.add_argument('--feat', default='char',
                                choices=['tag', 'char', 'bert'],
                                help='choices of additional features')

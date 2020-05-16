@@ -6,7 +6,7 @@ from parser.utils.alg import eisner
 from parser.utils.common import bos, pad, unk
 from parser.utils.corpus import CoNLL, Corpus
 from parser.utils.field import BertField, CharField, Field
-from parser.utils.fn import ispunct, numericalize
+from parser.utils.fn import ispunct, istree, numericalize
 from parser.utils.metric import AttachmentMetric
 
 import torch
@@ -85,15 +85,15 @@ class CMD(object):
             mask = words.ne(self.args.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            arc_scores, rel_scores = self.model(words, feats)
-            loss = self.get_loss(arc_scores, rel_scores, arcs, rels, mask)
+            s_arc, s_rel = self.model(words, feats)
+            loss = self.get_loss(s_arc, s_rel, arcs, rels, mask)
             loss.backward()
             nn.utils.clip_grad_norm_(self.model.parameters(),
                                      self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
-            arc_preds, rel_preds = self.decode(arc_scores, rel_scores, mask)
+            arc_preds, rel_preds = self.decode(s_arc, s_rel, mask)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
@@ -113,9 +113,9 @@ class CMD(object):
             mask = words.ne(self.args.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            arc_scores, rel_scores = self.model(words, feats)
-            loss = self.get_loss(arc_scores, rel_scores, arcs, rels, mask)
-            arc_preds, rel_preds = self.decode(arc_scores, rel_scores, mask)
+            s_arc, s_rel = self.model(words, feats)
+            loss = self.get_loss(s_arc, s_rel, arcs, rels, mask)
+            arc_preds, rel_preds = self.decode(s_arc, s_rel, mask)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
@@ -135,35 +135,39 @@ class CMD(object):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            arc_scores, rel_scores = self.model(words, feats)
-            arc_preds, rel_preds = self.decode(arc_scores, rel_scores, mask)
+            s_arc, s_rel = self.model(words, feats)
+            arc_preds, rel_preds = self.decode(s_arc, s_rel, mask)
             all_arcs.extend(arc_preds[mask].split(lens))
             all_rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
-                arc_probs = arc_scores.gather(-1, arc_preds.unsqueeze(-1))
-                all_probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
+                probs = s_arc.softmax(-1).gather(-1, arc_preds.unsqueeze(-1))
+                all_probs.extend(probs.squeeze(-1)[mask].split(lens))
         all_arcs = [seq.tolist() for seq in all_arcs]
         all_rels = [self.REL.vocab.id2token(seq.tolist()) for seq in all_rels]
         all_probs = [[round(p, 4) for p in seq.tolist()] for seq in all_probs]
 
         return all_arcs, all_rels, all_probs
 
-    def get_loss(self, arc_scores, rel_scores, arcs, rels, mask):
-        arc_scores, arcs = arc_scores[mask], arcs[mask]
-        rel_scores, rels = rel_scores[mask], rels[mask]
-        rel_scores = rel_scores[torch.arange(len(arcs)), arcs]
-        arc_loss = self.criterion(arc_scores, arcs)
-        rel_loss = self.criterion(rel_scores, rels)
+    def get_loss(self, s_arc, s_rel, arcs, rels, mask):
+        s_arc, arcs = s_arc[mask], arcs[mask]
+        s_rel, rels = s_rel[mask], rels[mask]
+        s_rel = s_rel[torch.arange(len(arcs)), arcs]
+        arc_loss = self.criterion(s_arc, arcs)
+        rel_loss = self.criterion(s_rel, rels)
         loss = arc_loss + rel_loss
 
         return loss
 
-    def decode(self, arc_scores, rel_scores, mask):
-        if self.args.tree:
-            arc_preds = eisner(arc_scores, mask)
-        else:
-            arc_preds = arc_scores.argmax(-1)
-        rel_preds = rel_scores.argmax(-1)
+    def decode(self, s_arc, s_rel, mask):
+        lens = mask.sum(1)
+        # prevent self-loops
+        s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
+        arc_preds = s_arc.argmax(-1)
+        bad = [not istree(sequence[:l+1], self.args.proj)
+               for l, sequence in zip(lens.tolist(), arc_preds.tolist())]
+        if self.args.tree and any(bad):
+            arc_preds[bad] = eisner(s_arc[bad], mask[bad])
+        rel_preds = s_rel.argmax(-1)
         rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds

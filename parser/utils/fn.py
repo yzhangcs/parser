@@ -40,6 +40,18 @@ def isprojective(sequence):
     return True
 
 
+def istree(sequence, proj=False, multiroot=False):
+    from parser.utils.alg import tarjan
+    if proj and not isprojective(sequence):
+        return False
+    n_roots = sum(head == 0 for head in sequence[1:])
+    if n_roots == 0:
+        return False
+    if not multiroot and n_roots > 1:
+        return False
+    return next(tarjan(sequence), None) is None
+
+
 def numericalize(sequence):
     return [int(i) for i in sequence]
 
