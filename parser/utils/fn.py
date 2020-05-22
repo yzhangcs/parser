@@ -90,9 +90,12 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
                         storage_offset=(offset[0]*seq_len+offset[1])*numel)
 
 
-def pad(tensors, padding_value=0):
+def pad(tensors, padding_value=0, total_length=None):
     size = [len(tensors)] + [max(tensor.size(i) for tensor in tensors)
                              for i in range(len(tensors[0].size()))]
+    if total_length is not None:
+        assert total_length >= size[1]
+        size[1] = total_length
     out_tensor = tensors[0].data.new(*size).fill_(padding_value)
     for i, tensor in enumerate(tensors):
         out_tensor[i][[slice(0, i) for i in tensor.size()]] = tensor

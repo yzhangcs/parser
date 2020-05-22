@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from parser.utils.fn import stripe
+from parser.utils.fn import pad, stripe
 
 import torch
-from torch.nn.utils.rnn import pad_sequence
 
 
 def kmeans(x, k):
@@ -103,16 +102,14 @@ def eisner(scores, mask):
         # ilr = C(i->r) + C(j->r+1)
         ilr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
         # [batch_size, n, w]
-        ilr = ilr.permute(2, 0, 1)
-        il = ilr + scores.diagonal(-w).unsqueeze(-1)
+        il = ir = ilr.permute(2, 0, 1)
         # I(j->i) = max(C(i->r) + C(j->r+1) + s(j->i)), i <= r < j
         il_span, il_path = il.max(-1)
-        s_i.diagonal(-w).copy_(il_span)
+        s_i.diagonal(-w).copy_(il_span + scores.diagonal(-w))
         p_i.diagonal(-w).copy_(il_path + starts)
-        ir = ilr + scores.diagonal(w).unsqueeze(-1)
         # I(i->j) = max(C(i->r) + C(j->r+1) + s(i->j)), i <= r < j
         ir_span, ir_path = ir.max(-1)
-        s_i.diagonal(w).copy_(ir_span)
+        s_i.diagonal(w).copy_(ir_span + scores.diagonal(w))
         p_i.diagonal(w).copy_(ir_path + starts)
 
         # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
@@ -140,12 +137,12 @@ def eisner(scores, mask):
             backtrack(p_i, p_c, heads, i, r, True)
             backtrack(p_i, p_c, heads, j, r + 1, True)
 
-    predicts = []
+    preds = []
     p_c = p_c.permute(2, 0, 1).cpu()
     p_i = p_i.permute(2, 0, 1).cpu()
     for i, length in enumerate(lens.tolist()):
-        heads = p_c.new_ones(length + 1, dtype=torch.long)
+        heads = p_c.new_zeros(length + 1, dtype=torch.long)
         backtrack(p_i[i], p_c[i], heads, 0, length, True)
-        predicts.append(heads.to(mask.device))
+        preds.append(heads.to(mask.device))
 
-    return pad_sequence(predicts, True)
+    return pad(preds, total_length=seq_len).to(mask.device)
