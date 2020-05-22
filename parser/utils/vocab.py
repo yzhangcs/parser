@@ -6,7 +6,7 @@ from collections import defaultdict
 class Vocab(object):
 
     def __init__(self, counter, min_freq=1, specials=[], unk_index=0):
-        self.itos = specials
+        self.itos = list(specials)
         self.stoi = defaultdict(lambda: unk_index)
         self.stoi.update({token: i for i, token in enumerate(self.itos)})
         self.extend([token for token, freq in counter.items()
