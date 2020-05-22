@@ -32,14 +32,40 @@ For all datasets, we follow the conventional data splits:
 
 ## Performance
 
-| FEAT          |  UAS  |  LAS  | Speed (Sents/s) |
-| ------------- | :---: | :---: | :-------------: |
-| TAG           | 95.90 | 94.25 |     1696.22     |
-| TAG + Eisner  | 95.93 | 94.28 |     350.46      |
-| CHAR          | 95.99 | 94.38 |     1464.59     |
-| CHAR + Eisner | 96.02 | 94.41 |     323.73      |
-| BERT          | 96.64 | 95.11 |     438.72      |
-| BERT + Eisner | 96.65 | 95.12 |     214.68      |
+<table>
+  <thead>
+    <tr>
+      <th rowspan=2>Model</th>
+      <th rowspan=2>FEAT</th>
+      <th colspan=2 style="text-align:center">Performance</th>
+      <th rowspan=2 style="text-align:right">Speed (Sents/s)</th>
+    </tr>
+    <tr>
+      <th style="text-align:center">UAS</th>
+      <th style="text-align:center">LAS</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan=3>Biaffine Parser</td>
+      <td>TAG</td>
+      <td>95.83</td><td>94.14</td><td style="text-align:right">1340.87</td>
+    </tr>
+    <tr>
+      <td>CHAR</td>
+      <td>96.06</td><td>94.46</td><td style="text-align:right">1073.13</td>
+    </tr>
+    <tr>
+      <td>BERT</td>
+      <td>96.64</td><td>95.11</td><td style="text-align:right">438.72</td>
+    </tr>
+    <tr>
+      <td>Stack Pointer</td>
+      <td>CHAR</td>
+      <td style="color:white">00.00</td><td style="color:white">00.00</td><td style="text-align:right;color:white">0</td>
+    </tr>
+  </tbody>
+</table>
 
 Note that punctuation is ignored in all evaluation metrics for PTB. 
 
