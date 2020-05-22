@@ -37,32 +37,27 @@ For all datasets, we follow the conventional data splits:
     <tr>
       <th rowspan=2>Model</th>
       <th rowspan=2>FEAT</th>
-      <th colspan=2 style="text-align:center">Performance</th>
-      <th rowspan=2 style="text-align:right">Speed (Sents/s)</th>
+      <th colspan=2 align="center">Performance</th>
+      <th rowspan=2 align="right">Speed (Sents/s)</th>
     </tr>
     <tr>
-      <th style="text-align:center">UAS</th>
-      <th style="text-align:center">LAS</th>
+      <th align="center">UAS</th>
+      <th align="center">LAS</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td rowspan=3>Biaffine Parser</td>
       <td>TAG</td>
-      <td>95.83</td><td>94.14</td><td style="text-align:right">1340.87</td>
+      <td>95.83</td><td>94.14</td><td align="right">1340.87</td>
     </tr>
     <tr>
       <td>CHAR</td>
-      <td>96.06</td><td>94.46</td><td style="text-align:right">1073.13</td>
+      <td>96.06</td><td>94.46</td><td align="right">1073.13</td>
     </tr>
     <tr>
       <td>BERT</td>
-      <td>96.64</td><td>95.11</td><td style="text-align:right">438.72</td>
-    </tr>
-    <tr>
-      <td>Stack Pointer</td>
-      <td>CHAR</td>
-      <td style="color:white">00.00</td><td style="color:white">00.00</td><td style="text-align:right;color:white">0</td>
+      <td>96.64</td><td>95.11</td><td align="right">438.72</td>
     </tr>
   </tbody>
 </table>
