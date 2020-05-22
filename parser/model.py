@@ -2,6 +2,8 @@
 
 from parser.modules import CHAR_LSTM, MLP, BertEmbedding, Biaffine, BiLSTM
 from parser.modules.dropout import IndependentDropout, SharedDropout
+from parser.utils.alg import eisner
+from parser.utils.fn import istree
 
 import torch
 import torch.nn as nn
@@ -60,6 +62,7 @@ class Model(nn.Module):
                                  n_out=args.n_rels,
                                  bias_x=True,
                                  bias_y=True)
+        self.criterion = nn.CrossEntropyLoss()
         self.pad_index = args.pad_index
         self.unk_index = args.unk_index
 
@@ -115,6 +118,29 @@ class Model(nn.Module):
         s_arc.masked_fill_(~mask.unsqueeze(1), float('-inf'))
 
         return s_arc, s_rel
+
+    def get_loss(self, s_arc, s_rel, arcs, rels, mask):
+        s_arc, arcs = s_arc[mask], arcs[mask]
+        s_rel, rels = s_rel[mask], rels[mask]
+        s_rel = s_rel[torch.arange(len(arcs)), arcs]
+        arc_loss = self.criterion(s_arc, arcs)
+        rel_loss = self.criterion(s_rel, rels)
+
+        return arc_loss + rel_loss
+
+    def decode(self, s_arc, s_rel, mask):
+        lens = mask.sum(1)
+        # prevent self-loops
+        s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
+        arc_preds = s_arc.argmax(-1)
+        bad = [not istree(sequence[:l+1], self.args.proj)
+               for l, sequence in zip(lens.tolist(), arc_preds.tolist())]
+        if self.args.tree and any(bad):
+            arc_preds[bad] = eisner(s_arc[bad], mask[bad])
+        rel_preds = s_rel.argmax(-1)
+        rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
+
+        return arc_preds, rel_preds
 
     @classmethod
     def load(cls, path):
