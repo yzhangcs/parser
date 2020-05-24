@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-
-from math import log
-
 import torch
+import torch.autograd as autograd
 import torch.nn as nn
 
 
@@ -32,7 +30,12 @@ class MatrixTreeTheorem(nn.Module):
         mask = mask.index_fill(1, mask.new_tensor(0).long(), 0)
         mask = mask & valid.unsqueeze(-1)
         # calculate the marginal probablities
-        # probs, = autograd.grad(logZ, A, retain_graph=A.requires_grad)
+        probs, = autograd.grad(logZ, scores, retain_graph=scores.requires_grad)
+        probs = probs.float()
+
+        if target is None:
+            return probs
+
         score = scores.gather(-1, target.unsqueeze(-1)).squeeze(-1)[mask].sum()
-        loss = logZ - score
-        return loss.float()
+        loss = (logZ - score).float()
+        return loss, probs
