@@ -57,7 +57,7 @@ For all datasets, we follow the conventional data splits:
     </tr>
     <tr>
       <td>BERT</td>
-      <td>96.64</td><td>95.11</td><td align="right">438.72</td>
+      <td>96.60</td><td>95.09</td><td align="right">446.78</td>
     </tr>
   </tbody>
 </table>
@@ -245,4 +245,5 @@ optional arguments:
 
 ## References
 
-* [Deep Biaffine Attention for Neural Dependency Parsing](https://arxiv.org/abs/1611.01734)
+* [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/pdf?id=Hk95PK9le)
+<!-- * [Stack-Pointer Networks for Dependency Parsing](https://www.aclweb.org/anthology/P18-1130.pdf) -->

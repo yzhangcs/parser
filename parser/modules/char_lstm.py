@@ -5,10 +5,10 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence
 
 
-class CHAR_LSTM(nn.Module):
+class CharLSTM(nn.Module):
 
     def __init__(self, n_chars, n_embed, n_out, pad_index=0):
-        super(CHAR_LSTM, self).__init__()
+        super(CharLSTM, self).__init__()
 
         self.n_chars = n_chars
         self.n_embed = n_embed

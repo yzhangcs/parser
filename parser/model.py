@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from parser.modules import CHAR_LSTM, MLP, BertEmbedding, Biaffine, BiLSTM
+from parser.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
 from parser.modules.dropout import IndependentDropout, SharedDropout
 from parser.utils.alg import eisner
 from parser.utils.fn import istree
@@ -21,9 +21,9 @@ class Model(nn.Module):
         self.word_embed = nn.Embedding(num_embeddings=args.n_words,
                                        embedding_dim=args.n_embed)
         if args.feat == 'char':
-            self.feat_embed = CHAR_LSTM(n_chars=args.n_feats,
-                                        n_embed=args.n_char_embed,
-                                        n_out=args.n_feat_embed)
+            self.feat_embed = CharLSTM(n_chars=args.n_feats,
+                                       n_embed=args.n_char_embed,
+                                       n_out=args.n_feat_embed)
         elif args.feat == 'bert':
             self.feat_embed = BertEmbedding(model=args.bert_model,
                                             n_layers=args.n_bert_layers,
