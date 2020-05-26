@@ -2,6 +2,7 @@
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import sys
 
 
 def kmeans(x, k):
@@ -15,9 +16,12 @@ def kmeans(x, k):
     # assign labels to each datapoint based on centroids
     dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
     # make sure number of datapoints is greater than that of clusters
-    #assert len(d) >= k, f"unable to assign {len(d)} datapoints to {k} clusters"
+    # assert len(d) >= k, \
+    #    f"unable to assign {len(d)} datapoints to {k} clusters"
     # patch for Tamil
-    if len(d) < k: print(f"Error: unable to assign {len(d)} datapoints to {k} clusters")
+    if len(d) < k:
+        print(f"Error: unable to assign {len(d)} datapoints to {k} clusters",
+              file=sys.stderr)
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,
@@ -38,7 +42,7 @@ def kmeans(x, k):
     # assign all datapoints to the new-generated clusters
     # without considering the empty ones
     y, assigned = y[indices], y.unique().tolist()
-    # get the centroids of the assigned clusters
+    # # get the centroids of the assigned clusters
     # centroids = c[assigned].tolist()
     # # map all values of datapoints to buckets
     # clusters = [torch.where(y.eq(i))[0].tolist() for i in assigned]
@@ -46,15 +50,16 @@ def kmeans(x, k):
     # return centroids, clusters
 
     # Attardi (attardi@di.unipi.it)
-    # rebalance clusters, or we run out of memory,
+    # Rebalance clusters, or else we run out of memory,
     # with a cluster of size [640, 169] with embeddings of size [30522, 768]
     # that calls:
-    #   File "/usr/local/lib/python3.6/dist-packages/torch/nn/functional.py", line 1373, in linear
+    #   File "/usr/local/lib/python3.6/dist-packages/torch/nn/functional.py",\
+    #      line 1373, in linear
     #      output = input.matmul(weight.t())
     # with input of size [640, 169, 768] and weight of size [30522, 768].
     centroids = c[assigned]
     # sort points according to distance from farthest centriod
-    ptord = sorted(x, key=lambda p: (centroids-p).abs().max(), reverse=True) # order by max size
+    ptord = sorted(x, key=lambda p: (centroids-p).abs().max(), reverse=True)
     clusters = [[] for _ in range(k)]
     cit, csize = 0, (len(ptord)+k-1) // k
     for p in ptord:

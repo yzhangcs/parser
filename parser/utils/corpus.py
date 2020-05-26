@@ -3,15 +3,16 @@
 from collections import namedtuple
 from collections.abc import Iterable
 from parser.utils.field import Field
-import sys # sys.stderr, Attardi
 
+import sys
 import math
 
 CoNLL = namedtuple(typename='CoNLL',
                    field_names=['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
                                 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL'],
-                   ) # defaults=[None]*10)
-CoNLL.__new__.__defaults__ = (None,) * 10 # Attardi
+                   )                      # defaults=[None]*10)
+CoNLL.__new__.__defaults__ = (None,) * 10
+
 
 class Sentence(object):
 
@@ -72,33 +73,26 @@ class Corpus(object):
 
     @classmethod
     def load(cls, path, fields, max_sent_length=math.inf):
-        start, sentences = 0, []
+        sentences = []
         fields = [field if field is not None else Field(str(i))
                   for i, field in enumerate(fields)]
-        # with open(path, 'r') as f:
-        #     lines = [line.strip() for line in f]
-        # for i, line in enumerate(lines):
-        #     if not line:
-        #         if line.startswith('#'): continue # CoNLLU
-        #         values = list(zip(*[l.split('\t') for l in lines[start:i]]))
-        #         sentences.append(Sentence(fields, values))
-        #         start = i + 1
         with open(path, 'r') as f:
             values = []
             for line in f:
                 line = line.strip()
                 if not line:
-                    if len(values) > max_sent_length: # Attardi
-                        print('Sentence longer than max_sent_length', len(values), file=sys.stderr)
+                    if len(values) > max_sent_length:
+                        print('Sentence longer than max_sent_length',
+                              len(values), file=sys.stderr)
                         values = []
                         continue
                     sentences.append(Sentence(fields, list(zip(*values))))
                     values = []
                 elif line.startswith('#'):
-                    continue # CoNLLU
+                    continue    # CoNLLU
                 else:
                     token = line.split('\t')
-                    if '-' not in token[0] and '.' not in token[0]: # CoNLLU
+                    if '-' not in token[0] and '.' not in token[0]:  # CoNLLU
                         values.append(token)
 
         return cls(fields, sentences)
