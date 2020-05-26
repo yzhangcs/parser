@@ -3,6 +3,9 @@
 from collections import namedtuple
 from collections.abc import Iterable
 from parser.utils.field import Field
+import sys # sys.stderr, Attardi
+
+import math
 
 CoNLL = namedtuple(typename='CoNLL',
                    field_names=['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
@@ -68,7 +71,7 @@ class Corpus(object):
                 setattr(sentence, name, value[i])
 
     @classmethod
-    def load(cls, path, fields):
+    def load(cls, path, fields, max_sent_length=math.inf):
         start, sentences = 0, []
         fields = [field if field is not None else Field(str(i))
                   for i, field in enumerate(fields)]
@@ -85,6 +88,10 @@ class Corpus(object):
             for line in f:
                 line = line.strip()
                 if not line:
+                    if len(values) > max_sent_length: # Attardi
+                        print('Sentence longer than max_sent_length', len(values), file=sys.stderr)
+                        values = []
+                        continue
                     sentences.append(Sentence(fields, list(zip(*values))))
                     values = []
                 elif line.startswith('#'):

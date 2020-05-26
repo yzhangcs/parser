@@ -12,6 +12,7 @@ from parser.utils.metric import Metric
 import torch
 import torch.nn as nn
 from transformers import BertTokenizer
+from transformers import AutoTokenizer
 
 
 class CMD(object):
@@ -27,14 +28,21 @@ class CMD(object):
                 self.FEAT = CharField('chars', pad=pad, unk=unk, bos=bos,
                                       fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
-                tokenizer = BertTokenizer.from_pretrained(args.bert_model)
+                if args.bert_model.startswith('bert'):
+                    tokenizer = BertTokenizer.from_pretrained(args.bert_model)
+                else:           # BERT models from other authors on https://huggingface.co/models
+                    tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
                 self.FEAT = BertField('bert', pad='[PAD]', bos='[CLS]',
+                                      tokenize=tokenizer.encode)
+            elif args.feat == 'electra':
+                tokenizer = ElectraTokenizer.from_pretrained(args.electra_model)
+                self.FEAT = BertField('electra', pad='[PAD]', bos='[CLS]',
                                       tokenize=tokenizer.encode)
             else:
                 self.FEAT = Field('tags', bos=bos)
             self.HEAD = Field('heads', bos=bos, use_vocab=False, fn=int)
             self.REL = Field('rels', bos=bos)
-            if args.feat in ('char', 'bert'):
+            if args.feat in ('char', 'bert', 'electra'):
                 self.fields = CoNLL(FORM=(self.WORD, self.FEAT),
                                     HEAD=self.HEAD, DEPREL=self.REL)
             else:
@@ -52,7 +60,7 @@ class CMD(object):
             torch.save(self.fields, args.fields)
         else:
             self.fields = torch.load(args.fields)
-            if args.feat in ('char', 'bert'):
+            if args.feat in ('char', 'bert', 'electra'):
                 self.WORD, self.FEAT = self.fields.FORM
             else:
                 self.WORD, self.FEAT = self.fields.FORM, self.fields.CPOS

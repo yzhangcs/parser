@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
+import math                     # attardi
 
 
 class Train(CMD):
@@ -33,15 +34,17 @@ class Train(CMD):
                                help='path to pretrained embeddings')
         subparser.add_argument('--unk', default='unk',
                                help='unk token in pretrained embeddings')
+        subparser.add_argument('--max-sent-length', default=math.inf, type=int,
+                               help='max sentence length (longer are discarded)')
 
         return subparser
 
     def __call__(self, args):
         super(Train, self).__call__(args)
 
-        train = Corpus.load(args.ftrain, self.fields)
-        dev = Corpus.load(args.fdev, self.fields)
-        test = Corpus.load(args.ftest, self.fields)
+        train = Corpus.load(args.ftrain, self.fields, args.max_sent_length)
+        dev = Corpus.load(args.fdev, self.fields, args.max_sent_length)
+        test = Corpus.load(args.ftest, self.fields, args.max_sent_length)
 
         train = TextDataset(train, self.fields, args.buckets)
         dev = TextDataset(dev, self.fields, args.buckets)

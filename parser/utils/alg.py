@@ -15,7 +15,9 @@ def kmeans(x, k):
     # assign labels to each datapoint based on centroids
     dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
     # make sure number of datapoints is greater than that of clusters
-    assert len(d) >= k, f"unable to assign {len(d)} datapoints to {k} clusters"
+    #assert len(d) >= k, f"unable to assign {len(d)} datapoints to {k} clusters"
+    # patch for Tamil
+    if len(d) < k: print(f"Error: unable to assign {len(d)} datapoints to {k} clusters")
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,
@@ -37,9 +39,30 @@ def kmeans(x, k):
     # without considering the empty ones
     y, assigned = y[indices], y.unique().tolist()
     # get the centroids of the assigned clusters
-    centroids = c[assigned].tolist()
-    # map all values of datapoints to buckets
-    clusters = [torch.where(y.eq(i))[0].tolist() for i in assigned]
+    # centroids = c[assigned].tolist()
+    # # map all values of datapoints to buckets
+    # clusters = [torch.where(y.eq(i))[0].tolist() for i in assigned]
+
+    # return centroids, clusters
+
+    # Attardi (attardi@di.unipi.it)
+    # rebalance clusters, or we run out of memory,
+    # with a cluster of size [640, 169] with embeddings of size [30522, 768]
+    # that calls:
+    #   File "/usr/local/lib/python3.6/dist-packages/torch/nn/functional.py", line 1373, in linear
+    #      output = input.matmul(weight.t())
+    # with input of size [640, 169, 768] and weight of size [30522, 768].
+    centroids = c[assigned]
+    # sort points according to distance from farthest centriod
+    ptord = sorted(x, key=lambda p: (centroids-p).abs().max(), reverse=True) # order by max size
+    clusters = [[] for _ in range(k)]
+    cit, csize = 0, (len(ptord)+k-1) // k
+    for p in ptord:
+        c = clusters[cit]
+        c.append(int(p))
+        if len(c) == csize:
+            cit += 1
+    centroids = [sum(c)/len(c) for c in clusters]
 
     return centroids, clusters
 

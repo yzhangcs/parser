@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from parser.modules import CHAR_LSTM, MLP, BertEmbedding, Biaffine, BiLSTM
+from parser.modules import ElectraEmbedding
 from parser.modules.dropout import IndependentDropout, SharedDropout
 
 import torch
@@ -25,6 +26,10 @@ class Model(nn.Module):
         elif args.feat == 'bert':
             self.feat_embed = BertEmbedding(model=args.bert_model,
                                             n_layers=args.n_bert_layers,
+                                            n_out=args.n_embed)
+        elif args.feat == 'electra':
+            self.feat_embed = ElectraEmbedding(model=args.electra_model,
+                                            n_layers=args.n_electra_layers,
                                             n_out=args.n_embed)
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
@@ -87,6 +92,8 @@ class Model(nn.Module):
             feat_embed = self.feat_embed(feats[mask])
             feat_embed = pad_sequence(feat_embed.split(lens.tolist()), True)
         elif self.args.feat == 'bert':
+            feat_embed = self.feat_embed(*feats)
+        elif self.args.feat == 'electra':
             feat_embed = self.feat_embed(*feats)
         else:
             feat_embed = self.feat_embed(feats)

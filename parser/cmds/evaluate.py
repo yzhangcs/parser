@@ -37,7 +37,7 @@ class Evaluate(CMD):
               f"{len(dataset.buckets)} buckets")
 
         print("Load the model")
-        self.model = Model.load(args.model)
+        self.model = Model.load(args.model, args.device) # attardi
         print(f"{self.model}\n")
 
         print("Evaluate the dataset")
