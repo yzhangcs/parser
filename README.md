@@ -75,7 +75,8 @@ Commands:
     train               Train a model.
 ```
 
-Before triggering the subcommands, please make sure that the data files must be in CoNLL-X format. 
+Before triggering the subcommands, please make sure that the data files must be in
+either CoNLL-X or CoNLLU format. 
 If some fields are missing, you can use underscores as placeholders.
 Below are some examples:
 
