@@ -18,7 +18,7 @@ i.e., character-level embeddings (CHAR) and BERT.
 
 * `python`: 3.7.0
 * [`pytorch`](https://github.com/pytorch/pytorch): 1.3.0
-* [`transformers`](https://github.com/huggingface/transformers): 2.1.1
+* [`transformers`](https://github.com/huggingface/transformers): 2.10.0
 
 ## Datasets
 
