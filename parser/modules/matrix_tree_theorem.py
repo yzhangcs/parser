@@ -24,11 +24,8 @@ class MatrixTreeTheorem(nn.Module):
         L = nn.init.eye_(torch.empty_like(A[0])).repeat(batch_size, 1, 1)
         L[mask] = (D - A)[mask]
         # calculate the partition (a.k.a normalization) term
-        logZ = L[:, 1:, 1:].logdet()
-        valid = ~torch.isnan(logZ)
-        logZ = logZ[valid].sum()
+        logZ = L[:, 1:, 1:].slogdet()[1].sum()
         mask = mask.index_fill(1, mask.new_tensor(0).long(), 0)
-        mask = mask & valid.unsqueeze(-1)
         # calculate the marginal probablities
         probs, = autograd.grad(logZ, scores, retain_graph=scores.requires_grad)
         probs = probs.float()
