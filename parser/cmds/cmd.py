@@ -12,7 +12,7 @@ from parser.utils.metric import Metric
 import torch
 import torch.nn as nn
 from transformers import BertTokenizer
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, ElectraTokenizer
 
 
 class CMD(object):

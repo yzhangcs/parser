@@ -58,11 +58,11 @@ def kmeans(x, k):
     #      output = input.matmul(weight.t())
     # with input of size [640, 169, 768] and weight of size [30522, 768].
     centroids = c[assigned]
-    # sort points according to distance from farthest centriod
-    ptord = sorted(x, key=lambda p: (centroids-p).abs().max(), reverse=True)
+    # sort points according to distance from farthest centroid
+    _, ptidx = (x.unsqueeze(-1)-centroids).abs().max(dim=1).values.sort(descending=True)
     clusters = [[] for _ in range(k)]
-    cit, csize = 0, (len(ptord)+k-1) // k
-    for p in ptord:
+    cit, csize = 0, (len(ptidx)+k-1) // k
+    for p in ptidx:
         c = clusters[cit]
         c.append(int(p))
         if len(c) == csize:
