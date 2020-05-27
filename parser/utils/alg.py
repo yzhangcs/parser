@@ -11,17 +11,12 @@ def kmeans(x, k):
     d, indices, f = x.unique(return_inverse=True, return_counts=True)
     # calculate the sum of the values of the same datapoints
     total = d * f
+    # make sure number of datapoints is greater than that of clusters
+    k = min(k, len(d))
     # initialize k centroids randomly
     c, old = d[torch.randperm(len(d))[:k]], None
     # assign labels to each datapoint based on centroids
     dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
-    # make sure number of datapoints is greater than that of clusters
-    # assert len(d) >= k, \
-    #    f"unable to assign {len(d)} datapoints to {k} clusters"
-    # patch for Tamil
-    if len(d) < k:
-        print(f"Error: unable to assign {len(d)} datapoints to {k} clusters",
-              file=sys.stderr)
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,
@@ -59,7 +54,8 @@ def kmeans(x, k):
     # with input of size [640, 169, 768] and weight of size [30522, 768].
     centroids = c[assigned]
     # sort points according to distance from farthest centroid
-    _, ptidx = (x.unsqueeze(-1)-centroids).abs().max(dim=1).values.sort(descending=True)
+    xt = x.unsqueeze(-1)
+    _, ptidx = (xt-centroids).abs().max(dim=1).values.sort(descending=True)
     clusters = [[] for _ in range(k)]
     cit, csize = 0, (len(ptidx)+k-1) // k
     for p in ptidx:
@@ -67,7 +63,7 @@ def kmeans(x, k):
         c.append(int(p))
         if len(c) == csize:
             cit += 1
-    centroids = [sum(c)/len(c) for c in clusters]
+    centroids = [float(xt[c].mean()) for c in clusters]
 
     return centroids, clusters
 
