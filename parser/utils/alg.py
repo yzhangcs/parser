@@ -57,12 +57,13 @@ def kmeans(x, k):
     xt = x.unsqueeze(-1)
     _, ptidx = (xt-centroids).abs().max(dim=1).values.sort(descending=True)
     clusters = [[] for _ in range(k)]
-    cit, csize = 0, (len(ptidx)+k-1) // k
+    cit, csize, rest = 0, len(ptidx) // k, len(ptidx) % k
     for p in ptidx:
         c = clusters[cit]
         c.append(int(p))
-        if len(c) == csize:
+        if len(c) == csize + (rest > 0):
             cit += 1
+            rest -= 1
     centroids = [float(xt[c].mean()) for c in clusters]
 
     return centroids, clusters
