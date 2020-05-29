@@ -4,7 +4,7 @@ import os
 from parser.utils import Embedding
 from parser.utils.common import bos, pad, unk
 from parser.utils.corpus import CoNLL, Corpus
-from parser.utils.field import BertField, CharField, Field
+from parser.utils.field import Field, SubwordField
 from parser.utils.fn import ispunct, numericalize
 from parser.utils.metric import AttachmentMetric
 
@@ -22,13 +22,17 @@ class CMD(object):
             print("Preprocess the data")
             self.WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
             if args.feat == 'char':
-                self.FEAT = CharField('chars', pad=pad, unk=unk, bos=bos,
-                                      fix_len=args.fix_len, tokenize=list)
+                self.FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
+                                         fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
                 from transformers import BertTokenizer
                 tokenizer = BertTokenizer.from_pretrained(args.bert_model)
-                self.FEAT = BertField('bert', pad='[PAD]', bos='[CLS]',
-                                      tokenize=tokenizer.encode)
+                self.FEAT = SubwordField('bert',
+                                         pad=tokenizer.pad_token,
+                                         unk=tokenizer.unk_token,
+                                         bos=tokenizer.cls_token,
+                                         tokenize=tokenizer.tokenize)
+                self.FEAT.vocab = tokenizer.vocab
             else:
                 self.FEAT = Field('tags', bos=bos)
             self.ARC = Field('arcs', bos=bos, use_vocab=False,
@@ -66,7 +70,8 @@ class CMD(object):
             'n_rels': len(self.REL.vocab),
             'pad_index': self.WORD.pad_index,
             'unk_index': self.WORD.unk_index,
-            'bos_index': self.WORD.bos_index
+            'bos_index': self.WORD.bos_index,
+            'feat_pad_index': self.FEAT.pad_index
         })
 
         print(f"Override the default configs\n{args}")
@@ -127,7 +132,7 @@ class CMD(object):
     def predict(self, loader):
         self.model.eval()
 
-        all_arcs, all_rels, all_probs = [], [], []
+        arcs, rels, probs = [], [], []
         for words, feats in loader:
             mask = words.ne(self.args.pad_index)
             # ignore the first token of each sentence
@@ -135,13 +140,13 @@ class CMD(object):
             lens = mask.sum(1).tolist()
             s_arc, s_rel = self.model(words, feats)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
-            all_arcs.extend(arc_preds[mask].split(lens))
-            all_rels.extend(rel_preds[mask].split(lens))
+            arcs.extend(arc_preds[mask].split(lens))
+            rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
                 probs = s_arc.softmax(-1).gather(-1, arc_preds.unsqueeze(-1))
-                all_probs.extend(probs.squeeze(-1)[mask].split(lens))
-        all_arcs = [seq.tolist() for seq in all_arcs]
-        all_rels = [self.REL.vocab.id2token(seq.tolist()) for seq in all_rels]
-        all_probs = [[round(p, 4) for p in seq.tolist()] for seq in all_probs]
+                probs.extend(probs.squeeze(-1)[mask].split(lens))
+        arcs = [seq.tolist() for seq in arcs]
+        rels = [self.REL.vocab[seq.tolist()] for seq in rels]
+        probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
 
-        return all_arcs, all_rels, all_probs
+        return arcs, rels, probs

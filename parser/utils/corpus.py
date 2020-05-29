@@ -77,7 +77,7 @@ class Corpus(object):
             lines = [line.strip() for line in f]
         for i, line in enumerate(lines):
             if not line:
-                values = list(zip(*[l.split('\t') for l in lines[start:i]]))
+                values = list(zip(*[j.split('\t') for j in lines[start:i]]))
                 sentences.append(Sentence(fields, values))
                 start = i + 1
 

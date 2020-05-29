@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import defaultdict
+from collections.abc import Iterable
 
 
 class Vocab(object):
@@ -18,7 +19,14 @@ class Vocab(object):
         return len(self.itos)
 
     def __getitem__(self, key):
-        return self.stoi[key]
+        if isinstance(key, str):
+            return self.stoi[key]
+        elif not isinstance(key, Iterable):
+            return self.itos[key]
+        elif isinstance(key[0], str):
+            return [self.stoi[i] for i in key]
+        else:
+            return [self.itos[i] for i in key]
 
     def __contains__(self, token):
         return token in self.stoi
@@ -35,12 +43,6 @@ class Vocab(object):
         stoi.update(state['stoi'])
         state['stoi'] = stoi
         self.__dict__.update(state)
-
-    def token2id(self, sequence):
-        return [self.stoi[token] for token in sequence]
-
-    def id2token(self, sequence):
-        return [self.itos[i] for i in sequence]
 
     def extend(self, tokens):
         self.itos.extend(sorted(set(tokens).difference(self.stoi)))

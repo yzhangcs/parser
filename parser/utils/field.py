@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import Counter
+from parser.utils.fn import pad
 from parser.utils.vocab import Vocab
 
 import torch
@@ -23,7 +24,7 @@ class RawField(object):
         return sequence
 
     def transform(self, sequences):
-        return [self.preprocess(sequence) for sequence in sequences]
+        return [self.preprocess(seq) for seq in sequences]
 
 
 class Field(RawField):
@@ -57,25 +58,37 @@ class Field(RawField):
             params.append(f"lower={self.lower}")
         if not self.use_vocab:
             params.append(f"use_vocab={self.use_vocab}")
-        s += f", ".join(params)
-        s += f")"
+        s += ", ".join(params)
+        s += ")"
 
         return s
 
     @property
     def pad_index(self):
-        return self.specials.index(self.pad) if self.pad is not None else 0
+        if self.pad is None:
+            return 0
+        if hasattr(self, 'vocab'):
+            return self.vocab[self.pad]
+        return self.specials.index(self.pad)
 
     @property
     def unk_index(self):
-        return self.specials.index(self.unk) if self.unk is not None else 0
+        if self.unk is None:
+            return 0
+        if hasattr(self, 'vocab'):
+            return self.vocab[self.unk]
+        return self.specials.index(self.unk)
 
     @property
     def bos_index(self):
+        if hasattr(self, 'vocab'):
+            return self.vocab[self.bos]
         return self.specials.index(self.bos)
 
     @property
     def eos_index(self):
+        if hasattr(self, 'vocab'):
+            return self.vocab[self.eos]
         return self.specials.index(self.eos)
 
     def preprocess(self, sequence):
@@ -89,10 +102,12 @@ class Field(RawField):
         return sequence
 
     def build(self, corpus, min_freq=1, embed=None):
+        if hasattr(self, 'vocab'):
+            return
         sequences = getattr(corpus, self.name)
         counter = Counter(token
-                          for sequence in sequences
-                          for token in self.preprocess(sequence))
+                          for seq in sequences
+                          for token in self.preprocess(seq))
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
         if not embed:
@@ -106,34 +121,35 @@ class Field(RawField):
 
             self.vocab.extend(tokens)
             self.embed = torch.zeros(len(self.vocab), embed.dim)
-            self.embed[self.vocab.token2id(tokens)] = embed.vectors
+            self.embed[self.vocab[tokens]] = embed.vectors
             self.embed /= torch.std(self.embed)
 
     def transform(self, sequences):
-        sequences = [self.preprocess(sequence) for sequence in sequences]
+        sequences = [self.preprocess(seq) for seq in sequences]
         if self.use_vocab:
-            sequences = [self.vocab.token2id(sequence)
-                         for sequence in sequences]
+            sequences = [self.vocab[seq] for seq in sequences]
         if self.bos:
-            sequences = [[self.bos_index] + sequence for sequence in sequences]
+            sequences = [[self.bos_index] + seq for seq in sequences]
         if self.eos:
-            sequences = [sequence + [self.eos_index] for sequence in sequences]
-        sequences = [torch.tensor(sequence) for sequence in sequences]
+            sequences = [seq + [self.eos_index] for seq in sequences]
+        sequences = [torch.tensor(seq) for seq in sequences]
 
         return sequences
 
 
-class CharField(Field):
+class SubwordField(Field):
 
     def __init__(self, *args, **kwargs):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else -1
-        super(CharField, self).__init__(*args, **kwargs)
+        super(SubwordField, self).__init__(*args, **kwargs)
 
     def build(self, corpus, min_freq=1, embed=None):
+        if hasattr(self, 'vocab'):
+            return
         sequences = getattr(corpus, self.name)
         counter = Counter(char
-                          for sequence in sequences
-                          for token in sequence
+                          for seq in sequences
+                          for token in seq
                           for char in self.preprocess(token))
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
@@ -148,47 +164,25 @@ class CharField(Field):
 
             self.vocab.extend(tokens)
             self.embed = torch.zeros(len(self.vocab), embed.dim)
-            self.embed[self.vocab.token2id(tokens)] = embed.vectors
+            self.embed[self.vocab[tokens]] = embed.vectors
 
     def transform(self, sequences):
-        sequences = [[self.preprocess(token) for token in sequence]
-                     for sequence in sequences]
+        sequences = [[self.preprocess(token) for token in seq]
+                     for seq in sequences]
         if self.fix_len <= 0:
-            self.fix_len = max(len(token) for sequence in sequences
-                               for token in sequence)
+            self.fix_len = max(len(token)
+                               for seq in sequences
+                               for token in seq)
         if self.use_vocab:
-            sequences = [[self.vocab.token2id(token) for token in sequence]
-                         for sequence in sequences]
+            sequences = [[[self.vocab[i] for i in token] for token in seq]
+                         for seq in sequences]
         if self.bos:
-            sequences = [[self.vocab.token2id(self.bos)] + sequence
-                         for sequence in sequences]
+            sequences = [[[self.bos_index]] + seq for seq in sequences]
         if self.eos:
-            sequences = [sequence + [self.vocab.token2id(self.eos)]
-                         for sequence in sequences]
-        sequences = [
-            torch.tensor([ids[:self.fix_len] + [0] * (self.fix_len - len(ids))
-                          for ids in sequence])
-            for sequence in sequences
-        ]
+            sequences = [seq + [[self.eos_index]] for seq in sequences]
+        sequences = [pad([torch.tensor(ids[:self.fix_len]) for ids in seq],
+                         self.pad_index,
+                         self.fix_len)
+                     for seq in sequences]
 
         return sequences
-
-
-class BertField(Field):
-
-    def transform(self, sequences):
-        subwords, lens = [], []
-        sequences = [([self.bos] if self.bos else []) + list(sequence) +
-                     ([self.eos] if self.eos else [])
-                     for sequence in sequences]
-
-        for sequence in sequences:
-            sequence = [self.preprocess(token) for token in sequence]
-            sequence = [piece if piece else self.preprocess(self.pad)
-                        for piece in sequence]
-            subwords.append(sum(sequence, []))
-            lens.append(torch.tensor([len(piece) for piece in sequence]))
-        subwords = [torch.tensor(pieces) for pieces in subwords]
-        mask = [torch.ones(len(pieces)).gt(0) for pieces in subwords]
-
-        return list(zip(subwords, lens, mask))

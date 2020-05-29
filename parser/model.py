@@ -23,11 +23,13 @@ class Model(nn.Module):
         if args.feat == 'char':
             self.feat_embed = CharLSTM(n_chars=args.n_feats,
                                        n_embed=args.n_char_embed,
-                                       n_out=args.n_feat_embed)
+                                       n_out=args.n_feat_embed,
+                                       pad_index=args.feat_pad_index)
         elif args.feat == 'bert':
             self.feat_embed = BertEmbedding(model=args.bert_model,
                                             n_layers=args.n_bert_layers,
-                                            n_out=args.n_feat_embed)
+                                            n_out=args.n_feat_embed,
+                                            pad_index=args.feat_pad_index)
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
                                            embedding_dim=args.n_feat_embed)
@@ -91,8 +93,6 @@ class Model(nn.Module):
         if self.args.feat == 'char':
             feat_embed = self.feat_embed(feats[mask])
             feat_embed = pad_sequence(feat_embed.split(lens.tolist()), True)
-        elif self.args.feat == 'bert':
-            feat_embed = self.feat_embed(*feats)
         else:
             feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
@@ -133,8 +133,8 @@ class Model(nn.Module):
         # prevent self-loops
         s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
         arc_preds = s_arc.argmax(-1)
-        bad = [not istree(sequence[:l+1], self.args.proj)
-               for l, sequence in zip(lens.tolist(), arc_preds.tolist())]
+        bad = [not istree(seq[:i+1], self.args.proj)
+               for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if self.args.tree and any(bad):
             arc_preds[bad] = eisner(s_arc[bad], mask[bad])
         rel_preds = s_rel.argmax(-1)
