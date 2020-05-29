@@ -74,7 +74,9 @@ class Corpus(object):
         fields = [field if field is not None else Field(str(i))
                   for i, field in enumerate(fields)]
         with open(path, 'r') as f:
-            lines = [line.strip() for line in f]
+            lines = [line.strip() for line in f
+                     if not line.startswith('#')
+                     and (len(line) == 1 or line.split()[0].isdigit())]
         for i, line in enumerate(lines):
             if not line:
                 values = list(zip(*[j.split('\t') for j in lines[start:i]]))
