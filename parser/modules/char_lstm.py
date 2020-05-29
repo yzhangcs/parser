@@ -34,11 +34,20 @@ class CharLSTM(nn.Module):
         return s
 
     def forward(self, x):
+        # [batch_size, seq_len, fix_len]
         mask = x.ne(self.pad_index)
-        lens = mask.sum(dim=1)
+        # [batch_size, seq_len]
+        lens = mask.sum(-1)
+        char_mask = lens.gt(0)
 
-        x = pack_padded_sequence(self.embed(x), lens, True, False)
-        x, (hidden, _) = self.lstm(x)
-        hidden = torch.cat(torch.unbind(hidden), dim=-1)
+        # [n, fix_len, n_embed]
+        x = self.embed(x[char_mask])
+        x = pack_padded_sequence(x, lens[char_mask], True, False)
+        x, (h, _) = self.lstm(x)
+        # [n, fix_len, n_out]
+        h = torch.cat(torch.unbind(h), dim=-1)
+        # [batch_size, seq_len, n_out]
+        embed = h.new_zeros(*lens.shape, self.n_out)
+        embed = embed.masked_scatter_(char_mask.unsqueeze(-1), h)
 
-        return hidden
+        return embed

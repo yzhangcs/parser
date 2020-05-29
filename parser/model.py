@@ -90,11 +90,7 @@ class Model(nn.Module):
         word_embed = self.word_embed(ext_words)
         if hasattr(self, 'pretrained'):
             word_embed += self.pretrained(words)
-        if self.args.feat == 'char':
-            feat_embed = self.feat_embed(feats[mask])
-            feat_embed = pad_sequence(feat_embed.split(lens.tolist()), True)
-        else:
-            feat_embed = self.feat_embed(feats)
+        feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
         embed = torch.cat((word_embed, feat_embed), dim=-1)
