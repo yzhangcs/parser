@@ -114,7 +114,7 @@ class Model(nn.Module):
 
         return s_arc, s_rel
 
-    def get_loss(self, s_arc, s_rel, arcs, rels, mask):
+    def loss(self, s_arc, s_rel, arcs, rels, mask):
         s_arc, arcs = s_arc[mask], arcs[mask]
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(arcs)), arcs]

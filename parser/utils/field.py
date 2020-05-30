@@ -140,17 +140,17 @@ class Field(RawField):
 class SubwordField(Field):
 
     def __init__(self, *args, **kwargs):
-        self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else -1
+        self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
         super(SubwordField, self).__init__(*args, **kwargs)
 
     def build(self, corpus, min_freq=1, embed=None):
         if hasattr(self, 'vocab'):
             return
         sequences = getattr(corpus, self.name)
-        counter = Counter(char
+        counter = Counter(piece
                           for seq in sequences
                           for token in seq
-                          for char in self.preprocess(token))
+                          for piece in self.preprocess(token))
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
         if not embed:

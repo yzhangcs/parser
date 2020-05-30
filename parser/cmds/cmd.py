@@ -89,7 +89,7 @@ class CMD(object):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss = self.model.get_loss(s_arc, s_rel, arcs, rels, mask)
+            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
             loss.backward()
             nn.utils.clip_grad_norm_(self.model.parameters(),
                                      self.args.clip)
@@ -117,7 +117,7 @@ class CMD(object):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss = self.model.get_loss(s_arc, s_rel, arcs, rels, mask)
+            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
             # ignore all punctuation if not specified
             if not self.args.punct:
