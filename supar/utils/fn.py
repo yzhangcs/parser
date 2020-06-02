@@ -41,7 +41,7 @@ def isprojective(sequence):
 
 
 def istree(sequence, proj=False, multiroot=False):
-    from parser.utils.alg import tarjan
+    from supar.utils.alg import tarjan
     if proj and not isprojective(sequence):
         return False
     n_roots = sum(head == 0 for head in sequence[1:])
@@ -50,6 +50,15 @@ def istree(sequence, proj=False, multiroot=False):
     if not multiroot and n_roots > 1:
         return False
     return next(tarjan(sequence), None) is None
+
+
+def toconll(tokens):
+    if isinstance(tokens[0], str):
+        return '\n'.join([f"{i}\t{word}\t" + '\t'.join(['_']*8)
+                          for i, word in enumerate(tokens, 1)]) + '\n'
+    else:
+        return '\n'.join([f"{i}\t{word}\t_\t{tag}\t" + '\t'.join(['_']*6)
+                          for i, (word, tag) in enumerate(tokens, 1)]) + '\n'
 
 
 def numericalize(sequence):

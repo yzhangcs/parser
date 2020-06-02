@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from parser.modules.dropout import SharedDropout
-
 import torch.nn as nn
+from supar.modules.dropout import SharedDropout
 
 
 class MLP(nn.Module):

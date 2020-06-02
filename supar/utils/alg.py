@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from parser.utils.fn import pad, stripe
-
 import torch
+from supar.utils.fn import pad, stripe
 
 
 def kmeans(x, k):

@@ -2,11 +2,11 @@
 
 from collections.abc import Iterable
 from itertools import chain
-from parser.utils.alg import kmeans
-from parser.utils.field import Field
-from parser.utils.fn import pad
 
 import torch
+from supar.utils.alg import kmeans
+from supar.utils.field import Field
+from supar.utils.fn import pad
 from torch.utils.data import DataLoader, Dataset, Sampler
 
 

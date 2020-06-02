@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from collections import Counter
-from parser.utils.fn import pad
-from parser.utils.vocab import Vocab
 
 import torch
+from supar.utils.fn import pad
+from supar.utils.vocab import Vocab
 
 
 class RawField(object):

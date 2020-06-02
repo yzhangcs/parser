@@ -4,6 +4,11 @@ data
 # ignore bash scripts
 *.sh
 
+# ignore intermediate files
+build
+dist
+*.egg-info
+
 # ignore experimental results
 exp
 results

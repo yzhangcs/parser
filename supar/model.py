@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from parser.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
-from parser.modules.dropout import IndependentDropout, SharedDropout
-from parser.utils.alg import eisner
-from parser.utils.fn import istree
-
 import torch
 import torch.nn as nn
+from supar.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
+from supar.modules.dropout import IndependentDropout, SharedDropout
+from supar.utils.alg import eisner
+from supar.utils.fn import istree
+from supar.utils.metric import AttachmentMetric
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
@@ -136,25 +136,3 @@ class Model(nn.Module):
         rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds
-
-    @classmethod
-    def load(cls, path):
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        state = torch.load(path, map_location=device)
-        model = cls(state['args'])
-        model.load_pretrained(state['pretrained'])
-        model.load_state_dict(state['state_dict'], False)
-        model.to(device)
-
-        return model
-
-    def save(self, path):
-        state_dict, pretrained = self.state_dict(), None
-        if hasattr(self, 'pretrained'):
-            pretrained = state_dict.pop('pretrained.weight')
-        state = {
-            'args': self.args,
-            'state_dict': state_dict,
-            'pretrained': pretrained
-        }
-        torch.save(state, path)

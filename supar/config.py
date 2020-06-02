@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from argparse import Namespace
 from ast import literal_eval
 from configparser import ConfigParser
-from argparse import Namespace
 
 
 class Config(ConfigParser):
 
-    def __init__(self, path):
+    def __init__(self, path=[]):
         super(Config, self).__init__()
 
         self.read(path)
@@ -25,6 +25,9 @@ class Config(ConfigParser):
 
         return s
 
+    def __getitem__(self, key):
+        return getattr(self.namespace, key)
+
     def __getattr__(self, attr):
         return getattr(self.namespace, attr)
 
@@ -33,6 +36,9 @@ class Config(ConfigParser):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
+
+    def keys(self):
+        return vars(self.namespace).keys()
 
     def update(self, kwargs):
         for name, value in kwargs.items():

@@ -2,8 +2,8 @@
 
 from collections import namedtuple
 from collections.abc import Iterable
-from parser.utils.field import Field
 
+from supar.utils.field import Field
 
 CoNLL = namedtuple(typename='CoNLL',
                    field_names=['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
