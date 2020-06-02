@@ -6,7 +6,6 @@ from supar.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.utils.alg import eisner
 from supar.utils.fn import istree
-from supar.utils.metric import AttachmentMetric
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
