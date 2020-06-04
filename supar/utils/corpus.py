@@ -4,6 +4,7 @@ from collections import namedtuple
 from collections.abc import Iterable
 
 from supar.utils.field import Field
+from supar.utils.fn import toconll
 
 CoNLL = namedtuple(typename='CoNLL',
                    field_names=['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
@@ -69,14 +70,18 @@ class Corpus(object):
                 setattr(sentence, name, value[i])
 
     @classmethod
-    def load(cls, path, fields):
+    def load(cls, data, fields):
         start, sentences = 0, []
         fields = [field if field is not None else Field(str(i))
                   for i, field in enumerate(fields)]
-        with open(path, 'r') as f:
-            lines = [line.strip() for line in f
-                     if not line.startswith('#')
-                     and (len(line) == 1 or line.split()[0].isdigit())]
+        if isinstance(data, str):
+            with open(data, 'r') as f:
+                lines = [line.strip() for line in f
+                         if not line.startswith('#')
+                         and (len(line) == 1 or line.split()[0].isdigit())]
+        else:
+            data = [data] if isinstance(data[0], str) else data
+            lines = '\n'.join([toconll(i) for i in data]).split('\n')
         for i, line in enumerate(lines):
             if not line:
                 values = list(zip(*[j.split('\t') for j in lines[start:i]]))
