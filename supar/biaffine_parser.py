@@ -18,7 +18,6 @@ from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
-from tqdm import tqdm
 
 
 class BiaffineParser(object):
