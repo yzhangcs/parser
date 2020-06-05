@@ -14,7 +14,7 @@ from supar.utils.corpus import CoNLL, Corpus
 from supar.utils.data import TextDataset, batchify
 from supar.utils.field import Field, SubwordField
 from supar.utils.fn import ispunct, numericalize
-from supar.utils.logging import logger
+from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
@@ -38,11 +38,12 @@ class BiaffineParser(object):
                                     for s, i in self.WORD.vocab.stoi.items()
                                     if ispunct(s)]).to(args.device)
 
-    def train(self, train, dev, test, **kwargs):
+    def train(self, train, dev, test, logger=None, **kwargs):
         args = self.args.update({'train': train,
                                  'dev': dev,
                                  'test': test,
                                  **kwargs})
+        logger = logger or init_logger(path=args.path)
 
         train = Corpus.load(args.train, self.fields)
         dev = Corpus.load(args.dev, self.fields)
@@ -101,12 +102,13 @@ class BiaffineParser(object):
                 break
         loss, metric = self.load(args.path)._evaluate(test.loader)
 
-        logger.info(f"epoch {best_e} saved: {best_metric}")
-        logger.info(f"evaluate the model on test: {metric:.2%}")
+        logger.info(f"Epoch {best_e} saved: {best_metric}")
+        logger.info(f"Evaluate the model on test: {metric}")
         logger.info(f"{total_time}s elapsed, {total_time / epoch}s/epoch")
 
-    def evaluate(self, data, **kwargs):
+    def evaluate(self, data, logger=None, **kwargs):
         args = self.args.update(kwargs)
+        logger = logger or init_logger()
 
         logger.info("Load the dataset")
         corpus = Corpus.load(data, self.fields)
@@ -125,16 +127,18 @@ class BiaffineParser(object):
         logger.info(f"{total_time}s elapsed, "
                     f"{len(dataset)/total_time.total_seconds():.2f} Sents/s")
 
-    def predict(self, data, pred=None, prob=True, **kwargs):
+    def predict(self, data, pred=None, prob=True, logger=None, **kwargs):
         args = self.args.update({'prob': prob, **kwargs})
-        logger.info("Load the dataset")
+        logger = logger or init_logger()
+
         if args.prob:
             self.fields = self.fields._replace(PHEAD=Field('probs'))
         corpus = Corpus.load(data, self.fields)
         dataset = TextDataset(corpus, [self.WORD, self.FEAT], args.buckets)
         # set the data loader
         dataset.loader = batchify(dataset, args.batch_size)
-        logger.info(f"{len(dataset)} sentences, "
+        logger.info(f"Load the dataset: "
+                    f"{len(dataset)} sentences, "
                     f"{len(dataset.loader)} batches")
 
         logger.info("Make predictions on the dataset")
@@ -150,7 +154,7 @@ class BiaffineParser(object):
         if args.prob:
             corpus.probs = [pred_probs[i] for i in indices]
         if pred is not None:
-            logger.info(f"Save the predicted result to {pred}")
+            logger.info(f"Save predicted results to {pred}")
             corpus.save(pred)
         logger.info(f"{total_time}s elapsed, "
                     f"{len(dataset) / total_time.total_seconds():.2f} Sents/s")
@@ -159,10 +163,10 @@ class BiaffineParser(object):
     def _train(self, loader):
         self.model.train()
 
-        t = tqdm(loader, ascii=True)
+        progress = progress_bar(loader)
         metric = AttachmentMetric()
 
-        for words, feats, arcs, rels in t:
+        for words, feats, arcs, rels in progress:
             self.optimizer.zero_grad()
 
             mask = words.ne(self.WORD.pad_index)
@@ -181,10 +185,9 @@ class BiaffineParser(object):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            t.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} "
-                              f"loss: {loss:.4f} "
-                              f"{metric}")
-        t.clear()
+            progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+                                     f"loss: {loss:.4f} - "
+                                     f"{metric}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -212,9 +215,9 @@ class BiaffineParser(object):
     def _predict(self, loader):
         self.model.eval()
 
-        t = tqdm(loader)
+        progress = progress_bar(loader)
         arcs, rels, probs = [], [], []
-        for words, feats in t:
+        for words, feats in progress:
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0

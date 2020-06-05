@@ -72,8 +72,7 @@ class Corpus(object):
     @classmethod
     def load(cls, data, fields):
         start, sentences = 0, []
-        fields = [field if field is not None else Field(str(i))
-                  for i, field in enumerate(fields)]
+        fields = [field or Field(str(i)) for i, field in enumerate(fields)]
         if isinstance(data, str):
             with open(data, 'r') as f:
                 lines = [line.strip() for line in f
