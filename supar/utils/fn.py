@@ -179,7 +179,7 @@ def build(tree, sequence):
               if not isinstance(subtree[0], Tree)]
 
     def recover(label, children):
-        sublabels = [l for l in label.split('+') if not l.endswith('|<>')]
+        sublabels = [i for i in label.split('+') if not i.endswith('|<>')]
         if not sublabels:
             return children
         tree = Tree(sublabels[-1], children)
