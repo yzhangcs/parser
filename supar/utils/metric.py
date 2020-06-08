@@ -28,24 +28,44 @@ class AttachmentMetric(Metric):
         super(AttachmentMetric, self).__init__()
 
         self.eps = eps
+
+        self.n = 0.0
+        self.n_ucm = 0.0
+        self.n_lcm = 0.0
         self.total = 0.0
         self.correct_arcs = 0.0
         self.correct_rels = 0.0
 
     def __repr__(self):
-        return f"UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
+        s = f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
+        s += f"UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
+        return s
 
     def __call__(self, arc_preds, rel_preds, arc_golds, rel_golds, mask):
-        arc_mask = arc_preds.eq(arc_golds)[mask]
-        rel_mask = rel_preds.eq(rel_golds)[mask] & arc_mask
+        lens = mask.sum(1)
+        arc_mask = arc_preds.eq(arc_golds) & mask
+        rel_mask = rel_preds.eq(rel_golds) & arc_mask
+        arc_mask_seq, rel_mask_seq = arc_mask[mask], rel_mask[mask]
 
-        self.total += len(arc_mask)
-        self.correct_arcs += arc_mask.sum().item()
-        self.correct_rels += rel_mask.sum().item()
+        self.n += len(mask)
+        self.n_ucm += arc_mask.sum(1).eq(lens).sum().item()
+        self.n_lcm += rel_mask.sum(1).eq(lens).sum().item()
+
+        self.total += len(arc_mask_seq)
+        self.correct_arcs += arc_mask_seq.sum().item()
+        self.correct_rels += rel_mask_seq.sum().item()
 
     @property
     def score(self):
         return self.las
+
+    @property
+    def ucm(self):
+        return self.n_ucm / (self.n + self.eps)
+
+    @property
+    def lcm(self):
+        return self.n_lcm / (self.n + self.eps)
 
     @property
     def uas(self):
