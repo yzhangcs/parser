@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from .biaffine_parser import BiaffineParser
+from .crf2o_dependency import CRF2ODependencyParser
+from .crf_constituency import CRFConstituencyParser
+from .crf_dependency import CRFDependencyParser
+from .parser import BiaffineParser
 
-__all__ = ['BiaffineParser']
+__all__ = ['BiaffineParser', 'CRF2ODependencyParser',
+           'CRFConstituencyParser', 'CRFDependencyParser']

@@ -186,3 +186,29 @@ class SubwordField(Field):
                      for seq in sequences]
 
         return sequences
+
+
+class ChartField(Field):
+
+    def build(self, corpus, min_freq=1):
+        counter = Counter(label
+                          for seq in getattr(corpus, self.name)
+                          for i, j, label in self.preprocess(seq))
+
+        self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
+
+    def transform(self, sequences):
+        sequences = [self.preprocess(seq) for seq in sequences]
+        spans, labels = [], []
+
+        for sequence in sequences:
+            seq_len = sequence[0][1] + 1
+            span_chart = torch.full((seq_len, seq_len), self.pad_index).bool()
+            label_chart = torch.full((seq_len, seq_len), self.pad_index).long()
+            for i, j, label in sequence:
+                span_chart[i, j] = 1
+                label_chart[i, j] = self.vocab[label]
+            spans.append(span_chart)
+            labels.append(label_chart)
+
+        return list(zip(spans, labels))

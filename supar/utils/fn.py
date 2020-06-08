@@ -2,6 +2,8 @@
 
 import unicodedata
 
+from nltk.tree import Tree
+
 
 def ispunct(token):
     return all(unicodedata.category(char).startswith('P')
@@ -28,7 +30,6 @@ def tohalfwidth(token):
 
 
 def isprojective(sequence):
-    sequence = [0] + list(sequence)
     arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
     for i, (hi, di) in enumerate(arcs):
         for hj, dj in arcs[i+1:]:
@@ -61,8 +62,33 @@ def toconll(tokens):
                           for i, (word, tag) in enumerate(tokens, 1)]) + '\n'
 
 
+def totree(tokens, root=''):
+    if isinstance(tokens[0], str):
+        tokens = [(token, '_') for token in tokens]
+    tree = ' '.join([f"({pos} {word})" for word, pos in tokens])
+    return f"({root} {tree})"
+
+
 def numericalize(sequence):
     return [int(i) for i in sequence]
+
+
+def numericalize_sibs(sequence):
+    sibs = [-1] * (len(sequence) + 1)
+    heads = [0] + [int(i) for i in sequence]
+
+    for i in range(1, len(heads)):
+        hi = heads[i]
+        for j in range(i + 1, len(heads)):
+            hj = heads[j]
+            di, dj = hi - i, hj - j
+            if hi >= 0 and hj >= 0 and hi == hj and di * dj > 0:
+                if abs(di) > abs(dj):
+                    sibs[i] = j
+                else:
+                    sibs[j] = i
+                break
+    return sibs[1:]
 
 
 def stripe(x, n, w, offset=(0, 0), dim=1):
@@ -109,3 +135,65 @@ def pad(tensors, padding_value=0, total_length=None):
     for i, tensor in enumerate(tensors):
         out_tensor[i][[slice(0, i) for i in tensor.size()]] = tensor
     return out_tensor
+
+
+def binarize(tree):
+    tree = tree.copy(True)
+    nodes = [tree]
+    while nodes:
+        node = nodes.pop()
+        if isinstance(node, Tree):
+            nodes.extend([child for child in node])
+            if len(node) > 1:
+                for i, child in enumerate(node):
+                    if not isinstance(child[0], Tree):
+                        node[i] = Tree(f"{node.label()}|<>", [child])
+    tree.chomsky_normal_form('left', 0, 0)
+    tree.collapse_unary()
+
+    return tree
+
+
+def factorize(tree, delete_labels=None, equal_labels=None):
+    def track(tree, i):
+        label = tree.label()
+        if delete_labels is not None and label in delete_labels:
+            label = None
+        if equal_labels is not None:
+            label = equal_labels.get(label, label)
+        if len(tree) == 1 and not isinstance(tree[0], Tree):
+            return (i+1 if label is not None else i), []
+        j, spans = i, []
+        for child in tree:
+            j, s = track(child, j)
+            spans += s
+        if label is not None and j > i:
+            spans = [(i, j, label)] + spans
+        return j, spans
+    return track(tree, 0)[1]
+
+
+def build(tree, sequence):
+    label = tree.label()
+    leaves = [subtree for subtree in tree.subtrees()
+              if not isinstance(subtree[0], Tree)]
+
+    def recover(label, children):
+        sublabels = [l for l in label.split('+') if not l.endswith('|<>')]
+        if not sublabels:
+            return children
+        tree = Tree(sublabels[-1], children)
+        for sublabel in reversed(sublabels[:-1]):
+            tree = Tree(sublabel, [tree])
+        return [tree]
+
+    def track(node):
+        i, j, label = next(node)
+        if j == i+1:
+            return recover(label, [leaves[i]])
+        else:
+            return recover(label, track(node) + track(node))
+
+    tree = Tree(label, track(iter(sequence)))
+
+    return tree

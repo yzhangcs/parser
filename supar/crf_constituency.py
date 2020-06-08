@@ -7,35 +7,33 @@ from datetime import datetime, timedelta
 import torch
 import torch.nn as nn
 from supar.config import Config
-from supar.model import Model
+from supar.models import CRFConstituencyModel
 from supar.utils import Embedding
-from supar.utils.common import bos, pad, unk
-from supar.utils.corpus import CoNLL, Corpus
+from supar.utils.common import bos, eos, pad, unk
+from supar.utils.corpus import Treebank, TreebankCorpus
 from supar.utils.data import TextDataset, batchify
-from supar.utils.field import Field, SubwordField
-from supar.utils.fn import ispunct, numericalize
+from supar.utils.field import ChartField, Field, RawField, SubwordField
+from supar.utils.fn import build, factorize
 from supar.utils.logging import init_logger, logger, progress_bar
-from supar.utils.metric import AttachmentMetric
+from supar.utils.metric import BracketMetric
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 
-class BiaffineParser(object):
+class CRFConstituencyParser(object):
 
     def __init__(self, args, model, fields):
-        super(BiaffineParser, self).__init__()
+        super(CRFConstituencyParser, self).__init__()
 
         self.args = args
         self.model = model
         self.fields = fields
+        self.TREE = self.fields.TREE
         if args.feat in ('char', 'bert'):
-            self.WORD, self.FEAT = self.fields.FORM
+            self.WORD, self.FEAT = self.fields.WORD
         else:
-            self.WORD, self.FEAT = self.fields.FORM, self.fields.CPOS
-        self.ARC, self.REL = self.fields.HEAD, self.fields.DEPREL
-        self.puncts = torch.tensor([i
-                                    for s, i in self.WORD.vocab.stoi.items()
-                                    if ispunct(s)]).to(args.device)
+            self.WORD, self.FEAT = self.fields.WORD, self.fields.POS
+        self.CHART = self.fields.CHART
 
     def train(self, train, dev, test, logger=None, **kwargs):
         args = self.args.update({'train': train,
@@ -44,9 +42,9 @@ class BiaffineParser(object):
                                  **kwargs})
         logger = logger or init_logger(path=args.path)
 
-        train = Corpus.load(args.train, self.fields)
-        dev = Corpus.load(args.dev, self.fields)
-        test = Corpus.load(args.test, self.fields)
+        train = TreebankCorpus.load(args.train, self.fields, args.max_len)
+        dev = TreebankCorpus.load(args.dev, self.fields)
+        test = TreebankCorpus.load(args.test, self.fields)
         train = TextDataset(train, self.fields, args.buckets)
         dev = TextDataset(dev, self.fields, args.buckets)
         test = TextDataset(test, self.fields, args.buckets)
@@ -64,10 +62,7 @@ class BiaffineParser(object):
                     f"{len(test.loader):3} batches, "
                     f"{len(train.buckets)} buckets\n")
 
-        logger.info("Create the model")
-        self.model = Model(args).load_pretrained(self.WORD.embed)
         logger.info(f"{self.model}\n")
-        self.model = self.model.to(args.device)
         self.optimizer = Adam(self.model.parameters(),
                               args.lr,
                               (args.mu, args.nu),
@@ -76,7 +71,7 @@ class BiaffineParser(object):
                                        args.decay**(1/args.decay_steps))
 
         total_time = timedelta()
-        best_e, best_metric = 1, AttachmentMetric()
+        best_e, best_metric = 1, BracketMetric()
 
         for epoch in range(1, args.epochs + 1):
             start = datetime.now()
@@ -110,7 +105,7 @@ class BiaffineParser(object):
         logger = logger or init_logger()
 
         logger.info("Load the dataset")
-        corpus = Corpus.load(data, self.fields)
+        corpus = TreebankCorpus.load(data, self.fields)
         dataset = TextDataset(corpus, self.fields, args.buckets)
         # set the data loader
         dataset.loader = batchify(dataset, args.batch_size)
@@ -130,10 +125,10 @@ class BiaffineParser(object):
         args = self.args.update({'prob': prob, **kwargs})
         logger = logger or init_logger()
 
-        if args.prob:
-            self.fields = self.fields._replace(PHEAD=Field('probs'))
-        corpus = Corpus.load(data, self.fields)
-        dataset = TextDataset(corpus, [self.WORD, self.FEAT], args.buckets)
+        corpus = TreebankCorpus.load(data, self.fields)
+        dataset = TextDataset(corpus,
+                              [self.TREE, self.WORD, self.FEAT],
+                              args.buckets)
         # set the data loader
         dataset.loader = batchify(dataset, args.batch_size)
         logger.info(f"Load the dataset: "
@@ -163,87 +158,89 @@ class BiaffineParser(object):
         self.model.train()
 
         progress = progress_bar(loader)
-        metric = AttachmentMetric()
 
-        for words, feats, arcs, rels in progress:
+        for trees, words, feats, (spans, labels) in progress:
             self.optimizer.zero_grad()
 
-            mask = words.ne(self.WORD.pad_index)
-            # ignore the first token of each sentence
-            mask[:, 0] = 0
-            s_arc, s_rel = self.model(words, feats)
-            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
+            batch_size, seq_len = words.shape
+            lens = words.ne(self.args.pad_index).sum(1) - 1
+            mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
+            mask = mask & mask.new_ones(seq_len-1, seq_len-1).triu_(1)
+            s_span, s_label = self.model(words, feats)
+            loss, _ = self.model.loss(s_span, s_label,
+                                      spans, labels, mask)
             loss.backward()
             nn.utils.clip_grad_norm_(self.model.parameters(),
                                      self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
-            # ignore all punctuation if not specified
-            if not self.args.punct:
-                mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
-            metric(arc_preds, rel_preds, arcs, rels, mask)
             progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
-                                     f"loss: {loss:.4f} - "
-                                     f"{metric}")
+                                     f"loss: {loss:.4f}")
 
-    @torch.no_grad()
+    @ torch.no_grad()
     def _evaluate(self, loader):
         self.model.eval()
 
-        total_loss, metric = 0, AttachmentMetric()
+        total_loss, metric = 0, BracketMetric()
 
-        for words, feats, arcs, rels in loader:
-            mask = words.ne(self.WORD.pad_index)
-            # ignore the first token of each sentence
-            mask[:, 0] = 0
-            s_arc, s_rel = self.model(words, feats)
-            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
-            # ignore all punctuation if not specified
-            if not self.args.punct:
-                mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
+        for trees, words, feats, (spans, labels) in loader:
+            batch_size, seq_len = words.shape
+            lens = words.ne(self.args.pad_index).sum(1) - 1
+            mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
+            mask = mask & mask.new_ones(seq_len-1, seq_len-1).triu_(1)
+            s_span, s_label = self.model(words, feats)
+            loss, s_span = self.model.loss(s_span, s_label,
+                                           spans, labels, mask)
+            preds = self.model.decode(s_span, s_label, mask)
+            preds = [build(tree,
+                           [(i, j, self.CHART.vocab.itos[label])
+                            for i, j, label in pred])
+                     for tree, pred in zip(trees, preds)]
             total_loss += loss.item()
-            metric(arc_preds, rel_preds, arcs, rels, mask)
+            metric([factorize(tree, self.args.delete, self.args.equal)
+                    for tree in preds],
+                   [factorize(tree, self.args.delete, self.args.equal)
+                    for tree in trees])
         total_loss /= len(loader)
 
         return total_loss, metric
 
-    @torch.no_grad()
+    @ torch.no_grad()
     def _predict(self, loader):
         self.model.eval()
 
-        progress = progress_bar(loader)
-        arcs, rels, probs = [], [], []
-        for words, feats in progress:
-            mask = words.ne(self.WORD.pad_index)
-            # ignore the first token of each sentence
-            mask[:, 0] = 0
-            lens = mask.sum(1).tolist()
-            s_arc, s_rel = self.model(words, feats)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
-            arcs.extend(arc_preds[mask].split(lens))
-            rels.extend(rel_preds[mask].split(lens))
-            if self.args.prob:
-                s_arc = s_arc.softmax(-1)
-                arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1))
-                probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
-        arcs = [seq.tolist() for seq in arcs]
-        rels = [self.REL.vocab[seq.tolist()] for seq in rels]
-        probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
+        trees, progress = [], progress_bar(loader)
 
-        return arcs, rels, probs
+        for trees, words, feats in progress:
+            batch_size, seq_len = words.shape
+            lens = words.ne(self.args.pad_index).sum(1) - 1
+            mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
+            mask = mask & mask.new_ones(seq_len-1, seq_len-1).triu_(1)
+            s_span, s_label = self.model(words, feats)
+            if self.args.mbr:
+                s_span = self.model.crf(s_span, mask, mbr=True)
+            preds = self.model.decode(s_span, s_label, mask)
+            preds = [build(tree,
+                           [(i, j, self.CHART.vocab.itos[label])
+                            for i, j, label in pred])
+                     for tree, pred in zip(trees, preds)]
+            trees.extend(preds)
 
-    @classmethod
+        return trees
+
+    @ classmethod
     def build(cls, path, **kwargs):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         args = Config().update({'path': path, **kwargs})
         if not os.path.exists(path) or args.build:
             logger.info("Build the fields")
-            WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
+            TREE = RawField('trees')
+            WORD = Field('words', pad=pad, unk=unk,
+                         bos=bos, eos=eos, lower=True)
             if args.feat == 'char':
-                FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
+                FEAT = SubwordField('chars',
+                                    pad=pad, unk=unk, bos=bos, eos=eos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
                 from transformers import BertTokenizer
@@ -252,38 +249,44 @@ class BiaffineParser(object):
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
                                     bos=tokenizer.cls_token,
+                                    eos=tokenizer.sep_token,
+                                    fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
                 FEAT.vocab = tokenizer.vocab
             else:
-                FEAT = Field('tags', bos=bos)
-            ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)
-            REL = Field('rels', bos=bos)
+                FEAT = Field('tags', bos=bos, eos=eos)
+            CHART = ChartField('charts')
             if args.feat in ('char', 'bert'):
-                fields = CoNLL(FORM=(WORD, FEAT), HEAD=ARC, DEPREL=REL)
+                fields = Treebank(TREE=TREE, WORD=(WORD, FEAT), CHART=CHART)
             else:
-                fields = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=ARC, DEPREL=REL)
+                fields = Treebank(TREE=TREE, WORD=WORD, POS=FEAT, CHART=CHART)
 
-            train = Corpus.load(args.train, fields)
+            train = TreebankCorpus.load(args.train, fields)
             if args.embed:
                 embed = Embedding.load(args.embed, args.unk)
             else:
                 embed = None
             WORD.build(train, args.min_freq, embed)
             FEAT.build(train)
-            REL.build(train)
+            CHART.build(train)
             args.update({
                 'n_words': WORD.vocab.n_init,
                 'n_feats': len(FEAT.vocab),
-                'n_rels': len(REL.vocab),
+                'n_labels': len(CHART.vocab),
                 'pad_index': WORD.pad_index,
                 'unk_index': WORD.unk_index,
                 'bos_index': WORD.bos_index,
+                'eos_index': WORD.eos_index,
                 'feat_pad_index': FEAT.pad_index
             })
-            model = Model(args).load_pretrained(WORD.embed).to(args.device)
+            model = CRFConstituencyModel(args)
+            model.load_pretrained(WORD.embed).to(args.device)
             return cls(args, model, fields)
-
-        return cls.load(**args)
+        else:
+            parser = cls.load(**args)
+            parser.model = CRFConstituencyModel(parser.args)
+            parser.model.load_pretrained(parser.WORD.embed).to(args.device)
+            return parser
 
     @classmethod
     def load(cls, path, **kwargs):
@@ -295,7 +298,8 @@ class BiaffineParser(object):
         args = state['args']
         args.update({'path': path, **kwargs})
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = Model(state['args']).load_pretrained(state['pretrained'])
+        model = CRFConstituencyModel(state['args'])
+        model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
         fields = state['fields']
@@ -328,10 +332,8 @@ def run():
                              help='batch size')
     base_parser.add_argument('--buckets', default=32, type=int,
                              help='max num of buckets to use')
-    base_parser.add_argument('--tree', action='store_true',
-                             help='whether to ensure well-formedness')
-    base_parser.add_argument('--proj', action='store_true',
-                             help='whether to projectivise the data')
+    base_parser.add_argument('--mbr', action='store_true',
+                             help='whether to use mbr decoding')
 
     parser = argparse.ArgumentParser(
         description='Create the Biaffine Parser model.'
@@ -347,13 +349,13 @@ def run():
                            help='choices of additional features')
     subparser.add_argument('--build', '-b', action='store_true',
                            help='whether to build the model first')
-    subparser.add_argument('--punct', action='store_true',
-                           help='whether to include punctuation')
-    subparser.add_argument('--train', default='data/ptb/train.conllx',
+    subparser.add_argument('--max-len', default=None, type=int,
+                           help='max length of the sentences')
+    subparser.add_argument('--train', default='data/ptb/train.pid',
                            help='path to train file')
-    subparser.add_argument('--dev', default='data/ptb/dev.conllx',
+    subparser.add_argument('--dev', default='data/ptb/dev.pid',
                            help='path to dev file')
-    subparser.add_argument('--test', default='data/ptb/test.conllx',
+    subparser.add_argument('--test', default='data/ptb/test.pid',
                            help='path to test file')
     subparser.add_argument('--embed', default='data/glove.6B.100d.txt',
                            help='path to pretrained embeddings')
@@ -367,9 +369,7 @@ def run():
         help='Evaluate the specified model and dataset.',
         parents=[base_parser]
     )
-    subparser.add_argument('--punct', action='store_true',
-                           help='whether to include punctuation')
-    subparser.add_argument('--data', default='data/ptb/test.conllx',
+    subparser.add_argument('--data', default='data/ptb/test.pid',
                            help='path to dataset')
     # predict
     subparser = subparsers.add_parser(
@@ -379,12 +379,13 @@ def run():
     )
     subparser.add_argument('--prob', action='store_true',
                            help='whether to output probs')
-    subparser.add_argument('--data', default='data/ptb/test.conllx',
+    subparser.add_argument('--data', default='data/ptb/test.pid',
                            help='path to dataset')
-    subparser.add_argument('--pred', default='pred.conllx',
+    subparser.add_argument('--pred', default='pred.pid',
                            help='path to predicted result')
     args = parser.parse_args()
 
+    logger = init_logger(path=args.path)
     logger.info(f"Set the max num of threads to {args.threads}")
     logger.info(f"Set the seed for generating random numbers to {args.seed}")
     logger.info(f"Set the device with ID {args.device} visible")
@@ -396,11 +397,11 @@ def run():
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
-        parser = BiaffineParser.build(**args)
-        parser.train(**args)
+        parser = CRFConstituencyParser.build(**args)
+        parser.train(**args, logger=logger)
     elif args.mode == 'evaluate':
-        parser = BiaffineParser.load(args.path)
+        parser = CRFConstituencyParser.load(args.path)
         parser.evaluate(**args)
     elif args.mode == 'predict':
-        parser = BiaffineParser.load(args.path)
+        parser = CRFConstituencyParser.load(args.path)
         parser.evaluate(**args)

@@ -145,3 +145,41 @@ def eisner(scores, mask):
         preds.append(heads.to(mask.device))
 
     return pad(preds, total_length=seq_len).to(mask.device)
+
+
+def cky(scores, mask):
+    lens = mask[:, 0].sum(-1)
+    scores = scores.permute(1, 2, 0)
+    seq_len, seq_len, batch_size = scores.shape
+    s = scores.new_zeros(seq_len, seq_len, batch_size)
+    p = scores.new_zeros(seq_len, seq_len, batch_size).long()
+
+    for w in range(1, seq_len):
+        n = seq_len - w
+        starts = p.new_tensor(range(n)).unsqueeze(0)
+
+        if w == 1:
+            s.diagonal(w).copy_(scores.diagonal(w))
+            continue
+        # [n, w, batch_size]
+        s_span = stripe(s, n, w-1, (0, 1)) + stripe(s, n, w-1, (1, w), 0)
+        # [batch_size, n, w]
+        s_span = s_span.permute(2, 0, 1)
+        # [batch_size, n]
+        s_span, p_span = s_span.max(-1)
+        s.diagonal(w).copy_(s_span + scores.diagonal(w))
+        p.diagonal(w).copy_(p_span + starts + 1)
+
+    def backtrack(p, i, j):
+        if j == i + 1:
+            return [(i, j)]
+        split = p[i][j]
+        ltree = backtrack(p, i, split)
+        rtree = backtrack(p, split, j)
+        return [(i, j)] + ltree + rtree
+
+    p = p.permute(2, 0, 1).tolist()
+    trees = [backtrack(p[i], 0, length)
+             for i, length in enumerate(lens.tolist())]
+
+    return trees
