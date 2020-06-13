@@ -6,7 +6,7 @@ from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
                            Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
-from supar.utils.alg import eisner
+from supar.utils.alg import eisner, mst
 from supar.utils.fn import istree
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -132,7 +132,8 @@ class BiaffineParserModel(nn.Module):
         bad = [not istree(seq[:i+1], self.args.proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if self.args.tree and any(bad):
-            arc_preds[bad] = eisner(s_arc[bad], mask[bad])
+            alg = mst if self.args.proj else eisner
+            arc_preds[bad] = alg(s_arc[bad], mask[bad])
         rel_preds = s_rel.argmax(-1)
         rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
