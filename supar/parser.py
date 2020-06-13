@@ -244,15 +244,23 @@ class BiaffineParser(object):
                 FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
-                from transformers import BertTokenizer
-                tokenizer = BertTokenizer.from_pretrained(args.bert_model)
+                if args.bert_model.startswith('bert'):
+                    from transformers import BertTokenizer
+                    tokenizer = BertTokenizer.from_pretrained(args.bert_model)
+                else:           # BERT models from other authors on https://huggingface.co/models
+                    from transformers import AutoTokenizer
+                    tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
                                     bos=tokenizer.cls_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
-                FEAT.vocab = tokenizer.vocab
+                if hasattr(tokenizer, 'vocab'):
+                    FEAT.vocab = tokenizer.vocab
+                else:
+                    FEAT.vocab = {tokenizer._convert_id_to_token(i): i for i in range(len(tokenizer))}
+                args.feat_pad_index = FEAT.pad_index # so that it is saved correctly. Attardi
             else:
                 FEAT = Field('tags', bos=bos)
             ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)
