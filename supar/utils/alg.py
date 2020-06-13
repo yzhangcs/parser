@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from supar.utils.fn import istree
 import torch
 from supar.utils.fn import pad, stripe
 
@@ -280,7 +279,6 @@ def mst(scores, mask, multiroot=False):
                 s_tree = s[1:].gather(1, t[1:].unsqueeze(-1)).sum()
                 if s_tree > s_best:
                     s_best, tree = s_tree, t
-        assert istree(tree.tolist())
         preds.append(tree)
 
     return pad(preds, total_length=seq_len).to(mask.device)
