@@ -14,7 +14,7 @@ exp
 results
 
 # ignore log files
-log*
+*.log
 
 # ignore pycache
 __pycache__

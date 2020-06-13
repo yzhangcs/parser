@@ -108,11 +108,9 @@ class CRF2oDependency(nn.Module):
         # in order for the computation of marginal probs
         s_i, s_s, s_c = self.inside((s.requires_grad_() for s in scores), mask)
         logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
-
-        # marginal probs are used for decoding, and can be computed by
-        # combining the inside algorithm and autograd mechanism
         # marginal probs are used for decoding, and can be computed by
         # combining the inside pass and autograd mechanism
+        probs = s_arc
         if mbr:
             probs, = autograd.grad(logZ, s_arc, retain_graph=training)
 
@@ -162,7 +160,7 @@ class CRF2oDependency(nn.Module):
             # n denotes the number of spans to iterate,
             # from span (0, w) to span (n, n+w) given width w
             n = seq_len - w
-            # I(j->i) = logsum(exp(I(j->r) + S(j->r, i)), i < r < j +
+            # I(j->i) = logsum(exp(I(j->r) + S(j->r, i)) +, i < r < j
             #                  exp(C(j->j) + C(i->j-1)))
             #         + s(j->i)
             # [n, w, batch_size]
@@ -177,7 +175,7 @@ class CRF2oDependency(nn.Module):
                 il.register_hook(lambda x: x.masked_fill_(torch.isnan(x), 0))
             il = il.permute(2, 0, 1).logsumexp(-1)
             s_i.diagonal(-w).copy_(il + s_arc.diagonal(-w))
-            # I(i->j) = logsum(exp(I(i->r) + S(i->r, j)), i < r < j +
+            # I(i->j) = logsum(exp(I(i->r) + S(i->r, j)) +, i < r < j
             #                  exp(C(i->i) + C(j->i+1)))
             #         + s(i->j)
             # [n, w, batch_size]
@@ -232,8 +230,7 @@ class CRFConstituency(nn.Module):
         s = self.inside(scores.requires_grad_(), mask)
         logZ = s[0].gather(0, lens.unsqueeze(0)).sum()
         # marginal probs are used for decoding, and can be computed by
-        # combining the inside algorithm and autograd mechanism
-        # instead of the entire inside-outside process
+        # combining the inside pass and autograd mechanism
         probs = scores
         if mbr:
             probs, = autograd.grad(logZ, scores, retain_graph=training)
