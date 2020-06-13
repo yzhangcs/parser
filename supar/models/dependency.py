@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from supar.modules import (MLP, AutoEmbedding, BertEmbedding, Biaffine, BiLSTM,
-                           CharLSTM, Triaffine)
+                           CharLSTM, MatrixTreeTheorem, Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
 from supar.utils.alg import eisner, mst
@@ -149,6 +149,26 @@ class BiaffineParserModel(nn.Module):
         rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds
+
+
+class MSTDependencyModel(BiaffineParserModel):
+
+    def __init__(self, args):
+        super(MSTDependencyModel, self).__init__(args)
+
+        self.matrix_tree = MatrixTreeTheorem()
+
+    def loss(self, s_arc, s_rel, arcs, rels, mask):
+        batch_size, seq_len = mask.shape
+        arc_loss, arc_probs = self.matrix_tree(s_arc, mask, arcs)
+        # -1 denotes un-annotated arcs
+        if self.args.partial:
+            mask = mask & arcs.ge(0)
+        s_rel, rels = s_rel[mask], rels[mask]
+        s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
+        rel_loss = self.criterion(s_rel, rels)
+        loss = arc_loss + rel_loss
+        return loss, arc_probs
 
 
 class CRFDependencyModel(BiaffineParserModel):

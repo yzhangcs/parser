@@ -2,11 +2,12 @@
 
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
 from supar.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRFConstituency
 from supar.utils.alg import cky
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 # -*- coding: utf-8 -*-
 

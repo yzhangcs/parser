@@ -2,7 +2,10 @@
 
 from .constituency import CRFConstituencyModel
 from .dependency import (BiaffineParserModel, CRF2oDependencyModel,
-                         CRFDependencyModel)
+                         CRFDependencyModel, MSTDependencyModel)
 
-__all__ = ['CRF2oDependencyModel', 'CRFConstituencyModel',
-           'CRFDependencyModel', 'BiaffineParserModel']
+__all__ = ['BiaffineParserModel',
+           'CRF2oDependencyModel',
+           'CRFConstituencyModel',
+           'CRFDependencyModel',
+           'MSTDependencyModel']

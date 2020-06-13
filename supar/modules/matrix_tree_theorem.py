@@ -12,6 +12,7 @@ class MatrixTreeTheorem(nn.Module):
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None):
+        total = mask.sum()
         scores = scores.double()
         mask = mask.index_fill(1, mask.new_tensor(0).long(), 1)
         A = scores.requires_grad_().exp()
@@ -34,5 +35,5 @@ class MatrixTreeTheorem(nn.Module):
             return probs
 
         score = scores.gather(-1, target.unsqueeze(-1)).squeeze(-1)[mask].sum()
-        loss = (logZ - score).float()
+        loss = (logZ - score).float() / total
         return loss, probs
