@@ -101,15 +101,15 @@ If some fields are missing, you can use underscores as placeholders.
 Below are some examples:
 
 ```sh
-$ python run.py train -p -d=0 -f=exp/ptb.char --feat=char  \
-      --ftrain=data/ptb/train.conllx  \
-      --fdev=data/ptb/dev.conllx  \
-      --ftest=data/ptb/test.conllx  \
-      --fembed=data/glove.6B.100d.txt  \
+$ python run.py train -d=0 -p=exp/ptb.char --feat=char  \
+      --train=data/ptb/train.conllx  \
+      --dev=data/ptb/dev.conllx  \
+      --test=data/ptb/test.conllx  \
+      --embed=data/glove.6B.100d.txt  \
       --unk=unk
 
 $ python run.py evaluate -d=0 -f=exp/ptb.char --feat=char --tree  \
-      --fdata=data/ptb/test.conllx
+      --data=data/ptb/test.conllx
 
 $ cat data/naive.conllx 
 1       Too     _       _       _       _       _       _       _       _
@@ -121,9 +121,9 @@ $ cat data/naive.conllx
 7       naive   _       _       _       _       _       _       _       _
 8       .       _       _       _       _       _       _       _       _
 
-$ python run.py predict -d=0 -f=exp/ptb.char --feat=char --tree  \
-      --fdata=data/naive.conllx  \
-      --fpred=naive.conllx
+$ python run.py predict -d=0 -p=exp/ptb.char --feat=char --tree  \
+      --data=data/naive.conllx  \
+      --pred=naive.conllx
 
 # support for outputting the probabilities of predicted arcs, triggered by `--prob`
 $ cat naive.conllx
@@ -142,32 +142,42 @@ All the optional arguments of the subcommands are as follows:
 
 ```sh
 $ python run.py train -h
-usage: run.py train [-h] [--buckets BUCKETS] [--punct] [--ftrain FTRAIN]
-                    [--fdev FDEV] [--ftest FTEST] [--fembed FEMBED]
-                    [--unk UNK] [--conf CONF] [--file FILE] [--preprocess]
-                    [--device DEVICE] [--seed SEED] [--threads THREADS]
-                    [--tree] [--feat {tag,char,bert}]
+usage: run.py train [-h] [--path PATH] [--conf CONF] [--device DEVICE]
+                    [--seed SEED] [--threads THREADS]
+                    [--batch-size BATCH_SIZE] [--buckets BUCKETS] [--partial]
+                    [--mbr] [--tree] [--proj] [--feat {tag,char,bert}]
+                    [--build] [--punct] [--max-len MAX_LEN] [--train TRAIN]
+                    [--dev DEV] [--test TEST] [--embed EMBED] [--unk UNK]
+                    [--bert-model BERT_MODEL]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --buckets BUCKETS     max num of buckets to use
-  --punct               whether to include punctuation
-  --ftrain FTRAIN       path to train file
-  --fdev FDEV           path to dev file
-  --ftest FTEST         path to test file
-  --fembed FEMBED       path to pretrained embeddings
-  --unk UNK             unk token in pretrained embeddings
+  --path PATH, -p PATH  path to model file
   --conf CONF, -c CONF  path to config file
-  --file FILE, -f FILE  path to saved files
-  --preprocess, -p      whether to preprocess the data first
   --device DEVICE, -d DEVICE
                         ID of GPU to use
   --seed SEED, -s SEED  seed for generating random numbers
   --threads THREADS, -t THREADS
                         max num of threads
+  --batch-size BATCH_SIZE
+                        batch size
+  --buckets BUCKETS     max num of buckets to use
+  --partial             whether partial annotation is included
+  --mbr                 whether to use mbr decoding
   --tree                whether to ensure well-formedness
-  --feat {tag,char,bert}
+  --proj                whether to projectivise the data
+  --feat {tag,char,bert}, -f {tag,char,bert}
                         choices of additional features
+  --build, -b           whether to build the model first
+  --punct               whether to include punctuation
+  --max-len MAX_LEN     max length of the sentences
+  --train TRAIN         path to train file
+  --dev DEV             path to dev file
+  --test TEST           path to test file
+  --embed EMBED         path to pretrained embeddings
+  --unk UNK             unk token in pretrained embeddings
+  --bert-model BERT_MODEL
+                        which bert model to use
 
 $ python run.py evaluate -h
 usage: run.py evaluate [-h] [--batch-size BATCH_SIZE] [--buckets BUCKETS]
@@ -195,28 +205,31 @@ optional arguments:
                         choices of additional features
 
 $ python run.py predict -h
-usage: run.py predict [-h] [--batch-size BATCH_SIZE] [--fdata FDATA]
-                      [--fpred FPRED] [--conf CONF] [--file FILE]
-                      [--preprocess] [--device DEVICE] [--seed SEED]
-                      [--threads THREADS] [--tree] [--feat {tag,char,bert}]
+usage: run.py predict [-h] [--path PATH] [--conf CONF] [--device DEVICE]
+                      [--seed SEED] [--threads THREADS]
+                      [--batch-size BATCH_SIZE] [--buckets BUCKETS]
+                      [--partial] [--mbr] [--tree] [--proj] [--prob]
+                      [--data DATA] [--pred PRED]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --batch-size BATCH_SIZE
-                        batch size
-  --fdata FDATA         path to dataset
-  --fpred FPRED         path to predicted result
+  --path PATH, -p PATH  path to model file
   --conf CONF, -c CONF  path to config file
-  --file FILE, -f FILE  path to saved files
-  --preprocess, -p      whether to preprocess the data first
   --device DEVICE, -d DEVICE
                         ID of GPU to use
   --seed SEED, -s SEED  seed for generating random numbers
   --threads THREADS, -t THREADS
                         max num of threads
+  --batch-size BATCH_SIZE
+                        batch size
+  --buckets BUCKETS     max num of buckets to use
+  --partial             whether partial annotation is included
+  --mbr                 whether to use mbr decoding
   --tree                whether to ensure well-formedness
-  --feat {tag,char,bert}
-                        choices of additional features
+  --proj                whether to projectivise the data
+  --prob                whether to output probs
+  --data DATA           path to dataset
+  --pred PRED           path to predicted result
 ```
 
 ## Hyperparameters

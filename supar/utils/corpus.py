@@ -10,18 +10,32 @@ from supar.utils.fn import binarize, factorize, isprojective, toconll, totree
 CoNLL = namedtuple(typename='CoNLL',
                    field_names=['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
                                 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL'],
-                   defaults=[None]*10)
+                   )  #defaults=[None]*10)
+CoNLL.__new__.__defaults__ = (None,) * 10
 
 
 Treebank = namedtuple(typename='Treebank',
                       field_names=['TREE', 'WORD', 'POS', 'CHART'],
-                      defaults=[None]*4)
+                      )  # defaults=[None]*4)
+Treebank.__new__.__defaults__ = (None,) * 4
 
 
 class CoNLLSentence(object):
 
-    def __init__(self, fields, values):
-        for field, value in zip(fields, values):
+    def __init__(self, fields, lines):
+        self.annotations = dict()
+        values = []
+        for i, line in enumerate(lines):
+            if line.startswith('#'):
+                self.annotations[-i-1] = line
+            else:
+                value = line.split('\t')
+                if value[0].isdigit():
+                    values.append(value)
+                    self.annotations[int(value[0])] = '' # placeholder
+                else:
+                    self.annotations[-i] = line
+        for field, value in zip(fields, list(zip(*values))):
             if isinstance(field, Iterable):
                 for j in range(len(field)):
                     setattr(self, field[j].name, value)
@@ -41,9 +55,10 @@ class CoNLLSentence(object):
         return len(next(iter(self.values)))
 
     def __repr__(self):
-        return '\n'.join('\t'.join(map(str, line))
-                         for line in zip(*self.values)) + '\n'
-
+        merged = {**self.annotations,
+                  **{i+1: '\t'.join(map(str, line))
+                     for i, line in enumerate(zip(*self.values))} }
+        return '\n'.join(merged.values()) + '\n'
 
 class TreebankSentence(object):
 
@@ -114,16 +129,13 @@ class CoNLLCorpus(Corpus):
         fields = [field or Field(str(i)) for i, field in enumerate(fields)]
         if isinstance(data, str):
             with open(data, 'r') as f:
-                lines = [line.strip() for line in f
-                         if not line.startswith('#')
-                         and (len(line) == 1 or line.split()[0].isdigit())]
+                lines = [line.strip() for line in f]
         else:
             data = [data] if isinstance(data[0], str) else data
             lines = '\n'.join([toconll(i) for i in data]).split('\n')
         for i, line in enumerate(lines):
             if not line:
-                values = list(zip(*[j.split('\t') for j in lines[start:i]]))
-                sentences.append(CoNLLSentence(fields, values))
+                sentences.append(CoNLLSentence(fields, lines[start:i]))
                 start = i + 1
         if proj:
             sentences = [sentence for sentence in sentences
