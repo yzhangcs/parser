@@ -320,4 +320,4 @@ def run():
         parser.evaluate(**args)
     elif args.mode == 'predict':
         parser = CRF2oDependencyParser.load(args.path)
-        parser.evaluate(**args)
+        parser.predict(**args)

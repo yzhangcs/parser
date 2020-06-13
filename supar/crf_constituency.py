@@ -404,4 +404,4 @@ def run():
         parser.evaluate(**args)
     elif args.mode == 'predict':
         parser = CRFConstituencyParser.load(args.path)
-        parser.evaluate(**args)
+        parser.predict(**args)

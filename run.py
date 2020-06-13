@@ -10,4 +10,4 @@ MODELS = {
 }
 
 if __name__ == '__main__':
-    crf2o_dependency.run()
+    parser.run()
