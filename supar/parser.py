@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.nn as nn
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
+
 from supar.config import Config
 from supar.models import BiaffineParserModel
 from supar.utils import Embedding
@@ -16,8 +19,6 @@ from supar.utils.field import Field, SubwordField
 from supar.utils.fn import ispunct, numericalize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
 
 
 class BiaffineParser(object):
@@ -247,7 +248,7 @@ class BiaffineParser(object):
                 if args.bert_model.startswith('bert'):
                     from transformers import BertTokenizer
                     tokenizer = BertTokenizer.from_pretrained(args.bert_model)
-                else:           # BERT models from other authors on https://huggingface.co/models
+                else:
                     from transformers import AutoTokenizer
                     tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
                 FEAT = SubwordField('bert',
@@ -259,8 +260,10 @@ class BiaffineParser(object):
                 if hasattr(tokenizer, 'vocab'):
                     FEAT.vocab = tokenizer.vocab
                 else:
-                    FEAT.vocab = {tokenizer._convert_id_to_token(i): i for i in range(len(tokenizer))}
-                args.feat_pad_index = FEAT.pad_index # so that it is saved correctly. Attardi
+                    FEAT.vocab = {tokenizer._convert_id_to_token(
+                        i): i for i in range(len(tokenizer))}
+                # so that it is saved correctly. Attardi
+                args.feat_pad_index = FEAT.pad_index
             else:
                 FEAT = Field('tags', bos=bos)
             ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)

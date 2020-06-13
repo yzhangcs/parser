@@ -10,7 +10,7 @@ from supar.utils.fn import binarize, factorize, isprojective, toconll, totree
 CoNLL = namedtuple(typename='CoNLL',
                    field_names=['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
                                 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL'],
-                   )  #defaults=[None]*10)
+                   )  # defaults=[None]*10)
 CoNLL.__new__.__defaults__ = (None,) * 10
 
 
@@ -32,7 +32,7 @@ class CoNLLSentence(object):
                 value = line.split('\t')
                 if value[0].isdigit():
                     values.append(value)
-                    self.annotations[int(value[0])] = '' # placeholder
+                    self.annotations[int(value[0])] = ''  # placeholder
                 else:
                     self.annotations[-i] = line
         for field, value in zip(fields, list(zip(*values))):
@@ -57,8 +57,9 @@ class CoNLLSentence(object):
     def __repr__(self):
         merged = {**self.annotations,
                   **{i+1: '\t'.join(map(str, line))
-                     for i, line in enumerate(zip(*self.values))} }
+                     for i, line in enumerate(zip(*self.values))}}
         return '\n'.join(merged.values()) + '\n'
+
 
 class TreebankSentence(object):
 

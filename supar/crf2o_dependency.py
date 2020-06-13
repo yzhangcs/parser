@@ -151,7 +151,7 @@ class CRF2oDependencyParser(BiaffineParser):
                 if args.bert_model.startswith('bert'):
                     from transformers import BertTokenizer
                     tokenizer = BertTokenizer.from_pretrained(args.bert_model)
-                else:           # BERT models from other authors on https://huggingface.co/models
+                else:
                     from transformers import AutoTokenizer
                     tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
                 FEAT = SubwordField('bert',
@@ -163,8 +163,9 @@ class CRF2oDependencyParser(BiaffineParser):
                 if hasattr(tokenizer, 'vocab'):
                     FEAT.vocab = tokenizer.vocab
                 else:
-                    FEAT.vocab = {tokenizer._convert_id_to_token(i): i for i in range(len(tokenizer))}
-                args.feat_pad_index = FEAT.pad_index # so that it is saved correctly. Attardi
+                    FEAT.vocab = {tokenizer._convert_id_to_token(
+                        i): i for i in range(len(tokenizer))}
+                args.feat_pad_index = FEAT.pad_index
             else:
                 FEAT = Field('tags', bos=bos)
             ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)

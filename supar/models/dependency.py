@@ -2,13 +2,14 @@
 
 import torch
 import torch.nn as nn
-from supar.modules import (MLP, BertEmbedding, AutoEmbedding, Biaffine, BiLSTM, CharLSTM,
-                           Triaffine)
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
+from supar.modules import (MLP, AutoEmbedding, BertEmbedding, Biaffine, BiLSTM,
+                           CharLSTM, Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
 from supar.utils.alg import eisner, mst
 from supar.utils.fn import istree
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class BiaffineParserModel(nn.Module):
@@ -39,7 +40,7 @@ class BiaffineParserModel(nn.Module):
                                                 n_out=n_feat_embed,
                                                 pad_index=args.feat_pad_index,
                                                 dropout=args.mix_dropout)
-            n_feat_embed = self.feat_embed.n_out # taken from the model
+            n_feat_embed = self.feat_embed.n_out  # taken from the model
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
                                            embedding_dim=n_feat_embed)
