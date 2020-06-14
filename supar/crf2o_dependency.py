@@ -6,9 +6,10 @@ from datetime import datetime
 
 import torch
 import torch.nn as nn
+
+from supar.biaffine_parser import BiaffineParser
 from supar.config import Config
 from supar.models import CRF2oDependencyModel
-from supar.parser import BiaffineParser
 from supar.utils import Embedding
 from supar.utils.common import bos, pad, unk
 from supar.utils.corpus import CoNLL, CoNLLCorpus
@@ -148,16 +149,15 @@ class CRF2oDependencyParser(BiaffineParser):
                 FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
-                if args.bert_model.startswith('bert'):
-                    from transformers import BertTokenizer
-                    tokenizer = BertTokenizer.from_pretrained(args.bert_model)
-                else:
-                    from transformers import AutoTokenizer
-                    tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
+                from transformers import AutoTokenizer
+                tokenizer = AutoTokenizer.from_pretrained(args.bert)
+                if args.bert.startswith('bert'):
+                    tokenizer.bos_token = tokenizer.cls_token
+                    tokenizer.eos_token = tokenizer.sep_token
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
-                                    bos=tokenizer.cls_token,
+                                    bos=tokenizer.bos_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
                 if hasattr(tokenizer, 'vocab'):
@@ -275,7 +275,7 @@ def run():
                            help='path to pretrained embeddings')
     subparser.add_argument('--unk', default='unk',
                            help='unk token in pretrained embeddings')
-    subparser.add_argument('--bert-model', default='bert-base-cased',
+    subparser.add_argument('--bert', default='bert-base-cased',
                            help='which bert model to use')
     # evaluate
     subparser = subparsers.add_parser(

@@ -148,7 +148,7 @@ usage: run.py train [-h] [--path PATH] [--conf CONF] [--device DEVICE]
                     [--mbr] [--tree] [--proj] [--feat {tag,char,bert}]
                     [--build] [--punct] [--max-len MAX_LEN] [--train TRAIN]
                     [--dev DEV] [--test TEST] [--embed EMBED] [--unk UNK]
-                    [--bert-model BERT_MODEL]
+                    [--bert BERT_MODEL]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -176,7 +176,7 @@ optional arguments:
   --test TEST           path to test file
   --embed EMBED         path to pretrained embeddings
   --unk UNK             unk token in pretrained embeddings
-  --bert-model BERT_MODEL
+  --bert BERT_MODEL
                         which bert model to use
 
 $ python run.py evaluate -h

@@ -2,10 +2,9 @@
 
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
-from transformers import BertModel
-from transformers import AutoModel, AutoConfig
+from transformers import AutoConfig, AutoModel
 
-from .scalar_mix import ScalarMix
+from supar.modules.scalar_mix import ScalarMix
 
 
 class BertEmbedding(nn.Module):
@@ -21,15 +20,12 @@ class BertEmbedding(nn.Module):
         """
         super(BertEmbedding, self).__init__()
 
-        self.bert = BertModel.from_pretrained(model, output_hidden_states=True)
+        config = AutoConfig.from_pretrained(model, output_hidden_states=True)
+        self.bert = AutoModel.from_config(config)
         self.bert = self.bert.requires_grad_(requires_grad)
-        if n_layers == 0:
-            n_layers = self.bert.config.num_hidden_layers
         self.n_layers = n_layers
         self.hidden_size = self.bert.config.hidden_size
-        if n_out == 0:
-            n_out = self.hidden_size
-        self.n_out = n_out
+        self.n_out = n_out if n_out != 0 else self.hidden_size
         self.pad_index = pad_index
         self.requires_grad = requires_grad
 
@@ -39,8 +35,9 @@ class BertEmbedding(nn.Module):
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
-        s += f"n_layers={self.n_layers}, n_out={self.n_out}, "
-        s += f"pad_index={self.pad_index}"
+        if self.n_layers != 0:
+            s += f"n_layers={self.n_layers}, "
+        s += f"n_out={self.n_out}, pad_index={self.pad_index}"
         if self.requires_grad:
             s += f", requires_grad={self.requires_grad}"
         s += ')'
@@ -75,29 +72,3 @@ class BertEmbedding(nn.Module):
             embed = self.projection(embed)
 
         return embed
-
-
-class AutoEmbedding(BertEmbedding):
-
-    def __init__(self, model, n_layers, n_out, pad_index=0,
-                 requires_grad=False, dropout=0.0):
-        super(BertEmbedding, self).__init__()
-
-        config = AutoConfig.from_pretrained(model)
-        config.output_hidden_states = True
-        self.bert = AutoModel.from_pretrained(model, config=config)
-        self.bert.config.output_hidden_states = True
-        self.bert = self.bert.requires_grad_(requires_grad)
-        if n_layers == 0:
-            n_layers = self.bert.config.num_hidden_layers
-        self.n_layers = n_layers
-        self.hidden_size = self.bert.config.hidden_size
-        if n_out == 0:
-            n_out = self.hidden_size
-        self.n_out = n_out
-        self.pad_index = pad_index
-        self.requires_grad = requires_grad
-
-        self.scalar_mix = ScalarMix(n_layers, dropout)
-        if self.hidden_size != n_out:
-            self.projection = nn.Linear(self.hidden_size, n_out, False)

@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.nn as nn
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
+
 from supar.config import Config
 from supar.models import CRFConstituencyModel
 from supar.utils import Embedding
@@ -16,8 +19,6 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import build, factorize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import BracketMetric
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
 
 
 class CRFConstituencyParser(object):
@@ -97,7 +98,8 @@ class CRFConstituencyParser(object):
         loss, metric = self.load(args.path)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:':6} - {best_metric}\n{'test:':6} - {metric}")
+        logger.info(f"{'dev:': 6} - {best_metric}")
+        logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{total_time}s elapsed, {total_time / epoch}s/epoch")
 
     def evaluate(self, data, logger=None, **kwargs):
@@ -244,7 +246,7 @@ class CRFConstituencyParser(object):
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
                 from transformers import BertTokenizer
-                tokenizer = BertTokenizer.from_pretrained(args.bert_model)
+                tokenizer = BertTokenizer.from_pretrained(args.bert)
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
@@ -361,7 +363,7 @@ def run():
                            help='path to pretrained embeddings')
     subparser.add_argument('--unk', default='unk',
                            help='unk token in pretrained embeddings')
-    subparser.add_argument('--bert-model', default='bert-base-cased',
+    subparser.add_argument('--bert', default='bert-base-cased',
                            help='which bert model to use')
     # evaluate
     subparser = subparsers.add_parser(

@@ -7,9 +7,9 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 
+from supar.biaffine_parser import BiaffineParser
 from supar.config import Config
 from supar.models import MSTDependencyModel
-from supar.parser import BiaffineParser
 from supar.utils import Embedding
 from supar.utils.common import bos, pad, unk
 from supar.utils.corpus import CoNLL, CoNLLCorpus
@@ -146,7 +146,7 @@ class MSTDependencyParser(BiaffineParser):
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
                 from transformers import BertTokenizer
-                tokenizer = BertTokenizer.from_pretrained(args.bert_model)
+                tokenizer = BertTokenizer.from_pretrained(args.bert)
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
@@ -260,7 +260,7 @@ def run():
                            help='path to pretrained embeddings')
     subparser.add_argument('--unk', default='unk',
                            help='unk token in pretrained embeddings')
-    subparser.add_argument('--bert-model', default='bert-base-cased',
+    subparser.add_argument('--bert', default='bert-base-cased',
                            help='which bert model to use')
     # evaluate
     subparser = subparsers.add_parser(

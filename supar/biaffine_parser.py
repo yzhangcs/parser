@@ -101,7 +101,8 @@ class BiaffineParser(object):
         loss, metric = self.load(args.path)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:':6} - {best_metric}\n{'test:':6} - {metric}")
+        logger.info(f"{'dev:': 6} - {best_metric}")
+        logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{total_time}s elapsed, {total_time / epoch}s/epoch")
 
     def evaluate(self, data, logger=None, **kwargs):
@@ -245,16 +246,15 @@ class BiaffineParser(object):
                 FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
-                if args.bert_model.startswith('bert'):
-                    from transformers import BertTokenizer
-                    tokenizer = BertTokenizer.from_pretrained(args.bert_model)
-                else:
-                    from transformers import AutoTokenizer
-                    tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
+                from transformers import AutoTokenizer
+                tokenizer = AutoTokenizer.from_pretrained(args.bert)
+                if args.bert.startswith('bert'):
+                    tokenizer.bos_token = tokenizer.cls_token
+                    tokenizer.eos_token = tokenizer.sep_token
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
-                                    bos=tokenizer.cls_token,
+                                    bos=tokenizer.bos_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
                 if hasattr(tokenizer, 'vocab'):
@@ -299,7 +299,7 @@ class BiaffineParser(object):
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
-    @classmethod
+    @ classmethod
     def load(cls, path, **kwargs):
         if os.path.exists(path):
             state = torch.load(path, map_location='cpu')
@@ -376,7 +376,7 @@ def run():
                            help='path to pretrained embeddings')
     subparser.add_argument('--unk', default='unk',
                            help='unk token in pretrained embeddings')
-    subparser.add_argument('--bert-model', default='bert-base-cased',
+    subparser.add_argument('--bert', default='bert-base-cased',
                            help='which bert model to use')
     # evaluate
     subparser = subparsers.add_parser(

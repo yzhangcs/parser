@@ -2,17 +2,13 @@
 
 from setuptools import find_packages, setup
 
-with open("README.md", "r") as f:
-    long_description = f.read()
-
-
 setup(
     name="supar",
     version="0.1.0",
     author="Yu Zhang",
     author_email="yzhang.cs@outlook.com",
     description="Syntactic Parsing Models",
-    long_description=long_description,
+    long_description=open("README.md", "r").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/yzhangcs/parser",
     packages=find_packages(),
@@ -28,10 +24,5 @@ setup(
     ],
     install_requires=["torch", "transformers"],
     python_requires='>=3.7',
-    entry_points={
-        "console_scripts": [
-            "biaffine-parser = supar.biaffine_parser:run",
-        ]
-    },
     zip_safe=False
 )
