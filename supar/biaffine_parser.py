@@ -19,9 +19,11 @@ from supar.utils.field import Field, SubwordField
 from supar.utils.fn import ispunct, numericalize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
+from supar.utils.vocab import FieldVocab
 
 
 class BiaffineParser(object):
+
 
     def __init__(self, args, model, fields):
         super(BiaffineParser, self).__init__()
@@ -167,7 +169,6 @@ class BiaffineParser(object):
 
         for words, feats, arcs, rels in progress:
             self.optimizer.zero_grad()
-
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -248,20 +249,19 @@ class BiaffineParser(object):
             elif args.feat == 'bert':
                 from transformers import AutoTokenizer
                 tokenizer = AutoTokenizer.from_pretrained(args.bert)
-                if args.bert.startswith('bert'):
-                    tokenizer.bos_token = tokenizer.cls_token
-                    tokenizer.eos_token = tokenizer.sep_token
+                bos_token = tokenizer.bos_token or tokenizer.cls_token
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
-                                    bos=tokenizer.bos_token,
+                                    bos=bos_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
                 if hasattr(tokenizer, 'vocab'):
                     FEAT.vocab = tokenizer.vocab
                 else:
-                    FEAT.vocab = {tokenizer._convert_id_to_token(
-                        i): i for i in range(len(tokenizer))}
+                    FEAT.vocab = FieldVocab(tokenizer.unk_token_id,
+                                            {tokenizer._convert_id_to_token(i): i
+                                             for i in range(len(tokenizer))})
                 # so that it is saved correctly. Attardi
                 args.feat_pad_index = FEAT.pad_index
             else:

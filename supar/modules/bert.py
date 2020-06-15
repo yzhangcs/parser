@@ -21,17 +21,18 @@ class BertEmbedding(nn.Module):
         super(BertEmbedding, self).__init__()
 
         config = AutoConfig.from_pretrained(model, output_hidden_states=True)
+        config.output_hidden_states = True # as optiional arg it is sometimes ignored
         self.bert = AutoModel.from_config(config)
         self.bert = self.bert.requires_grad_(requires_grad)
-        self.n_layers = n_layers
+        self.n_layers = n_layers if n_layers != 0 else self.bert.config.num_hidden_layers
         self.hidden_size = self.bert.config.hidden_size
         self.n_out = n_out if n_out != 0 else self.hidden_size
         self.pad_index = pad_index
         self.requires_grad = requires_grad
 
-        self.scalar_mix = ScalarMix(n_layers, dropout)
-        if self.hidden_size != n_out:
-            self.projection = nn.Linear(self.hidden_size, n_out, False)
+        self.scalar_mix = ScalarMix(self.n_layers, dropout)
+        if self.hidden_size != self.n_out:
+            self.projection = nn.Linear(self.hidden_size, self.n_out, False)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('

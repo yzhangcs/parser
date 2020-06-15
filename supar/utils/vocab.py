@@ -47,3 +47,14 @@ class Vocab(object):
     def extend(self, tokens):
         self.itos.extend(sorted(set(tokens).difference(self.stoi)))
         self.stoi.update({token: i for i, token in enumerate(self.itos)})
+
+
+class FieldVocab(dict):
+   """Surrogate for missing vocab in certain Transformers tokenizers."""
+   def __init__(self, unk_token_id, items):
+       super(FieldVocab, self).__init__(items)
+       self.unk_token_id = unk_token_id
+
+   def __getitem__(self, tok):
+       return super(FieldVocab, self).get(tok, self.unk_token_id)
+

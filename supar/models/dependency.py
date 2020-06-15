@@ -39,7 +39,7 @@ class BiaffineParserModel(nn.Module):
         self.embed_dropout = IndependentDropout(p=args.embed_dropout)
 
         # the lstm layer
-        self.lstm = BiLSTM(input_size=args.n_embed+args.n_feat_embed,
+        self.lstm = BiLSTM(input_size=args.n_embed+self.args.n_feat_embed,
                            hidden_size=args.n_lstm_hidden,
                            num_layers=args.n_lstm_layers,
                            dropout=args.lstm_dropout)
