@@ -101,7 +101,7 @@ class BiaffineParser(object):
         loss, metric = self.load(args.path)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:': 6} - {best_metric}")
+        logger.info(f"{'dev:':6} - {best_metric}")
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{total_time}s elapsed, {total_time / epoch}s/epoch")
 

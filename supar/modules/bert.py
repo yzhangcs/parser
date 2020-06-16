@@ -29,9 +29,9 @@ class BertEmbedding(nn.Module):
         self.pad_index = pad_index
         self.requires_grad = requires_grad
 
-        self.scalar_mix = ScalarMix(n_layers, dropout)
+        self.scalar_mix = ScalarMix(self.n_layers, dropout)
         if self.hidden_size != n_out:
-            self.projection = nn.Linear(self.hidden_size, n_out, False)
+            self.projection = nn.Linear(self.hidden_size, self.n_out, False)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
