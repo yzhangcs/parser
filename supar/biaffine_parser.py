@@ -6,9 +6,6 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.nn as nn
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
-
 from supar.config import Config
 from supar.models import BiaffineParserModel
 from supar.utils import Embedding
@@ -19,6 +16,8 @@ from supar.utils.field import Field, SubwordField
 from supar.utils.fn import ispunct, numericalize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class BiaffineParser(object):
@@ -293,7 +292,7 @@ class BiaffineParser(object):
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
-    @ classmethod
+    @classmethod
     def load(cls, path, **kwargs):
         if os.path.exists(path):
             state = torch.load(path, map_location='cpu')

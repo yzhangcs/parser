@@ -6,9 +6,6 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.nn as nn
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
-
 from supar.config import Config
 from supar.models import CRFConstituencyModel
 from supar.utils import Embedding
@@ -19,6 +16,8 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import build, factorize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import BracketMetric
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class CRFConstituencyParser(object):

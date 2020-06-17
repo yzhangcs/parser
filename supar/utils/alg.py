@@ -175,7 +175,6 @@ def tarjan(sequence):
                 onstack[cycle[-1]] = False
                 cycle.append(stack.pop())
             onstack[i] = False
-
             # ignore the self-loop
             if len(cycle) > 1:
                 yield cycle

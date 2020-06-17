@@ -2,14 +2,13 @@
 
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-
 from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
                            MatrixTreeTheorem, Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
 from supar.utils.alg import eisner, mst
 from supar.utils.fn import istree
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class BiaffineParserModel(nn.Module):

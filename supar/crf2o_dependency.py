@@ -6,7 +6,6 @@ from datetime import datetime
 
 import torch
 import torch.nn as nn
-
 from supar.biaffine_parser import BiaffineParser
 from supar.config import Config
 from supar.models import CRF2oDependencyModel
