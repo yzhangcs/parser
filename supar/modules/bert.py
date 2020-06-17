@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import torch.nn as nn
+from supar.modules.scalar_mix import ScalarMix
 from torch.nn.utils.rnn import pad_sequence
 from transformers import AutoConfig, AutoModel
-
-from supar.modules.scalar_mix import ScalarMix
 
 
 class BertEmbedding(nn.Module):
 
-    def __init__(self, model, n_layers, n_out, pad_index=0,
-                 requires_grad=False, dropout=0.0):
+    def __init__(self, model, n_layers, n_out, pad_index=0, dropout=0,
+                 requires_grad=False):
         """
         :param model: path or name of the pretrained model.
         :param n_layers: number of layers from the model to use.
@@ -21,7 +20,7 @@ class BertEmbedding(nn.Module):
         super(BertEmbedding, self).__init__()
 
         config = AutoConfig.from_pretrained(model, output_hidden_states=True)
-        self.bert = AutoModel.from_config(config)
+        self.bert = AutoModel.from_pretrained(model, config=config)
         self.bert = self.bert.requires_grad_(requires_grad)
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
         self.hidden_size = self.bert.config.hidden_size
