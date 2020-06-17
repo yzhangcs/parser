@@ -245,8 +245,11 @@ class CRFConstituencyParser(object):
                                     pad=pad, unk=unk, bos=bos, eos=eos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
-                from transformers import BertTokenizer
-                tokenizer = BertTokenizer.from_pretrained(args.bert)
+                from transformers import AutoTokenizer
+                tokenizer = AutoTokenizer.from_pretrained(args.bert)
+                if args.bert.startswith('bert'):
+                    tokenizer.bos_token = tokenizer.cls_token
+                    tokenizer.eos_token = tokenizer.sep_token
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
@@ -254,7 +257,7 @@ class CRFConstituencyParser(object):
                                     eos=tokenizer.sep_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
-                FEAT.vocab = tokenizer.vocab
+                FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos, eos=eos)
             CHART = ChartField('charts')
