@@ -6,7 +6,6 @@ from datetime import datetime
 
 import torch
 import torch.nn as nn
-
 from supar.biaffine_parser import BiaffineParser
 from supar.config import Config
 from supar.models import CRF2oDependencyModel
@@ -160,12 +159,7 @@ class CRF2oDependencyParser(BiaffineParser):
                                     bos=tokenizer.bos_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
-                if hasattr(tokenizer, 'vocab'):
-                    FEAT.vocab = tokenizer.vocab
-                else:
-                    FEAT.vocab = {tokenizer._convert_id_to_token(
-                        i): i for i in range(len(tokenizer))}
-                args.feat_pad_index = FEAT.pad_index
+                FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos)
             ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)

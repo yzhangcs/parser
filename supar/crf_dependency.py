@@ -6,7 +6,6 @@ from datetime import datetime
 
 import torch
 import torch.nn as nn
-
 from supar.biaffine_parser import BiaffineParser
 from supar.config import Config
 from supar.models import CRFDependencyModel
@@ -145,15 +144,18 @@ class CRFDependencyParser(BiaffineParser):
                 FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
-                from transformers import BertTokenizer
-                tokenizer = BertTokenizer.from_pretrained(args.bert)
+                from transformers import AutoTokenizer
+                tokenizer = AutoTokenizer.from_pretrained(args.bert)
+                if args.bert.startswith('bert'):
+                    tokenizer.bos_token = tokenizer.cls_token
+                    tokenizer.eos_token = tokenizer.sep_token
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
                                     unk=tokenizer.unk_token,
-                                    bos=tokenizer.cls_token,
+                                    bos=tokenizer.bos_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
-                FEAT.vocab = tokenizer.vocab
+                FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos)
             ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)

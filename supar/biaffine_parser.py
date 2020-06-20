@@ -6,9 +6,6 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.nn as nn
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
-
 from supar.config import Config
 from supar.models import BiaffineParserModel
 from supar.utils import Embedding
@@ -20,6 +17,8 @@ from supar.utils.fn import ispunct, numericalize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.vocab import FieldVocab
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class BiaffineParser(object):
@@ -103,7 +102,7 @@ class BiaffineParser(object):
         loss, metric = self.load(args.path)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:': 6} - {best_metric}")
+        logger.info(f"{'dev:':6} - {best_metric}")
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{total_time}s elapsed, {total_time / epoch}s/epoch")
 
@@ -256,6 +255,7 @@ class BiaffineParser(object):
                                     bos=bos_token,
                                     fix_len=args.fix_len,
                                     tokenize=tokenizer.tokenize)
+<<<<<<< HEAD
                 if hasattr(tokenizer, 'vocab'):
                     FEAT.vocab = tokenizer.vocab
                 else:
@@ -264,6 +264,7 @@ class BiaffineParser(object):
                                              for i in range(len(tokenizer))})
                 # so that it is saved correctly. Attardi
                 args.feat_pad_index = FEAT.pad_index
+                FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos)
             ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)
@@ -299,7 +300,7 @@ class BiaffineParser(object):
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
-    @ classmethod
+    @classmethod
     def load(cls, path, **kwargs):
         if os.path.exists(path):
             state = torch.load(path, map_location='cpu')

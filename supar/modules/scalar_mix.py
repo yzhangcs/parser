@@ -16,7 +16,7 @@ class ScalarMix(nn.Module):
     redistribute dropped probability mass to all other weights.
     '''
 
-    def __init__(self, n_layers: int, dropout: float = 0.0):
+    def __init__(self, n_layers, dropout=0):
         super(ScalarMix, self).__init__()
 
         self.n_layers = n_layers
