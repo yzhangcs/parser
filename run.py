@@ -1,15 +1,24 @@
 # -*- coding: utf-8 -*-
 
-from supar import (biaffine_parser, crf2o_dependency, crf_constituency,
-                   crf_dependency, mst_dependency)
+import argparse
 
-MODELS = {
-    'biaffine-parser': biaffine_parser,
-    'crf-dependency': crf_dependency,
-    'crf2o-dependency': crf2o_dependency,
-    'crf_constituncy': crf_constituency,
-    'mst_dependency': mst_dependency
-}
+from supar import Config
+from supar.parsers import (biaffine_parser, crf2o_dependency, crf_constituency,
+                           crf_dependency, mst_dependency)
+
+PARSERS = {'biaffine-parser': biaffine_parser,
+           'crf2o-dependency': crf2o_dependency,
+           'crf-constituency': crf_constituency,
+           'crf-dependency': crf_dependency,
+           'mst-dependency': mst_dependency}
 
 if __name__ == '__main__':
-    biaffine_parser.run()
+    parser = argparse.ArgumentParser(
+        description='Create syntactic parsing models.'
+    )
+    parser.add_argument('--conf', '-c', default='config.ini',
+                        help='path to config file')
+    parser.add_argument('--model', default='biaffine-parser',
+                        choices=PARSERS.keys())
+    args, _ = parser.parse_known_args()
+    PARSERS[args.model].run(Config(args.conf).update(vars(args)))

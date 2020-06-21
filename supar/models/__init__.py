@@ -4,8 +4,10 @@ from .constituency import CRFConstituencyModel
 from .dependency import (BiaffineParserModel, CRF2oDependencyModel,
                          CRFDependencyModel, MSTDependencyModel)
 
-__all__ = ['BiaffineParserModel',
-           'CRF2oDependencyModel',
-           'CRFConstituencyModel',
-           'CRFDependencyModel',
-           'MSTDependencyModel']
+MODELS = {'biaffine-parser': BiaffineParserModel,
+          'crf-dependency': CRFDependencyModel,
+          'crf2o-dependency': CRF2oDependencyModel,
+          'mst-dependency': MSTDependencyModel,
+          'crf-constituency': CRFConstituencyModel}
+
+__all__ = MODELS.keys()

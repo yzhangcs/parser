@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from .biaffine_parser import BiaffineParser
-from .crf2o_dependency import CRF2oDependencyParser
-from .crf_constituency import CRFConstituencyParser
-from .crf_dependency import CRFDependencyParser
-from .mst_dependency import MSTDependencyParser
+from .config import Config
+from .parsers import (BiaffineParser, CRF2oDependencyParser,
+                      CRFConstituencyParser, CRFDependencyParser,
+                      MSTDependencyParser)
 
-__all__ = ['BiaffineParser',
+__all__ = ['Config',
+           'BiaffineParser',
            'CRF2oDependencyParser',
            'CRFConstituencyParser',
            'CRFDependencyParser',

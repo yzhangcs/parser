@@ -3,7 +3,7 @@
 from collections import Counter
 
 import torch
-from supar.utils.fn import pad
+from supar.utils.fn import debinarize, pad
 from supar.utils.vocab import Vocab
 
 
@@ -26,6 +26,9 @@ class RawField(object):
     def transform(self, sequences):
         return [self.preprocess(seq) for seq in sequences]
 
+    def compose(self, sequences):
+        return sequences
+
 
 class Field(RawField):
 
@@ -43,6 +46,7 @@ class Field(RawField):
 
         self.specials = [token for token in [pad, unk, bos, eos]
                          if token is not None]
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def __repr__(self):
         s, params = f"({self.name}): {self.__class__.__name__}(", []
@@ -101,10 +105,10 @@ class Field(RawField):
 
         return sequence
 
-    def build(self, corpus, min_freq=1, embed=None):
+    def build(self, dataset, min_freq=1, embed=None):
         if hasattr(self, 'vocab'):
             return
-        sequences = getattr(corpus, self.name)
+        sequences = getattr(dataset, self.name)
         counter = Counter(token
                           for seq in sequences
                           for token in self.preprocess(seq))
@@ -136,6 +140,9 @@ class Field(RawField):
 
         return sequences
 
+    def compose(self, sequences):
+        return pad(sequences, self.pad_index).to(self.device)
+
 
 class SubwordField(Field):
 
@@ -143,10 +150,10 @@ class SubwordField(Field):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
         super(SubwordField, self).__init__(*args, **kwargs)
 
-    def build(self, corpus, min_freq=1, embed=None):
+    def build(self, dataset, min_freq=1, embed=None):
         if hasattr(self, 'vocab'):
             return
-        sequences = getattr(corpus, self.name)
+        sequences = getattr(dataset, self.name)
         counter = Counter(piece
                           for seq in sequences
                           for token in seq
@@ -190,16 +197,16 @@ class SubwordField(Field):
 
 class ChartField(Field):
 
-    def build(self, corpus, min_freq=1):
+    def build(self, dataset, min_freq=1):
         counter = Counter(label
-                          for seq in getattr(corpus, self.name)
+                          for seq in getattr(dataset, self.name)
                           for i, j, label in self.preprocess(seq))
 
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
     def transform(self, sequences):
         sequences = [self.preprocess(seq) for seq in sequences]
-        spans, labels = [], []
+        golds, spans, labels = [], [], []
 
         for sequence in sequences:
             seq_len = sequence[0][1] + 1
@@ -208,7 +215,14 @@ class ChartField(Field):
             for i, j, label in sequence:
                 span_chart[i, j] = 1
                 label_chart[i, j] = self.vocab[label]
+            golds.append(debinarize(sequence))
             spans.append(span_chart)
             labels.append(label_chart)
 
-        return list(zip(spans, labels))
+        return list(zip(golds, spans, labels))
+
+    def compose(self, sequences):
+        golds, spans, labels = zip(*sequences)
+        spans = pad(spans).to(self.device)
+        labels = pad(labels).to(self.device)
+        return golds, spans, labels

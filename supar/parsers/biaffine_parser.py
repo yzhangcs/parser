@@ -2,167 +2,40 @@
 
 import argparse
 import os
-from datetime import datetime, timedelta
 
 import torch
 import torch.nn as nn
-from supar.config import Config
-from supar.models import BiaffineParserModel
-from supar.utils import Embedding
+from supar import Config
+from supar.models import MODELS
+from supar.parsers.parser import Parser
+from supar.utils import Dataset, Embedding
 from supar.utils.common import bos, pad, unk
-from supar.utils.corpus import CoNLL, CoNLLCorpus
-from supar.utils.data import TextDataset, batchify
 from supar.utils.field import Field, SubwordField
-from supar.utils.fn import ispunct, numericalize
+from supar.utils.fn import ispunct
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from supar.utils.transform import CoNLL
 
 
-class BiaffineParser(object):
+class BiaffineParser(Parser):
 
-    def __init__(self, args, model, fields):
-        super(BiaffineParser, self).__init__()
+    def __init__(self, args, model, transform):
+        super(BiaffineParser, self).__init__(args, model, transform)
 
-        self.args = args
-        self.model = model
-        self.fields = fields
         if args.feat in ('char', 'bert'):
-            self.WORD, self.FEAT = self.fields.FORM
+            self.WORD, self.FEAT = self.transform.FORM
         else:
-            self.WORD, self.FEAT = self.fields.FORM, self.fields.CPOS
-        self.ARC, self.REL = self.fields.HEAD, self.fields.DEPREL
+            self.WORD, self.FEAT = self.transform.FORM, self.transform.CPOS
+        self.ARC, self.REL = self.transform.HEAD, self.transform.DEPREL
         self.puncts = torch.tensor([i
                                     for s, i in self.WORD.vocab.stoi.items()
                                     if ispunct(s)]).to(args.device)
 
-    def train(self, train, dev, test, logger=None, **kwargs):
-        args = self.args.update({'train': train,
-                                 'dev': dev,
-                                 'test': test,
-                                 **kwargs})
-        logger = logger or init_logger(path=args.path)
-
-        train = CoNLLCorpus.load(args.train, self.fields,
-                                 args.proj, args.max_len)
-        dev = CoNLLCorpus.load(args.dev, self.fields)
-        test = CoNLLCorpus.load(args.test, self.fields)
-        train = TextDataset(train, self.fields, args.buckets)
-        dev = TextDataset(dev, self.fields, args.buckets)
-        test = TextDataset(test, self.fields, args.buckets)
-        # set the data loaders
-        train.loader = batchify(train, args.batch_size, True)
-        dev.loader = batchify(dev, args.batch_size)
-        test.loader = batchify(test, args.batch_size)
-        logger.info(f"{'train:':6} {len(train):5} sentences, "
-                    f"{len(train.loader):3} batches, "
-                    f"{len(train.buckets)} buckets")
-        logger.info(f"{'dev:':6} {len(dev):5} sentences, "
-                    f"{len(dev.loader):3} batches, "
-                    f"{len(train.buckets)} buckets")
-        logger.info(f"{'test:':6} {len(test):5} sentences, "
-                    f"{len(test.loader):3} batches, "
-                    f"{len(train.buckets)} buckets\n")
-
-        logger.info(f"{self.model}\n")
-        self.optimizer = Adam(self.model.parameters(),
-                              args.lr,
-                              (args.mu, args.nu),
-                              args.epsilon)
-        self.scheduler = ExponentialLR(self.optimizer,
-                                       args.decay**(1/args.decay_steps))
-
-        total_time = timedelta()
-        best_e, best_metric = 1, AttachmentMetric()
-
-        for epoch in range(1, args.epochs + 1):
-            start = datetime.now()
-
-            logger.info(f"Epoch {epoch} / {args.epochs}:")
-            self._train(train.loader)
-            loss, dev_metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':6} - loss: {loss:.4f} - {dev_metric}")
-            loss, test_metric = self._evaluate(test.loader)
-            logger.info(f"{'test:':6} - loss: {loss:.4f} - {test_metric}")
-
-            t = datetime.now() - start
-            # save the model if it is the best so far
-            if dev_metric > best_metric:
-                best_e, best_metric = epoch, dev_metric
-                self.save(args.path)
-                logger.info(f"{t}s elapsed (saved)\n")
-            else:
-                logger.info(f"{t}s elapsed\n")
-            total_time += t
-            if epoch - best_e >= args.patience:
-                break
-        loss, metric = self.load(args.path)._evaluate(test.loader)
-
-        logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:':6} - {best_metric}")
-        logger.info(f"{'test:':6} - {metric}")
-        logger.info(f"{total_time}s elapsed, {total_time / epoch}s/epoch")
-
-    def evaluate(self, data, logger=None, **kwargs):
-        args = self.args.update(kwargs)
-        logger = logger or init_logger()
-
-        logger.info("Load the dataset")
-        corpus = CoNLLCorpus.load(data, self.fields)
-        dataset = TextDataset(corpus, self.fields, args.buckets)
-        # set the data loader
-        dataset.loader = batchify(dataset, args.batch_size)
-        logger.info(f"{len(dataset)} sentences, "
-                    f"{len(dataset.loader)} batches, "
-                    f"{len(dataset.buckets)} buckets")
-
-        logger.info("Evaluate the dataset")
-        start = datetime.now()
-        loss, metric = self._evaluate(dataset.loader)
-        total_time = datetime.now() - start
-        logger.info(f"loss: {loss:.4f} {metric}")
-        logger.info(f"{total_time}s elapsed, "
-                    f"{len(dataset)/total_time.total_seconds():.2f} Sents/s")
-
-    def predict(self, data, pred=None, prob=True, logger=None, **kwargs):
-        args = self.args.update({'prob': prob, **kwargs})
-        logger = logger or init_logger()
-
-        if args.prob:
-            self.fields = self.fields._replace(PHEAD=Field('probs'))
-        corpus = CoNLLCorpus.load(data, self.fields)
-        dataset = TextDataset(corpus, [self.WORD, self.FEAT], args.buckets)
-        # set the data loader
-        dataset.loader = batchify(dataset, args.batch_size)
-        logger.info(f"Load the dataset: "
-                    f"{len(dataset)} sentences, "
-                    f"{len(dataset.loader)} batches")
-
-        logger.info("Make predictions on the dataset")
-        start = datetime.now()
-        pred_arcs, pred_rels, pred_probs = self._predict(dataset.loader)
-        total_time = datetime.now() - start
-        # restore the order of sentences in the buckets
-        indices = torch.tensor([i
-                                for bucket in dataset.buckets.values()
-                                for i in bucket]).argsort()
-        corpus.arcs = [pred_arcs[i] for i in indices]
-        corpus.rels = [pred_rels[i] for i in indices]
-        if args.prob:
-            corpus.probs = [pred_probs[i] for i in indices]
-        if pred is not None:
-            logger.info(f"Save predicted results to {pred}")
-            corpus.save(pred)
-        logger.info(f"{total_time}s elapsed, "
-                    f"{len(dataset) / total_time.total_seconds():.2f} Sents/s")
-        return corpus
-
     def _train(self, loader):
         self.model.train()
 
-        progress = progress_bar(loader)
         metric = AttachmentMetric()
+        progress = progress_bar(loader)
 
         for words, feats, arcs, rels in progress:
             self.optimizer.zero_grad()
@@ -213,9 +86,9 @@ class BiaffineParser(object):
     def _predict(self, loader):
         self.model.eval()
 
-        progress = progress_bar(loader)
-        arcs, rels, probs = [], [], []
-        for words, feats in progress:
+        arcs, rels = [], []
+        preds, probs = {}, []
+        for words, feats in progress_bar(loader):
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -228,22 +101,25 @@ class BiaffineParser(object):
                 s_arc = s_arc.softmax(-1)
                 arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1))
                 probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
-        arcs = [seq.tolist() for seq in arcs]
-        rels = [self.REL.vocab[seq.tolist()] for seq in rels]
+        preds['arcs'] = [seq.tolist() for seq in arcs]
+        preds['rels'] = [self.REL.vocab[seq.tolist()] for seq in rels]
         probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
 
-        return arcs, rels, probs
+        return preds, probs
 
     @ classmethod
     def build(cls, path, **kwargs):
+        args = Config().update(locals())
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        args = Config().update({'path': path, **kwargs})
         if not os.path.exists(path) or args.build:
             logger.info("Build the fields")
             WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
             if args.feat == 'char':
-                FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos,
-                                    fix_len=args.fix_len, tokenize=list)
+                FEAT = SubwordField('chars',
+                                    pad=pad,
+                                    unk=unk,
+                                    bos=bos,
+                                    fix_len=args.fix_len)
             elif args.feat == 'bert':
                 from transformers import AutoTokenizer
                 tokenizer = AutoTokenizer.from_pretrained(args.bert)
@@ -259,18 +135,18 @@ class BiaffineParser(object):
                 FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos)
-            ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)
+            ARC = Field('arcs', bos=bos, use_vocab=False,
+                        fn=CoNLL.numericalize)
             REL = Field('rels', bos=bos)
             if args.feat in ('char', 'bert'):
-                fields = CoNLL(FORM=(WORD, FEAT), HEAD=ARC, DEPREL=REL)
+                transform = CoNLL(FORM=(WORD, FEAT), HEAD=ARC, DEPREL=REL)
             else:
-                fields = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=ARC, DEPREL=REL)
+                transform = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=ARC, DEPREL=REL)
 
-            train = CoNLLCorpus.load(args.train, fields)
+            train = Dataset(transform, args.train)
+            embed = None
             if args.embed:
                 embed = Embedding.load(args.embed, args.unk)
-            else:
-                embed = None
             WORD.build(train, args.min_freq, embed)
             FEAT.build(train)
             REL.build(train)
@@ -283,44 +159,17 @@ class BiaffineParser(object):
                 'bos_index': WORD.bos_index,
                 'feat_pad_index': FEAT.pad_index
             })
-            model = BiaffineParserModel(args)
+            model = MODELS[args.model](args)
             model.load_pretrained(WORD.embed).to(args.device)
-            return cls(args, model, fields)
+            return cls(args, model, transform)
         else:
             parser = cls.load(**args)
-            parser.model = BiaffineParserModel(parser.args)
+            parser.model = MODELS[args.model](parser.args)
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
-    @classmethod
-    def load(cls, path, **kwargs):
-        if os.path.exists(path):
-            state = torch.load(path, map_location='cpu')
-        else:
-            state = torch.hub.load_state_dict_from_url(path,
-                                                       map_location='cpu')
-        args = state['args']
-        args.update({'path': path, **kwargs})
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = BiaffineParserModel(state['args'])
-        model.load_pretrained(state['pretrained'])
-        model.load_state_dict(state['state_dict'], False)
-        model.to(args.device)
-        fields = state['fields']
-        return cls(args, model, fields)
 
-    def save(self, path):
-        state_dict = self.model.state_dict()
-        if hasattr(self.model, 'pretrained'):
-            state_dict.pop('pretrained.weight')
-        state = {'args': self.args,
-                 'state_dict': state_dict,
-                 'pretrained': self.WORD.embed,
-                 'fields': self.fields}
-        torch.save(state, path)
-
-
-def run():
+def run(args):
     base_parser = argparse.ArgumentParser(add_help=False)
     base_parser.add_argument('--path', '-p', default='exp/ptb.char/model',
                              help='path to model file')
@@ -332,6 +181,8 @@ def run():
                              help='seed for generating random numbers')
     base_parser.add_argument('--threads', '-t', default=16, type=int,
                              help='max num of threads')
+    base_parser.add_argument('--num-workers', '-w', default=4, type=int,
+                             help='num of processes to build the dataset')
     base_parser.add_argument('--batch-size', default=5000, type=int,
                              help='batch size')
     base_parser.add_argument('--buckets', default=32, type=int,
@@ -393,7 +244,7 @@ def run():
                            help='path to dataset')
     subparser.add_argument('--pred', default='pred.conllx',
                            help='path to predicted result')
-    args = parser.parse_args()
+    args.update(vars(parser.parse_known_args()[0]))
 
     logger = init_logger(path=args.path)
     logger.info(f"Set the max num of threads to {args.threads}")
@@ -403,7 +254,6 @@ def run():
     torch.manual_seed(args.seed)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args = Config(args.conf).update(vars(args))
     logger.info('\n' + str(args))
 
     if args.mode == 'train':

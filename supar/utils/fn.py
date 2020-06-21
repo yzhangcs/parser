@@ -2,7 +2,7 @@
 
 import unicodedata
 
-from nltk.tree import Tree
+import nltk
 
 
 def ispunct(token):
@@ -51,44 +51,6 @@ def istree(sequence, proj=False, multiroot=False):
     if not multiroot and n_roots > 1:
         return False
     return next(tarjan(sequence), None) is None
-
-
-def toconll(tokens):
-    if isinstance(tokens[0], str):
-        return '\n'.join([f"{i}\t{word}\t" + '\t'.join(['_']*8)
-                          for i, word in enumerate(tokens, 1)]) + '\n'
-    else:
-        return '\n'.join([f"{i}\t{word}\t_\t{tag}\t" + '\t'.join(['_']*6)
-                          for i, (word, tag) in enumerate(tokens, 1)]) + '\n'
-
-
-def totree(tokens, root=''):
-    if isinstance(tokens[0], str):
-        tokens = [(token, '_') for token in tokens]
-    tree = ' '.join([f"({pos} {word})" for word, pos in tokens])
-    return f"({root} {tree})"
-
-
-def numericalize(sequence):
-    return [int(i) for i in sequence]
-
-
-def numericalize_sibs(sequence):
-    sibs = [-1] * (len(sequence) + 1)
-    heads = [0] + [int(i) for i in sequence]
-
-    for i in range(1, len(heads)):
-        hi = heads[i]
-        for j in range(i + 1, len(heads)):
-            hj = heads[j]
-            di, dj = hi - i, hj - j
-            if hi >= 0 and hj >= 0 and hi == hj and di * dj > 0:
-                if abs(di) > abs(dj):
-                    sibs[i] = j
-                else:
-                    sibs[j] = i
-                break
-    return sibs[1:]
 
 
 def stripe(x, n, w, offset=(0, 0), dim=1):
@@ -142,16 +104,31 @@ def binarize(tree):
     nodes = [tree]
     while nodes:
         node = nodes.pop()
-        if isinstance(node, Tree):
+        if isinstance(node, nltk.Tree):
             nodes.extend([child for child in node])
             if len(node) > 1:
                 for i, child in enumerate(node):
-                    if not isinstance(child[0], Tree):
-                        node[i] = Tree(f"{node.label()}|<>", [child])
+                    if not isinstance(child[0], nltk.Tree):
+                        node[i] = nltk.Tree(f"{node.label()}|<>", [child])
     tree.chomsky_normal_form('left', 0, 0)
     tree.collapse_unary()
 
     return tree
+
+
+def debinarize(sequence):
+    def track(node):
+        span = next(node, None)
+        if not span:
+            return
+        i, j, label = span
+        labels = label.split('+')
+        if not labels[-1].endswith('|<>'):
+            yield (i, j, labels[-1])
+        for label in reversed(labels[:-1]):
+            yield (i, j, label)
+        yield from track(node)
+    return [i for i in track(iter(sequence))]
 
 
 def factorize(tree, delete_labels=None, equal_labels=None):
@@ -161,7 +138,7 @@ def factorize(tree, delete_labels=None, equal_labels=None):
             label = None
         if equal_labels is not None:
             label = equal_labels.get(label, label)
-        if len(tree) == 1 and not isinstance(tree[0], Tree):
+        if len(tree) == 1 and not isinstance(tree[0], nltk.Tree):
             return (i+1 if label is not None else i), []
         j, spans = i, []
         for child in tree:
@@ -173,27 +150,18 @@ def factorize(tree, delete_labels=None, equal_labels=None):
     return track(tree, 0)[1]
 
 
-def build(tree, sequence):
-    label = tree.label()
-    leaves = [subtree for subtree in tree.subtrees()
-              if not isinstance(subtree[0], Tree)]
-
-    def recover(label, children):
-        sublabels = [i for i in label.split('+') if not i.endswith('|<>')]
-        if not sublabels:
-            return children
-        tree = Tree(sublabels[-1], children)
-        for sublabel in reversed(sublabels[:-1]):
-            tree = Tree(sublabel, [tree])
-        return [tree]
-
+def build(root, leaves, sequence):
     def track(node):
         i, j, label = next(node)
         if j == i+1:
-            return recover(label, [leaves[i]])
+            children = [leaves[i]]
         else:
-            return recover(label, track(node) + track(node))
-
-    tree = Tree(label, track(iter(sequence)))
-
-    return tree
+            children = track(node) + track(node)
+        if label.endswith('|<>'):
+            return children
+        labels = label.split('+')
+        tree = nltk.Tree(labels[-1], children)
+        for label in reversed(labels[:-1]):
+            tree = nltk.Tree(label, [tree])
+        return [tree]
+    return nltk.Tree(root, track(iter(sequence)))

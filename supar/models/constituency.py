@@ -27,7 +27,9 @@ class CRFConstituencyModel(nn.Module):
             self.feat_embed = BertEmbedding(model=args.bert,
                                             n_layers=args.n_bert_layers,
                                             n_out=args.n_feat_embed,
-                                            pad_index=args.feat_pad_index)
+                                            pad_index=args.feat_pad_index,
+                                            dropout=args.mix_dropout)
+            self.args.n_feat_embed = self.feat_embed.n_out
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
                                            embedding_dim=args.n_feat_embed)

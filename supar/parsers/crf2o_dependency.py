@@ -2,21 +2,18 @@
 
 import argparse
 import os
-from datetime import datetime
 
 import torch
 import torch.nn as nn
-from supar.biaffine_parser import BiaffineParser
-from supar.config import Config
-from supar.models import CRF2oDependencyModel
+from supar import Config
+from supar.models import MODELS
+from supar.parsers.biaffine_parser import BiaffineParser
 from supar.utils import Embedding
 from supar.utils.common import bos, pad, unk
-from supar.utils.corpus import CoNLL, CoNLLCorpus
-from supar.utils.data import TextDataset, batchify
 from supar.utils.field import Field, SubwordField
-from supar.utils.fn import numericalize, numericalize_sibs
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import AttachmentMetric
+from supar.utils.transform import CoNLL
 
 
 class CRF2oDependencyParser(BiaffineParser):
@@ -24,46 +21,11 @@ class CRF2oDependencyParser(BiaffineParser):
     def __init__(self, *args, **kwargs):
         super(CRF2oDependencyParser, self).__init__(*args, **kwargs)
 
-        self.ARC, self.SIB = self.fields.HEAD
-
-    def predict(self, data, pred=None, prob=True, logger=None, **kwargs):
-        args = self.args.update({'prob': prob, **kwargs})
-        logger = logger or init_logger()
-
-        if args.prob:
-            self.fields = self.fields._replace(PHEAD=Field('probs'))
-        corpus = CoNLLCorpus.load(data, self.fields)
-        dataset = TextDataset(corpus, [self.WORD, self.FEAT], args.buckets)
-        # set the data loader
-        dataset.loader = batchify(dataset, args.batch_size)
-        logger.info(f"Load the dataset: "
-                    f"{len(dataset)} sentences, "
-                    f"{len(dataset.loader)} batches")
-
-        logger.info("Make predictions on the dataset")
-        start = datetime.now()
-        pred_arcs, pred_rels, pred_probs = self._predict(dataset.loader)
-        total_time = datetime.now() - start
-        # restore the order of sentences in the buckets
-        indices = torch.tensor([i
-                                for bucket in dataset.buckets.values()
-                                for i in bucket]).argsort()
-        corpus.arcs = [pred_arcs[i] for i in indices]
-        corpus.rels = [pred_rels[i] for i in indices]
-        if args.prob:
-            corpus.probs = [pred_probs[i] for i in indices]
-        if pred is not None:
-            logger.info(f"Save predicted results to {pred}")
-            corpus.save(pred)
-        logger.info(f"{total_time}s elapsed, "
-                    f"{len(dataset) / total_time.total_seconds():.2f} Sents/s")
-        return corpus
-
     def _train(self, loader):
         self.model.train()
 
-        progress = progress_bar(loader)
         metric = AttachmentMetric()
+        progress = progress_bar(loader)
 
         for words, feats, arcs, sibs, rels in progress:
             self.optimizer.zero_grad()
@@ -116,9 +78,8 @@ class CRF2oDependencyParser(BiaffineParser):
     def _predict(self, loader):
         self.model.eval()
 
-        progress = progress_bar(loader)
         arcs, rels, probs = [], [], []
-        for words, feats in progress:
+        for words, feats in progress_bar(loader):
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -162,8 +123,10 @@ class CRF2oDependencyParser(BiaffineParser):
                 FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos)
-            ARC = Field('arcs', bos=bos, use_vocab=False, fn=numericalize)
-            SIB = Field('sibs', bos=bos, use_vocab=False, fn=numericalize_sibs)
+            ARC = Field('arcs', bos=bos, use_vocab=False,
+                        fn=CoNLL.numericalize)
+            SIB = Field('sibs', bos=bos, use_vocab=False,
+                        fn=CoNLL.numericalize_sibs)
             REL = Field('rels', bos=bos)
             if args.feat in ('char', 'bert'):
                 fields = CoNLL(FORM=(WORD, FEAT),
@@ -172,11 +135,10 @@ class CRF2oDependencyParser(BiaffineParser):
                 fields = CoNLL(FORM=WORD, CPOS=FEAT,
                                HEAD=(ARC, SIB), DEPREL=REL)
 
-            train = CoNLLCorpus.load(args.train, fields)
+            train = CoNLL.load(args.train)
+            embed = None
             if args.embed:
                 embed = Embedding.load(args.embed, args.unk)
-            else:
-                embed = None
             WORD.build(train, args.min_freq, embed)
             FEAT.build(train)
             REL.build(train)
@@ -189,34 +151,17 @@ class CRF2oDependencyParser(BiaffineParser):
                 'bos_index': WORD.bos_index,
                 'feat_pad_index': FEAT.pad_index
             })
-            model = CRF2oDependencyModel(args)
+            model = MODELS[args.model](args)
             model = model.load_pretrained(WORD.embed).to(args.device)
             return cls(args, model, fields)
         else:
             parser = cls.load(**args)
-            parser.model = CRF2oDependencyModel(parser.args)
+            parser.model = MODELS[args.model](parser.args)
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
-    @classmethod
-    def load(cls, path, **kwargs):
-        if os.path.exists(path):
-            state = torch.load(path, map_location='cpu')
-        else:
-            state = torch.hub.load_state_dict_from_url(path,
-                                                       map_location='cpu')
-        args = state['args']
-        args.update({'path': path, **kwargs})
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = CRF2oDependencyModel(state['args'])
-        model.load_pretrained(state['pretrained'])
-        model.load_state_dict(state['state_dict'], False)
-        model.to(args.device)
-        fields = state['fields']
-        return cls(args, model, fields)
 
-
-def run():
+def run(args):
     base_parser = argparse.ArgumentParser(add_help=False)
     base_parser.add_argument('--path', '-p', default='exp/ptb.char/model',
                              help='path to model file')
@@ -293,7 +238,7 @@ def run():
                            help='path to dataset')
     subparser.add_argument('--pred', default='pred.conllx',
                            help='path to predicted result')
-    args = parser.parse_args()
+    args.update(vars(parser.parse_known_args()[0]))
 
     logger = init_logger(path=args.path)
     logger.info(f"Set the max num of threads to {args.threads}")
@@ -303,7 +248,6 @@ def run():
     torch.manual_seed(args.seed)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args = Config(args.conf).update(vars(args))
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
