@@ -27,6 +27,9 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.sentences)
 
     def __getitem__(self, index):
+        if not hasattr(self, 'fields'):
+            raise AttributeError("The fields are not numericalized. "
+                                 "Please build the dataset first.")
         for d in self.fields.values():
             yield d[index]
 
@@ -61,7 +64,7 @@ class Dataset(torch.utils.data.Dataset):
                                                        batch_size=batch_size,
                                                        shuffle=shuffle),
                                  collate_fn=self.collate_fn,
-                                 num_workers=0)
+                                 num_workers=num_workers)
 
 
 class DataLoader(torch.utils.data.DataLoader):

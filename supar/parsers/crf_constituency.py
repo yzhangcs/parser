@@ -95,7 +95,7 @@ class CRFConstituencyParser(Parser):
                             for i, j, label in pred]
                            for pred in chart_preds])
             if self.args.prob:
-                probs.extend(s_span.squeeze(-1)[mask].split(lens))
+                probs.extend(s_span.squeeze(-1)[mask].split(lens.tolist()))
         preds = {'charts': charts}
         probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
 

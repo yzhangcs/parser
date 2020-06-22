@@ -247,7 +247,7 @@ class Tree(Transform):
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
         tree = ' '.join([f"({pos} {word})" for word, pos in tokens])
-        return f"({root} {tree})"
+        return nltk.Tree.fromstring(f"({root} {tree})")
 
     def load(self, data, max_len=None, **kwargs):
         if isinstance(data, str):
