@@ -6,91 +6,6 @@ import nltk
 from supar.utils.fn import binarize, build, factorize, isprojective
 
 
-class Sentence(object):
-
-    def __init__(self, transform):
-        self.transform = transform
-
-        # the mapping from each nested field to their proper position
-        self.maps = dict()
-        # the names of each field
-        self.keys = set()
-        # the values of each position
-        self.values = []
-        for i, field in enumerate(self.transform):
-            if not isinstance(field, Iterable):
-                field = [field]
-            for f in field:
-                if f is not None:
-                    self.maps[f.name] = i
-                    self.keys.add(f.name)
-
-    def __len__(self):
-        return len(self.values[0])
-
-    def __contains__(self, key):
-        return key in self.keys
-
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        else:
-            return self.values[self.maps[name]]
-
-    def __setattr__(self, name, value):
-        if 'keys' in self.__dict__ and name in self:
-            index = self.maps[name]
-            if index >= len(self.values):
-                self.__dict__[name] = value
-            else:
-                self.values[index] = value
-        else:
-            self.__dict__[name] = value
-
-
-class CoNLLSentence(Sentence):
-
-    def __init__(self, transform, lines):
-        super(CoNLLSentence, self).__init__(transform)
-
-        self.values = []
-        # record annotations for post-recovery
-        self.annotations = dict()
-
-        for i, line in enumerate(lines):
-            value = line.split('\t')
-            if value[0].startswith('#') or not value[0].isdigit():
-                self.annotations[-i-1] = line
-            else:
-                self.annotations[len(self.values)] = line
-                self.values.append(value)
-        self.values = list(zip(*self.values))
-
-    def __repr__(self):
-        # cover the raw lines
-        merged = {**self.annotations,
-                  **{i: '\t'.join(map(str, line))
-                     for i, line in enumerate(zip(*self.values))}}
-        return '\n'.join(merged.values()) + '\n'
-
-
-class TreeSentence(Sentence):
-
-    def __init__(self, transform, tree):
-        super(TreeSentence, self).__init__(transform)
-
-        # words, pos tags, and spans that factorized by pre-order traversal
-        # the tree is first left-binarized before factorized.
-        self.values = [*zip(*tree.pos()), factorize(binarize(tree)[0])]
-
-    def __repr__(self):
-        root = self.transform.root
-        leaves = [nltk.Tree(word, [tag])
-                  for word, tag in zip(*self.values[:2])]
-        tree = build(root, leaves, self.values[2])
-        return tree.pformat(1000000)
-
-
 class Transform(object):
 
     fields = []
@@ -138,6 +53,48 @@ class Transform(object):
     def save(self, path, sentences):
         with open(path, 'w') as f:
             f.write('\n'.join([str(i) for i in sentences]) + '\n')
+
+
+class Sentence(object):
+
+    def __init__(self, transform):
+        self.transform = transform
+
+        # the mapping from each nested field to their proper position
+        self.maps = dict()
+        # the names of each field
+        self.keys = set()
+        # the values of each position
+        self.values = []
+        for i, field in enumerate(self.transform):
+            if not isinstance(field, Iterable):
+                field = [field]
+            for f in field:
+                if f is not None:
+                    self.maps[f.name] = i
+                    self.keys.add(f.name)
+
+    def __len__(self):
+        return len(self.values[0])
+
+    def __contains__(self, key):
+        return key in self.keys
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        else:
+            return self.values[self.maps[name]]
+
+    def __setattr__(self, name, value):
+        if 'keys' in self.__dict__ and name in self:
+            index = self.maps[name]
+            if index >= len(self.values):
+                self.__dict__[name] = value
+            else:
+                self.values[index] = value
+        else:
+            self.__dict__[name] = value
 
 
 class CoNLL(Transform):
@@ -222,21 +179,48 @@ class CoNLL(Transform):
         return sentences
 
 
+class CoNLLSentence(Sentence):
+
+    def __init__(self, transform, lines):
+        super(CoNLLSentence, self).__init__(transform)
+
+        self.values = []
+        # record annotations for post-recovery
+        self.annotations = dict()
+
+        for i, line in enumerate(lines):
+            value = line.split('\t')
+            if value[0].startswith('#') or not value[0].isdigit():
+                self.annotations[-i-1] = line
+            else:
+                self.annotations[len(self.values)] = line
+                self.values.append(value)
+        self.values = list(zip(*self.values))
+
+    def __repr__(self):
+        # cover the raw lines
+        merged = {**self.annotations,
+                  **{i: '\t'.join(map(str, line))
+                     for i, line in enumerate(zip(*self.values))}}
+        return '\n'.join(merged.values()) + '\n'
+
+
 class Tree(Transform):
 
     root = ''
-    fields = ['WORD', 'POS', 'CHART']
+    fields = ['WORD', 'POS', 'TREE', 'CHART']
 
-    def __init__(self, WORD=None, POS=None, CHART=None):
+    def __init__(self, WORD=None, POS=None, TREE=None, CHART=None):
         super(Tree, self).__init__()
 
         self.WORD = WORD
         self.POS = POS
+        self.TREE = TREE
         self.CHART = CHART
 
     @ property
     def src(self):
-        return self.WORD, self.POS
+        return self.WORD, self.POS, self.TREE
 
     @ property
     def tgt(self):
@@ -264,3 +248,17 @@ class Tree(Transform):
             sentences = [i for i in sentences if len(i) < max_len]
 
         return sentences
+
+
+class TreeSentence(Sentence):
+
+    def __init__(self, transform, tree):
+        super(TreeSentence, self).__init__(transform)
+
+        # the values contain words, pos tags, raw trees, and spans
+        # the tree is first left-binarized before factorized
+        # spans are the factorization of tree traversed in pre-order
+        self.values = [*zip(*tree.pos()), tree, factorize(binarize(tree)[0])]
+
+    def __repr__(self):
+        return self.values[-2].pformat(1000000)

@@ -64,7 +64,7 @@ class Dataset(torch.utils.data.Dataset):
                                                        batch_size=batch_size,
                                                        shuffle=shuffle),
                                  collate_fn=self.collate_fn,
-                                 num_workers=num_workers)
+                                 num_workers=0)
 
 
 class DataLoader(torch.utils.data.DataLoader):

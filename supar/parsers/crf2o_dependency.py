@@ -78,6 +78,7 @@ class CRF2oDependencyParser(BiaffineParser):
     def _predict(self, loader):
         self.model.eval()
 
+        preds = {}
         arcs, rels, probs = [], [], []
         for words, feats in progress_bar(loader):
             mask = words.ne(self.WORD.pad_index)
@@ -94,9 +95,11 @@ class CRF2oDependencyParser(BiaffineParser):
                 probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
         arcs = [seq.tolist() for seq in arcs]
         rels = [self.REL.vocab[seq.tolist()] for seq in rels]
-        probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
+        preds = {'arcs': arcs, 'rels': rels}
+        if self.args.prob:
+            preds['probs'] = [seq.tolist() for seq in probs]
 
-        return arcs, rels, probs
+        return preds
 
     @classmethod
     def build(cls, path, **kwargs):

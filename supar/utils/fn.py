@@ -116,21 +116,6 @@ def binarize(tree):
     return tree
 
 
-def debinarize(sequence):
-    def track(node):
-        span = next(node, None)
-        if not span:
-            return
-        i, j, label = span
-        labels = label.split('+')
-        if not labels[-1].endswith('|<>'):
-            yield (i, j, labels[-1])
-        for label in reversed(labels[:-1]):
-            yield (i, j, label)
-        yield from track(node)
-    return [i for i in track(iter(sequence))]
-
-
 def factorize(tree, delete_labels=None, equal_labels=None):
     def track(tree, i):
         label = tree.label()
@@ -150,7 +135,11 @@ def factorize(tree, delete_labels=None, equal_labels=None):
     return track(tree, 0)[1]
 
 
-def build(root, leaves, sequence):
+def build(tree, sequence):
+    root = tree.label()
+    leaves = [subtree for subtree in tree.subtrees()
+              if not isinstance(subtree[0], nltk.Tree)]
+
     def track(node):
         i, j, label = next(node)
         if j == i+1:

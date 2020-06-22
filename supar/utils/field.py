@@ -3,7 +3,7 @@
 from collections import Counter
 
 import torch
-from supar.utils.fn import debinarize, pad
+from supar.utils.fn import pad
 from supar.utils.vocab import Vocab
 
 
@@ -206,7 +206,7 @@ class ChartField(Field):
 
     def transform(self, sequences):
         sequences = [self.preprocess(seq) for seq in sequences]
-        golds, spans, labels = [], [], []
+        spans, labels = [], []
 
         for sequence in sequences:
             seq_len = sequence[0][1] + 1
@@ -215,14 +215,10 @@ class ChartField(Field):
             for i, j, label in sequence:
                 span_chart[i, j] = 1
                 label_chart[i, j] = self.vocab[label]
-            golds.append(debinarize(sequence))
             spans.append(span_chart)
             labels.append(label_chart)
 
-        return list(zip(golds, spans, labels))
+        return list(zip(spans, labels))
 
     def compose(self, sequences):
-        golds, spans, labels = zip(*sequences)
-        spans = pad(spans).to(self.device)
-        labels = pad(labels).to(self.device)
-        return golds, spans, labels
+        return [pad(i).to(self.device) for i in zip(*sequences)]

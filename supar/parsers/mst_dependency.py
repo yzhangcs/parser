@@ -70,9 +70,9 @@ class MSTDependencyParser(BiaffineParser):
     def _predict(self, loader):
         self.model.eval()
 
-        progress = progress_bar(loader)
+        preds = {}
         arcs, rels, probs = [], [], []
-        for words, feats in progress:
+        for words, feats in progress_bar(loader):
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -87,9 +87,11 @@ class MSTDependencyParser(BiaffineParser):
                 probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
         arcs = [seq.tolist() for seq in arcs]
         rels = [self.REL.vocab[seq.tolist()] for seq in rels]
-        probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
+        preds = {'arcs': arcs, 'rels': rels}
+        if self.args.prob:
+            preds['probs'] = [seq.tolist() for seq in probs]
 
-        return arcs, rels, probs
+        return preds
 
 
 def run(args):

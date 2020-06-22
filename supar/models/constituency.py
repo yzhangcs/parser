@@ -125,9 +125,7 @@ class CRFConstituencyModel(nn.Module):
         return loss, span_probs
 
     def decode(self, s_span, s_label, mask):
-        pred_spans = cky(s_span, mask)
-        pred_labels = s_label.argmax(-1).tolist()
-        preds = [[(i, j, labels[i][j]) for i, j in spans]
-                 for spans, labels in zip(pred_spans, pred_labels)]
-
-        return preds
+        span_preds = cky(s_span, mask)
+        label_preds = s_label.argmax(-1).tolist()
+        return [[(i, j, labels[i][j]) for i, j in spans]
+                for spans, labels in zip(span_preds, label_preds)]

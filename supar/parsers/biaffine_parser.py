@@ -86,8 +86,8 @@ class BiaffineParser(Parser):
     def _predict(self, loader):
         self.model.eval()
 
-        arcs, rels = [], []
-        preds, probs = {}, []
+        preds = {}
+        arcs, rels, probs = [], [], []
         for words, feats in progress_bar(loader):
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
@@ -101,11 +101,13 @@ class BiaffineParser(Parser):
                 s_arc = s_arc.softmax(-1)
                 arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1))
                 probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
-        preds['arcs'] = [seq.tolist() for seq in arcs]
-        preds['rels'] = [self.REL.vocab[seq.tolist()] for seq in rels]
-        probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
+        arcs = [seq.tolist() for seq in arcs]
+        rels = [self.REL.vocab[seq.tolist()] for seq in rels]
+        preds = {'arcs': arcs, 'rels': rels}
+        if self.args.prob:
+            preds['probs'] = [seq.tolist() for seq in probs]
 
-        return preds, probs
+        return preds
 
     @ classmethod
     def build(cls, path, **kwargs):

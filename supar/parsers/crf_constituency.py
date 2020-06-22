@@ -11,8 +11,8 @@ from supar.parsers.parser import Parser
 from supar.utils import Embedding
 from supar.utils.common import bos, eos, pad, unk
 from supar.utils.data import Dataset
-from supar.utils.field import ChartField, Field, SubwordField
-from supar.utils.fn import debinarize
+from supar.utils.field import ChartField, Field, RawField, SubwordField
+from supar.utils.fn import build, factorize
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import BracketMetric
 from supar.utils.transform import Tree
@@ -27,6 +27,7 @@ class CRFConstituencyParser(Parser):
             self.WORD, self.FEAT = self.transform.WORD
         else:
             self.WORD, self.FEAT = self.transform.WORD, self.transform.POS
+        self.TREE = self.transform.TREE
         self.CHART = self.transform.CHART
 
     def _train(self, loader):
@@ -34,7 +35,7 @@ class CRFConstituencyParser(Parser):
 
         progress = progress_bar(loader)
 
-        for words, feats, (golds, spans, labels) in progress:
+        for words, feats, trees, (spans, labels) in progress:
             self.optimizer.zero_grad()
 
             batch_size, seq_len = words.shape
@@ -59,7 +60,7 @@ class CRFConstituencyParser(Parser):
 
         total_loss, metric = 0, BracketMetric()
 
-        for words, feats, (golds, spans, labels) in loader:
+        for words, feats, trees, (spans, labels) in loader:
             batch_size, seq_len = words.shape
             lens = words.ne(self.args.pad_index).sum(1) - 1
             mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
@@ -67,11 +68,18 @@ class CRFConstituencyParser(Parser):
             s_span, s_label = self.model(words, feats)
             loss, s_span = self.model.loss(s_span, s_label,
                                            spans, labels, mask)
+            chart_preds = self.model.decode(s_span, s_label, mask)
+            # since the evaluation relies on terminals,
+            # the tree should be first built and then factorized
+            preds = [build(tree,
+                           [(i, j, self.CHART.vocab[label])
+                            for i, j, label in chart])
+                     for tree, chart in zip(trees, chart_preds)]
             total_loss += loss.item()
-            preds = [debinarize((i, j, self.CHART.vocab[label])
-                                for i, j, label in pred)
-                     for pred in self.model.decode(s_span, s_label, mask)]
-            metric(preds, golds)
+            metric([factorize(tree, self.args.delete, self.args.equal)
+                    for tree in preds],
+                   [factorize(tree, self.args.delete, self.args.equal)
+                    for tree in trees])
         total_loss /= len(loader)
 
         return total_loss, metric
@@ -80,9 +88,9 @@ class CRFConstituencyParser(Parser):
     def _predict(self, loader):
         self.model.eval()
 
-        charts, probs = [], []
+        preds, probs = {'trees': []}, []
 
-        for words, feats in progress_bar(loader):
+        for words, feats, trees in progress_bar(loader):
             batch_size, seq_len = words.shape
             lens = words.ne(self.args.pad_index).sum(1) - 1
             mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
@@ -91,15 +99,16 @@ class CRFConstituencyParser(Parser):
             if self.args.mbr:
                 s_span = self.model.crf(s_span, mask, mbr=True)
             chart_preds = self.model.decode(s_span, s_label, mask)
-            charts.extend([[(i, j, self.CHART.vocab[label])
-                            for i, j, label in pred]
-                           for pred in chart_preds])
+            preds['trees'].extend([build(tree,
+                                         [(i, j, self.CHART.vocab[label])
+                                          for i, j, label in chart])
+                                   for tree, chart in zip(trees, chart_preds)])
             if self.args.prob:
-                probs.extend(s_span.squeeze(-1)[mask].split(lens.tolist()))
-        preds = {'charts': charts}
-        probs = [[round(p, 4) for p in seq.tolist()] for seq in probs]
+                probs.extend(s_span.tolist())
+        if self.args.prob:
+            preds['probs'] = probs
 
-        return preds, probs
+        return preds
 
     @ classmethod
     def build(cls, path, **kwargs):
@@ -129,11 +138,12 @@ class CRFConstituencyParser(Parser):
                 FEAT.vocab = tokenizer.get_vocab()
             else:
                 FEAT = Field('tags', bos=bos, eos=eos)
+            TREE = RawField('trees')
             CHART = ChartField('charts')
             if args.feat in ('char', 'bert'):
-                transform = Tree(WORD=(WORD, FEAT), CHART=CHART)
+                transform = Tree(WORD=(WORD, FEAT), TREE=TREE, CHART=CHART)
             else:
-                transform = Tree(WORD=WORD, POS=FEAT, CHART=CHART)
+                transform = Tree(WORD=WORD, POS=FEAT, TREE=TREE, CHART=CHART)
 
             train = Dataset(transform, args.train)
             embed = None

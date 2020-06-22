@@ -78,10 +78,7 @@ class AttachmentMetric(Metric):
 
 class BracketMetric(Metric):
 
-    delete = {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
-    equal = {'ADVP': 'PRT'}
-
-    def __init__(self, eps=1e-8, delete=None, equal=None):
+    def __init__(self, eps=1e-8):
         super(BracketMetric, self).__init__()
 
         self.n = 0.0
@@ -93,13 +90,8 @@ class BracketMetric(Metric):
         self.gold = 0.0
         self.eps = eps
 
-        self.delete = delete or self.delete
-        self.equal = equal or self.equal
-
     def __call__(self, preds, golds):
         for pred, gold in zip(preds, golds):
-            pred = self.transform(pred)
-            gold = self.transform(gold)
             upred = Counter([(i, j) for i, j, label in pred])
             ugold = Counter([(i, j) for i, j, label in gold])
             utp = list((upred & ugold).elements())
@@ -156,8 +148,3 @@ class BracketMetric(Metric):
     @property
     def lf(self):
         return 2 * self.ltp / (self.pred + self.gold + self.eps)
-
-    def transform(self, sequence):
-        return [(i, j, self.equal.get(label, label))
-                for i, j, label in sequence
-                if label not in self.delete]

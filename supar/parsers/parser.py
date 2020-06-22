@@ -106,13 +106,11 @@ class Parser(object):
 
         logger.info("Make predictions on the dataset")
         start = datetime.now()
-        preds, probs = self._predict(dataset.loader)
+        preds = self._predict(dataset.loader)
         total_time = datetime.now() - start
 
         for name, value in preds.items():
             setattr(dataset, name, value)
-        if args.prob:
-            dataset.probs = probs
         if pred is not None:
             logger.info(f"Save predicted results to {pred}")
             self.transform.save(pred, dataset.sentences)
