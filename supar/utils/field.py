@@ -46,7 +46,6 @@ class Field(RawField):
 
         self.specials = [token for token in [pad, unk, bos, eos]
                          if token is not None]
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def __repr__(self):
         s, params = f"({self.name}): {self.__class__.__name__}(", []
@@ -94,6 +93,10 @@ class Field(RawField):
         if hasattr(self, 'vocab'):
             return self.vocab[self.eos]
         return self.specials.index(self.eos)
+
+    @property
+    def device(self):
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def preprocess(self, sequence):
         if self.fn is not None:

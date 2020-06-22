@@ -36,8 +36,7 @@ class Dataset(torch.utils.data.Dataset):
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
-        for sentence in self.sentences:
-            yield getattr(sentence, name)
+        return [getattr(sentence, name) for sentence in self.sentences]
 
     def __setattr__(self, name, value):
         if 'sentences' in self.__dict__ and name in self.sentences[0]:
