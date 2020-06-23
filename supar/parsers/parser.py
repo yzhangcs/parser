@@ -137,10 +137,9 @@ class Parser(object):
     @classmethod
     def load(cls, path, **kwargs):
         if os.path.exists(path):
-            state = torch.load(path, map_location='cpu')
+            state = torch.load(path)
         else:
-            state = torch.hub.load_state_dict_from_url(path,
-                                                       map_location='cpu')
+            state = torch.hub.load_state_dict_from_url(path)
         args = state['args']
         args.update({'path': path, **kwargs})
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -152,7 +151,7 @@ class Parser(object):
         return cls(args, model, transform)
 
     def save(self, path):
-        state_dict = self.model.state_dict()
+        state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)
         state = {'args': self.args,
                  'state_dict': state_dict,
