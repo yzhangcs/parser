@@ -3,7 +3,7 @@
 from collections.abc import Iterable
 
 import nltk
-from supar.utils.fn import binarize, build, factorize, isprojective
+from supar.utils.fn import binarize, factorize, isprojective
 
 
 class Transform(object):
