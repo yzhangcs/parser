@@ -120,7 +120,10 @@ class CRFConstituencyParser(Parser):
                          bos=bos, eos=eos, lower=True)
             if args.feat == 'char':
                 FEAT = SubwordField('chars',
-                                    pad=pad, unk=unk, bos=bos, eos=eos,
+                                    pad=pad,
+                                    unk=unk,
+                                    bos=bos,
+                                    eos=eos,
                                     fix_len=args.fix_len, tokenize=list)
             elif args.feat == 'bert':
                 from transformers import AutoTokenizer
