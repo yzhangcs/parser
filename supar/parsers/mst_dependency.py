@@ -106,6 +106,8 @@ def run(args):
                              help='seed for generating random numbers')
     base_parser.add_argument('--threads', '-t', default=16, type=int,
                              help='max num of threads')
+    base_parser.add_argument('--num-workers', '-w', default=4, type=int,
+                             help='num of processes to build the dataset')
     base_parser.add_argument('--batch-size', default=5000, type=int,
                              help='batch size')
     base_parser.add_argument('--buckets', default=32, type=int,
