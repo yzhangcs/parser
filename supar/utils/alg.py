@@ -5,37 +5,37 @@ from supar.utils.fn import pad, stripe
 
 
 def kmeans(x, k):
-    x = torch.tensor(x, dtype=torch.float)
-    # count the frequency of each datapoint
-    d, indices, f = x.unique(return_inverse=True, return_counts=True)
-    # calculate the sum of the values of the same datapoints
-    total = d * f
-    # the number of clusters must not be greater than that of datapoints
-    k = min(len(d), k)
+    # the number of clusters must not be greater than the number of datapoints
+    x, k = torch.tensor(x, dtype=torch.float), min(len(x), k)
     # initialize k centroids randomly
-    c, old = d[torch.randperm(len(d))[:k]], None
-    # assign labels to each datapoint based on centroids
-    dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
+    c, old = x[torch.randperm(len(x))[:k]], None
+    # assign each datapoint to the cluster with the closest centroid
+    dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
 
     while old is None or not c.equal(old):
         # if an empty cluster is encountered,
         # choose the farthest datapoint from the biggest cluster
         # and move that the empty one
-        for i in range(k):
-            if not y.eq(i).any():
-                mask = y.eq(torch.arange(k).unsqueeze(-1))
-                lens = mask.sum(dim=-1)
-                biggest = mask[lens.argmax()].nonzero().view(-1)
-                farthest = dists[biggest].argmax()
-                y[biggest[farthest]] = i
-        mask = y.eq(torch.arange(k).unsqueeze(-1))
+        mask = torch.arange(k).unsqueeze(-1).eq(y)
+        none = torch.where(~mask.any(-1))[0].tolist()
+        while len(none) > 0:
+            for i in none:
+                # the biggest cluster
+                b = torch.where(mask[mask.sum(-1).argmax()])[0]
+                # the datapoint farthest from the centroid of cluster b
+                f = dists[b].argmax()
+                # update the assigned cluster of f
+                y[b[f]] = i
+                # re-calculate the mask
+                mask = torch.arange(k).unsqueeze(-1).eq(y)
+            none = torch.where(~mask.any(-1))[0].tolist()
         # update the centroids
-        c, old = (total * mask).sum(-1) / (f * mask).sum(-1), c
+        c, old = (x * mask).sum(-1) / mask.sum(-1), c
         # re-assign all datapoints to clusters
-        dists, y = torch.abs_(d.unsqueeze(-1) - c).min(dim=-1)
+        dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
     # assign all datapoints to the new-generated clusters
-    # without considering the empty ones
-    y, assigned = y[indices], y.unique().tolist()
+    # the empty ones are discarded
+    assigned = y.unique().tolist()
     # get the centroids of the assigned clusters
     centroids = c[assigned].tolist()
     # map all values of datapoints to buckets
