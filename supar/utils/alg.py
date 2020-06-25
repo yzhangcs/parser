@@ -106,6 +106,112 @@ def eisner(scores, mask):
     return pad(preds, total_length=seq_len).to(mask.device)
 
 
+def eisner2o(scores, mask):
+    # the end position of each sentence in a batch
+    lens = mask.sum(1)
+    s_arc, s_sib = scores
+    batch_size, seq_len, _ = s_arc.shape
+    # [seq_len, seq_len, batch_size]
+    s_arc = s_arc.permute(2, 1, 0)
+    # [seq_len, seq_len, seq_len, batch_size]
+    s_sib = s_sib.permute(2, 1, 3, 0)
+    s_i = torch.full_like(s_arc, float('-inf'))
+    s_s = torch.full_like(s_arc, float('-inf'))
+    s_c = torch.full_like(s_arc, float('-inf'))
+    p_i = s_arc.new_zeros(seq_len, seq_len, batch_size).long()
+    p_s = s_arc.new_zeros(seq_len, seq_len, batch_size).long()
+    p_c = s_arc.new_zeros(seq_len, seq_len, batch_size).long()
+    s_c.diagonal().fill_(0)
+
+    for w in range(1, seq_len):
+        # n denotes the number of spans to iterate,
+        # from span (0, w) to span (n, n+w) given width w
+        n = seq_len - w
+        starts = p_i.new_tensor(range(n)).unsqueeze(0)
+        # I(j->i) = max(I(j->r) + S(j->r, i)), i < r < j |
+        #               C(j->j) + C(i->j-1))
+        #         + s(j->i)
+        # [n, w, batch_size]
+        il = stripe(s_i, n, w, (w, 1)) + stripe(s_s, n, w, (1, 0), 0)
+        il += stripe(s_sib[range(w, n+w), range(n)], n, w, (0, 1))
+        # [n, 1, batch_size]
+        il0 = stripe(s_c, n, 1, (w, w)) + stripe(s_c, n, 1, (0, w - 1))
+        # il0[0] are set to zeros since the scores of the complete spans
+        # starting from 0 are always -inf
+        il[:, -1] = il0.index_fill_(0, lens.new_tensor(0), 0).squeeze(1)
+        il_span, il_path = il.permute(2, 0, 1).max(-1)
+        s_i.diagonal(-w).copy_(il_span + s_arc.diagonal(-w))
+        p_i.diagonal(-w).copy_(il_path + starts + 1)
+        # I(i->j) = max(I(i->r) + S(i->r, j), i < r < j |
+        #               C(i->i) + C(j->i+1))
+        #         + s(i->j)
+        # [n, w, batch_size]
+        ir = stripe(s_i, n, w) + stripe(s_s, n, w, (0, w), 0)
+        ir += stripe(s_sib[range(n), range(w, n+w)], n, w)
+        ir[0] = float('-inf')
+        # [n, 1, batch_size]
+        ir0 = stripe(s_c, n, 1) + stripe(s_c, n, 1, (w, 1))
+        ir[:, 0] = ir0.squeeze(1)
+        ir_span, ir_path = ir.permute(2, 0, 1).max(-1)
+        s_i.diagonal(w).copy_(ir_span + s_arc.diagonal(w))
+        p_i.diagonal(w).copy_(ir_path + starts)
+
+        # [n, w, batch_size]
+        slr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
+        slr_span, slr_path = slr.permute(2, 0, 1).max(-1)
+        # S(j, i) = max(C(i->r) + C(j->r+1)), i <= r < j
+        s_s.diagonal(-w).copy_(slr_span)
+        p_s.diagonal(-w).copy_(slr_path + starts)
+        # S(i, j) = max(C(i->r) + C(j->r+1)), i <= r < j
+        s_s.diagonal(w).copy_(slr_span)
+        p_s.diagonal(w).copy_(slr_path + starts)
+
+        # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
+        cl = stripe(s_c, n, w, (0, 0), 0) + stripe(s_i, n, w, (w, 0))
+        cl_span, cl_path = cl.permute(2, 0, 1).max(-1)
+        s_c.diagonal(-w).copy_(cl_span)
+        p_c.diagonal(-w).copy_(cl_path + starts)
+        # C(i->j) = max(I(i->r) + C(r->j)), i < r <= j
+        cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
+        cr_span, cr_path = cr.permute(2, 0, 1).max(-1)
+        s_c.diagonal(w).copy_(cr_span)
+        # disable multi words to modify the root
+        s_c[0, w][lens.ne(w)] = float('-inf')
+        p_c.diagonal(w).copy_(cr_path + starts + 1)
+
+    def backtrack(p_i, p_s, p_c, heads, i, j, flag):
+        if i == j:
+            return
+        if flag == 'c':
+            r = p_c[i, j]
+            backtrack(p_i, p_s, p_c, heads, i, r, 'i')
+            backtrack(p_i, p_s, p_c, heads, r, j, 'c')
+        elif flag == 's':
+            r = p_s[i, j]
+            i, j = sorted((i, j))
+            backtrack(p_i, p_s, p_c, heads, i, r, 'c')
+            backtrack(p_i, p_s, p_c, heads, j, r + 1, 'c')
+        elif flag == 'i':
+            r, heads[j] = p_i[i, j], i
+            if r == i:
+                r = i + 1 if i < j else i - 1
+                backtrack(p_i, p_s, p_c, heads, j, r, 'c')
+            else:
+                backtrack(p_i, p_s, p_c, heads, i, r, 'i')
+                backtrack(p_i, p_s, p_c, heads, r, j, 's')
+
+    preds = []
+    p_i = p_i.permute(2, 0, 1).cpu()
+    p_s = p_s.permute(2, 0, 1).cpu()
+    p_c = p_c.permute(2, 0, 1).cpu()
+    for i, length in enumerate(lens.tolist()):
+        heads = p_c.new_zeros(length + 1, dtype=torch.long)
+        backtrack(p_i[i], p_s[i], p_c[i], heads, 0, length, 'c')
+        preds.append(heads.to(mask.device))
+
+    return pad(preds, total_length=seq_len).to(mask.device)
+
+
 def cky(scores, mask):
     lens = mask[:, 0].sum(-1)
     scores = scores.permute(1, 2, 0)
