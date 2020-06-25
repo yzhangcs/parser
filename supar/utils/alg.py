@@ -4,15 +4,15 @@ import torch
 from supar.utils.fn import pad, stripe
 
 
-def kmeans(x, k):
+def kmeans(x, k, max_it=32):
     # the number of clusters must not be greater than the number of datapoints
     x, k = torch.tensor(x, dtype=torch.float), min(len(x), k)
     # initialize k centroids randomly
-    c, old = x[torch.randperm(len(x))[:k]], None
+    c = x[torch.randperm(len(x))[:k]]
     # assign each datapoint to the cluster with the closest centroid
     dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
 
-    while old is None or not c.equal(old):
+    for _ in range(max_it):
         # if an empty cluster is encountered,
         # choose the farthest datapoint from the biggest cluster
         # and move that the empty one
@@ -33,6 +33,9 @@ def kmeans(x, k):
         c, old = (x * mask).sum(-1) / mask.sum(-1), c
         # re-assign all datapoints to clusters
         dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
+        # stop iteration early if the centroids converge
+        if c.equal(old):
+            break
     # assign all datapoints to the new-generated clusters
     # the empty ones are discarded
     assigned = y.unique().tolist()
