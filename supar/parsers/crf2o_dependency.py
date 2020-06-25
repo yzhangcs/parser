@@ -86,11 +86,13 @@ class CRF2oDependencyParser(BiaffineParser):
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
             s_arc, s_sib, s_rel = self.model(words, feats)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            if self.args.mbr:
+                s_arc = self.model.crf((s_arc, s_rel), mask, mbr=True)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
-                s_arc = s_arc.softmax(-1)
+                s_arc = s_arc if self.args.mbr else s_arc.softmax(-1)
                 arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1))
                 probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
         arcs = [seq.tolist() for seq in arcs]

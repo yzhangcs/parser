@@ -45,7 +45,7 @@ class Parser(object):
         self.scheduler = ExponentialLR(self.optimizer,
                                        args.decay**(1/args.decay_steps))
 
-        total_time = timedelta()
+        elapsed = timedelta()
         best_e, best_metric = 1, AttachmentMetric()
 
         for epoch in range(1, args.epochs + 1):
@@ -66,7 +66,7 @@ class Parser(object):
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
                 logger.info(f"{t}s elapsed\n")
-            total_time += t
+            elapsed += t
             if epoch - best_e >= args.patience:
                 break
         loss, metric = self.load(args.path)._evaluate(test.loader)
@@ -74,7 +74,7 @@ class Parser(object):
         logger.info(f"Epoch {best_e} saved")
         logger.info(f"{'dev:':6} - {best_metric}")
         logger.info(f"{'test:':6} - {metric}")
-        logger.info(f"{total_time}s elapsed, {total_time / epoch} Sents/epoch")
+        logger.info(f"{elapsed}s elapsed, {elapsed / epoch} Sents/epoch")
 
     def evaluate(self, data, logger=None, **kwargs):
         args = self.args.update(locals())
@@ -87,10 +87,10 @@ class Parser(object):
         logger.info("Evaluate the dataset")
         start = datetime.now()
         loss, metric = self._evaluate(dataset.loader)
-        total_time = datetime.now() - start
+        elapsed = datetime.now() - start
         logger.info(f"loss: {loss:.4f} - {metric}")
-        logger.info(f"{total_time}s elapsed, "
-                    f"{len(dataset)/total_time.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, "
+                    f"{len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
     def predict(self, data, pred=None, prob=True, logger=None, **kwargs):
         args = self.args.update(locals())
@@ -107,15 +107,15 @@ class Parser(object):
         logger.info("Make predictions on the dataset")
         start = datetime.now()
         preds = self._predict(dataset.loader)
-        total_time = datetime.now() - start
+        elapsed = datetime.now() - start
 
         for name, value in preds.items():
             setattr(dataset, name, value)
         if pred is not None:
             logger.info(f"Save predicted results to {pred}")
             self.transform.save(pred, dataset.sentences)
-        logger.info(f"{total_time}s elapsed, "
-                    f"{len(dataset) / total_time.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, "
+                    f"{len(dataset) / elapsed.total_seconds():.2f} Sents/s")
 
         return dataset
 
