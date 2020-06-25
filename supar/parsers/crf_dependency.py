@@ -36,6 +36,8 @@ class CRFDependencyParser(BiaffineParser):
             self.scheduler.step()
 
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            if self.args.partial:
+                mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
