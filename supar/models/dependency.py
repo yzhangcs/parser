@@ -81,7 +81,6 @@ class BiaffineParserModel(nn.Module):
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
-        lens = mask.sum(dim=1)
         ext_words = words
         # set the indices larger than num_embeddings to unk_index
         if hasattr(self, 'pretrained'):
@@ -95,9 +94,9 @@ class BiaffineParserModel(nn.Module):
         feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
-        embed = torch.cat((word_embed, feat_embed), dim=-1)
+        embed = torch.cat((word_embed, feat_embed), -1)
 
-        x = pack_padded_sequence(embed, lens, True, False)
+        x = pack_padded_sequence(embed, mask.sum(1), True, False)
         x, _ = self.lstm(x)
         x, _ = pad_packed_sequence(x, True, total_length=seq_len)
         x = self.lstm_dropout(x)
@@ -207,7 +206,6 @@ class CRF2oDependencyModel(BiaffineParserModel):
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
-        lens = mask.sum(dim=1)
         ext_words = words
         # set the indices larger than num_embeddings to unk_index
         if hasattr(self, 'pretrained'):
@@ -221,9 +219,9 @@ class CRF2oDependencyModel(BiaffineParserModel):
         feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
-        embed = torch.cat((word_embed, feat_embed), dim=-1)
+        embed = torch.cat((word_embed, feat_embed), -1)
 
-        x = pack_padded_sequence(embed, lens, True, False)
+        x = pack_padded_sequence(embed, mask.sum(1), True, False)
         x, _ = self.lstm(x)
         x, _ = pad_packed_sequence(x, True, total_length=seq_len)
         x = self.lstm_dropout(x)

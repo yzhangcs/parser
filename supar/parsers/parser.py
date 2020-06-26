@@ -74,7 +74,7 @@ class Parser(object):
         logger.info(f"Epoch {best_e} saved")
         logger.info(f"{'dev:':6} - {best_metric}")
         logger.info(f"{'test:':6} - {metric}")
-        logger.info(f"{elapsed}s elapsed, {elapsed / epoch} Sents/epoch")
+        logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
     def evaluate(self, data, logger=None, **kwargs):
         args = self.args.update(locals())

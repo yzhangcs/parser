@@ -54,7 +54,7 @@ class IndependentDropout(nn.Module):
             total = sum(masks)
             scale = len(items) / total.max(torch.ones_like(total))
             masks = [mask * scale for mask in masks]
-            items = [item * mask.unsqueeze(dim=-1)
+            items = [item * mask.unsqueeze(-1)
                      for item, mask in zip(items, masks)]
 
         return items

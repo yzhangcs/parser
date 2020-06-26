@@ -59,6 +59,8 @@ class CRFDependencyParser(BiaffineParser):
             s_arc, s_rel = self.model(words, feats)
             loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            if self.args.partial:
+                mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
