@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
-                           MatrixTreeTheorem, Triaffine)
+                           MatrixTree, Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
 from supar.utils.alg import eisner, mst
@@ -146,7 +146,7 @@ class MSTDependencyModel(BiaffineParserModel):
     def __init__(self, args):
         super(MSTDependencyModel, self).__init__(args)
 
-        self.matrix_tree = MatrixTreeTheorem()
+        self.matrix_tree = MatrixTree()
 
     def loss(self, s_arc, s_rel, arcs, rels, mask):
         batch_size, seq_len = mask.shape

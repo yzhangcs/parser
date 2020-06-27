@@ -4,6 +4,7 @@ import argparse
 import os
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 from supar.parsers.biaffine_parser import BiaffineParser
 from supar.utils.logging import init_logger, progress_bar
@@ -181,18 +182,20 @@ def run(args):
                            help='path to predicted result')
     args.update(vars(parser.parse_known_args()[0]))
 
+    dist.init_process_group(args.backend)
+    torch.set_num_threads(args.threads)
+    torch.manual_seed(args.seed)
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    torch.cuda.set_device(args.local_rank)
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger = init_logger(path=args.path)
     logger.info(f"Set the max num of threads to {args.threads}")
     logger.info(f"Set the seed for generating random numbers to {args.seed}")
     logger.info(f"Set the device with ID {args.device} visible")
-    torch.set_num_threads(args.threads)
-    torch.manual_seed(args.seed)
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
-        parser = CRFDependencyParser.build(**args)
+        parser = CRFDependencyParser.build(**args, logger=logger)
         parser.train(**args, logger=logger)
     elif args.mode == 'evaluate':
         parser = CRFDependencyParser.load(args.path)

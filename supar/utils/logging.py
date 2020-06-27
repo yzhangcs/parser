@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import torch.distributed as dist
 from datetime import datetime
 
 from tqdm import tqdm
@@ -13,7 +14,10 @@ def init_logger(name=datetime.now().strftime("%y-%m-%d_%H.%M.%S"),
                 tqdm=True,
                 level=None,
                 mode='a'):
-    level = level or logging.INFO
+    if level is None:
+        level = logging.INFO
+        if dist.is_initialized() and dist.get_rank() != 0:
+            level = logging.WARNING
     formatter = logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s",
                                   datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(name)
@@ -46,7 +50,11 @@ def progress_bar(iterator,
                  ncols=None,
                  bar_format='{l_bar}{bar:36}| {n_fmt}/{total_fmt} '
                  '{elapsed}<{remaining}, {rate_fmt}{postfix}'):
-    return tqdm(iterator, ncols=ncols, bar_format=bar_format, ascii=True)
+    return tqdm(iterator,
+                ncols=ncols,
+                bar_format=bar_format,
+                ascii=True,
+                disable=(dist.is_initialized() and dist.get_rank() != 0))
 
 
 logger = init_logger(name='supar')

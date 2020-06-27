@@ -4,6 +4,7 @@ import argparse
 import os
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 from supar import Config
 from supar.models import MODELS
@@ -11,7 +12,7 @@ from supar.parsers.biaffine_parser import BiaffineParser
 from supar.utils import Embedding
 from supar.utils.common import bos, pad, unk
 from supar.utils.field import Field, SubwordField
-from supar.utils.logging import init_logger, logger, progress_bar
+from supar.utils.logging import init_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
 
@@ -108,9 +109,10 @@ class CRF2oDependencyParser(BiaffineParser):
         return preds
 
     @classmethod
-    def build(cls, path, **kwargs):
+    def build(cls, path, logger=None, **kwargs):
+        args = Config().update(locals())
+        logger = logger or init_logger()
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        args = Config().update({'path': path, **kwargs})
         if not os.path.exists(path) or args.build:
             logger.info("Build the fields")
             WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
@@ -251,22 +253,24 @@ def run(args):
                            help='path to predicted result')
     args.update(vars(parser.parse_known_args()[0]))
 
+    dist.init_process_group(args.backend)
+    torch.set_num_threads(args.threads)
+    torch.manual_seed(args.seed)
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    torch.cuda.set_device(args.local_rank)
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger = init_logger(path=args.path)
     logger.info(f"Set the max num of threads to {args.threads}")
     logger.info(f"Set the seed for generating random numbers to {args.seed}")
     logger.info(f"Set the device with ID {args.device} visible")
-    torch.set_num_threads(args.threads)
-    torch.manual_seed(args.seed)
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
-        parser = CRF2oDependencyParser.build(**args)
+        parser = CRF2oDependencyParser.build(**args, logger=logger)
         parser.train(**args, logger=logger)
     elif args.mode == 'evaluate':
         parser = CRF2oDependencyParser.load(args.path)
         parser.evaluate(**args)
     elif args.mode == 'predict':
-        parser = CRF2oDependencyParser.load(args.path)
+        parser = BiaffineParser.load(args.path)
         parser.predict(**args)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
+import torch.distributed as dist
 from supar.utils.alg import kmeans
 
 
@@ -90,15 +91,31 @@ class Sampler(torch.utils.data.Sampler):
             for size, bucket in zip(self.sizes, self.buckets)
         ]
 
+        self.rank = dist.get_rank() if dist.is_initialized() else 0
+        self.replicas = dist.get_world_size() if dist.is_initialized() else 1
+        self.epoch = 0
+
     def __iter__(self):
+        g = torch.Generator()
+        g.manual_seed(self.epoch)
+        count = 0
+        range_fn = torch.arange
         # if shuffle, shuffle both the buckets and samples in each bucket
-        range_fn = torch.randperm if self.shuffle else torch.arange
+        # for distributed training, make sure each process
+        # generte the same random sequence at each epoch
+        if self.shuffle:
+            def range_fn(x):
+                return torch.randperm(x, generator=g)
         for i in range_fn(len(self.buckets)).tolist():
             split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
                            for j in range(self.chunks[i])]
             # DON'T use `torch.chunk` which may return wrong number of chunks
             for batch in range_fn(len(self.buckets[i])).split(split_sizes):
-                yield [self.buckets[i][j] for j in batch.tolist()]
+                if count % self.replicas == self.rank:
+                    yield [self.buckets[i][j] for j in batch.tolist()]
+                count += 1
+        self.epoch += 1
 
     def __len__(self):
-        return sum(self.chunks)
+        x, y = divmod(sum(self.chunks), self.replicas)
+        return x + (self.rank < y)

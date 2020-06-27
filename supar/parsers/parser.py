@@ -4,11 +4,13 @@ import os
 from datetime import datetime, timedelta
 
 import torch
+import torch.distributed as dist
 from supar.models import MODELS
 from supar.utils import Dataset
 from supar.utils.field import Field
 from supar.utils.logging import init_logger
 from supar.utils.metric import AttachmentMetric
+from supar.utils.parallel import DistributedDataParallel as DDP
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
@@ -26,6 +28,8 @@ class Parser(object):
         args = self.args.update(locals())
         logger = logger or init_logger(path=args.path)
 
+        if dist.is_initialized():
+            args.batch_size = args.batch_size // dist.get_world_size()
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
         test = Dataset(self.transform, args.test)
@@ -38,6 +42,9 @@ class Parser(object):
                     f"{'test:':6} {test}\n")
 
         logger.info(f"{self.model}\n")
+        if dist.is_initialized():
+            self.model = self.model.to(args.device)
+            self.model = DDP(self.model, device_ids=[dist.get_rank()])
         self.optimizer = Adam(self.model.parameters(),
                               args.lr,
                               (args.mu, args.nu),
@@ -62,7 +69,8 @@ class Parser(object):
             # save the model if it is the best so far
             if dev_metric > best_metric:
                 best_e, best_metric = epoch, dev_metric
-                self.save(args.path)
+                if not dist.is_initialized() or dist.get_rank() == 0:
+                    self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
                 logger.info(f"{t}s elapsed\n")
