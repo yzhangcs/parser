@@ -266,5 +266,5 @@ def run(args):
         parser = CRFConstituencyParser.load(args.path)
         parser.evaluate(**args)
     elif args.mode == 'predict':
-        parser = BiaffineParser.load(args.path)
+        parser = CRFConstituencyParser.load(args.path)
         parser.predict(**args)
