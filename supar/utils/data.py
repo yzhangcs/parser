@@ -53,7 +53,7 @@ class Dataset(torch.utils.data.Dataset):
     def collate_fn(self, batch):
         return {f: d for f, d in zip(self.fields.keys(), zip(*batch))}
 
-    def build(self, batch_size, n_buckets=1, num_workers=0, shuffle=False):
+    def build(self, batch_size, n_buckets=1, shuffle=False, distributed=False):
         # numericalize all fields
         self.fields = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
@@ -62,9 +62,9 @@ class Dataset(torch.utils.data.Dataset):
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(buckets=self.buckets,
                                                        batch_size=batch_size,
-                                                       shuffle=shuffle),
-                                 collate_fn=self.collate_fn,
-                                 num_workers=0)
+                                                       shuffle=shuffle,
+                                                       distributed=distributed),
+                                 collate_fn=self.collate_fn)
 
 
 class DataLoader(torch.utils.data.DataLoader):
@@ -79,7 +79,7 @@ class DataLoader(torch.utils.data.DataLoader):
 
 class Sampler(torch.utils.data.Sampler):
 
-    def __init__(self, buckets, batch_size, shuffle=False):
+    def __init__(self, buckets, batch_size, shuffle=False, distributed=False):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.sizes, self.buckets = zip(*[
@@ -90,15 +90,14 @@ class Sampler(torch.utils.data.Sampler):
                            max(round(size * len(bucket) / batch_size), 1))
                        for size, bucket in zip(self.sizes, self.buckets)]
 
-        self.rank = dist.get_rank() if dist.is_initialized() else 0
-        self.replicas = dist.get_world_size() if dist.is_initialized() else 1
+        self.rank = dist.get_rank() if distributed else 0
+        self.replicas = dist.get_world_size() if distributed else 1
         self.samples = sum(self.chunks) // self.replicas
         self.epoch = 0
 
     def __iter__(self):
         g = torch.Generator()
         g.manual_seed(self.epoch)
-        count = 0
         range_fn = torch.arange
         # if shuffle, shuffle both the buckets and samples in each bucket
         # for distributed training, make sure each process
@@ -106,6 +105,7 @@ class Sampler(torch.utils.data.Sampler):
         if self.shuffle:
             def range_fn(x):
                 return torch.randperm(x, generator=g)
+        total, count = 0, 0
         # we directly discard the uneven data right now
         # TODO: more elegant way to deal with uneven data
         for i in range_fn(len(self.buckets)).tolist():
@@ -113,9 +113,12 @@ class Sampler(torch.utils.data.Sampler):
                            for j in range(self.chunks[i])]
             # DON'T use `torch.chunk` which may return wrong number of chunks
             for batch in range_fn(len(self.buckets[i])).split(split_sizes):
-                if count < self.samples and count % self.replicas == self.rank:
+                if count == self.samples:
+                    break
+                if total % self.replicas == self.rank:
+                    count += 1
                     yield [self.buckets[i][j] for j in batch.tolist()]
-                count += 1
+                total += 1
         self.epoch += 1
 
     def __len__(self):

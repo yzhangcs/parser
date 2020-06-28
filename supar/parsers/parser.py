@@ -33,9 +33,9 @@ class Parser(object):
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
         test = Dataset(self.transform, args.test)
-        train.build(args.batch_size, args.buckets, args.num_workers, True)
-        dev.build(args.batch_size, args.buckets, args.num_workers)
-        test.build(args.batch_size, args.buckets, args.num_workers)
+        train.build(args.batch_size, args.buckets, True, dist.is_initialized())
+        dev.build(args.batch_size, args.buckets)
+        test.build(args.batch_size, args.buckets)
         logger.info(f"Load the datasets\n"
                     f"{'train:':6} {train}\n"
                     f"{'dev:':6} {dev}\n"
@@ -89,7 +89,7 @@ class Parser(object):
         logger = logger or init_logger()
 
         dataset = Dataset(self.transform, data)
-        dataset.build(args.batch_size, args.buckets, args.num_workers)
+        dataset.build(args.batch_size, args.buckets)
         logger.info(f"Load the dataset\n{dataset}")
 
         logger.info("Evaluate the dataset")
@@ -109,7 +109,7 @@ class Parser(object):
             self.transform.append(Field('probs'))
 
         dataset = Dataset(self.transform, data)
-        dataset.build(args.batch_size, args.buckets, args.num_workers)
+        dataset.build(args.batch_size, args.buckets)
         logger.info(f"Load the dataset\n{dataset}")
 
         logger.info("Make predictions on the dataset")
