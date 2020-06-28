@@ -272,5 +272,5 @@ def run(args):
         parser = CRF2oDependencyParser.load(args.path)
         parser.evaluate(**args)
     elif args.mode == 'predict':
-        parser = BiaffineParser.load(args.path)
+        parser = CRF2oDependencyParser.load(args.path)
         parser.predict(**args)
