@@ -61,7 +61,7 @@ class BiaffineParser(Parser):
                                      f"loss: {loss:.4f} - "
                                      f"{metric}")
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _evaluate(self, loader):
         self.model.eval()
 
@@ -83,7 +83,7 @@ class BiaffineParser(Parser):
 
         return total_loss, metric
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _predict(self, loader):
         self.model.eval()
 

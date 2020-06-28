@@ -42,11 +42,11 @@ class Transform(object):
         self.fields.append(field.name)
         setattr(self, field.name, field)
 
-    @ property
+    @property
     def src(self):
         raise AttributeError
 
-    @ property
+    @property
     def tgt(self):
         raise AttributeError
 
@@ -118,15 +118,15 @@ class CoNLL(Transform):
         self.PHEAD = PHEAD
         self.PDEPREL = PDEPREL
 
-    @ property
+    @property
     def src(self):
         return self.FORM, self.CPOS
 
-    @ property
+    @property
     def tgt(self):
         return self.HEAD, self.DEPREL
 
-    @ classmethod
+    @classmethod
     def toconll(cls, tokens):
         if isinstance(tokens[0], str):
             s = '\n'.join([f"{i}\t{word}\t" + '\t'.join(['_']*8)
@@ -136,11 +136,11 @@ class CoNLL(Transform):
                            for i, (word, tag) in enumerate(tokens, 1)])
         return s + '\n'
 
-    @ classmethod
+    @classmethod
     def numericalize(cls, sequence):
         return [int(i) for i in sequence]
 
-    @ classmethod
+    @classmethod
     def numericalize_sibs(cls, sequence):
         sibs = [-1] * (len(sequence) + 1)
         heads = [0] + [int(i) for i in sequence]
@@ -218,15 +218,15 @@ class Tree(Transform):
         self.TREE = TREE
         self.CHART = CHART
 
-    @ property
+    @property
     def src(self):
         return self.WORD, self.POS, self.TREE
 
-    @ property
+    @property
     def tgt(self):
         return self.CHART,
 
-    @ classmethod
+    @classmethod
     def totree(cls, tokens, root=''):
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]

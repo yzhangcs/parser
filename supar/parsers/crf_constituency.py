@@ -54,7 +54,7 @@ class CRFConstituencyParser(Parser):
             progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
                                      f"loss: {loss:.4f}")
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _evaluate(self, loader):
         self.model.eval()
 
@@ -84,7 +84,7 @@ class CRFConstituencyParser(Parser):
 
         return total_loss, metric
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _predict(self, loader):
         self.model.eval()
 
@@ -110,7 +110,7 @@ class CRFConstituencyParser(Parser):
 
         return preds
 
-    @ classmethod
+    @classmethod
     def build(cls, path, logger=None, **kwargs):
         args = Config().update(locals())
         logger = logger or init_logger()

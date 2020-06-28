@@ -130,15 +130,15 @@ class Parser(object):
     def _train(self, loader):
         raise NotImplementedError
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _evaluate(self, loader):
         raise NotImplementedError
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _predict(self, loader):
         raise NotImplementedError
 
-    @ classmethod
+    @classmethod
     def build(cls, path, **kwargs):
         raise NotImplementedError
 
