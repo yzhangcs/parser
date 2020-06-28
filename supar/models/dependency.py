@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
-                           MatrixTreeTheorem, Triaffine)
+                           MatrixTree, Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
 from supar.utils.alg import eisner, mst
@@ -30,7 +30,8 @@ class BiaffineParserModel(nn.Module):
                                             n_layers=args.n_bert_layers,
                                             n_out=args.n_feat_embed,
                                             pad_index=args.feat_pad_index,
-                                            dropout=args.mix_dropout)
+                                            dropout=args.mix_dropout,
+                                            requires_grad=args.bert_fine_tune)
             self.args.n_feat_embed = self.feat_embed.n_out
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
@@ -81,7 +82,6 @@ class BiaffineParserModel(nn.Module):
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
-        lens = mask.sum(dim=1)
         ext_words = words
         # set the indices larger than num_embeddings to unk_index
         if hasattr(self, 'pretrained'):
@@ -95,9 +95,9 @@ class BiaffineParserModel(nn.Module):
         feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
-        embed = torch.cat((word_embed, feat_embed), dim=-1)
+        embed = torch.cat((word_embed, feat_embed), -1)
 
-        x = pack_padded_sequence(embed, lens, True, False)
+        x = pack_padded_sequence(embed, mask.sum(1), True, False)
         x, _ = self.lstm(x)
         x, _ = pad_packed_sequence(x, True, total_length=seq_len)
         x = self.lstm_dropout(x)
@@ -147,7 +147,7 @@ class MSTDependencyModel(BiaffineParserModel):
     def __init__(self, args):
         super(MSTDependencyModel, self).__init__(args)
 
-        self.matrix_tree = MatrixTreeTheorem()
+        self.matrix_tree = MatrixTree()
 
     def loss(self, s_arc, s_rel, arcs, rels, mask):
         batch_size, seq_len = mask.shape
@@ -207,7 +207,6 @@ class CRF2oDependencyModel(BiaffineParserModel):
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
-        lens = mask.sum(dim=1)
         ext_words = words
         # set the indices larger than num_embeddings to unk_index
         if hasattr(self, 'pretrained'):
@@ -221,9 +220,9 @@ class CRF2oDependencyModel(BiaffineParserModel):
         feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
-        embed = torch.cat((word_embed, feat_embed), dim=-1)
+        embed = torch.cat((word_embed, feat_embed), -1)
 
-        x = pack_padded_sequence(embed, lens, True, False)
+        x = pack_padded_sequence(embed, mask.sum(1), True, False)
         x, _ = self.lstm(x)
         x, _ = pad_packed_sequence(x, True, total_length=seq_len)
         x = self.lstm_dropout(x)

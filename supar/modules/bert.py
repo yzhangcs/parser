@@ -20,6 +20,7 @@ class BertEmbedding(nn.Module):
         super(BertEmbedding, self).__init__()
 
         config = AutoConfig.from_pretrained(model, output_hidden_states=True)
+        self.bert = AutoModel.from_pretrained(model, config=config)
         self.bert = self.bert.requires_grad_(requires_grad)
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
         self.hidden_size = self.bert.config.hidden_size

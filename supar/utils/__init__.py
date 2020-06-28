@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from . import corpus, data, field, fn, metric
+from . import field, fn, metric, transform
+from .data import Dataset
 from .embedding import Embedding
 from .vocab import Vocab
 
-__all__ = ['Embedding', 'Vocab', 'corpus', 'data', 'field', 'fn', 'metric']
+__all__ = ['Dataset', 'Embedding', 'Vocab',
+           'field', 'fn', 'metric', 'transform']

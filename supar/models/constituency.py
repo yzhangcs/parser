@@ -27,7 +27,9 @@ class CRFConstituencyModel(nn.Module):
             self.feat_embed = BertEmbedding(model=args.bert,
                                             n_layers=args.n_bert_layers,
                                             n_out=args.n_feat_embed,
-                                            pad_index=args.feat_pad_index)
+                                            pad_index=args.feat_pad_index,
+                                            dropout=args.mix_dropout)
+            self.args.n_feat_embed = self.feat_embed.n_out
         else:
             self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
                                            embedding_dim=args.n_feat_embed)
@@ -78,7 +80,6 @@ class CRFConstituencyModel(nn.Module):
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
-        lens = mask.sum(dim=1)
         ext_words = words
         # set the indices larger than num_embeddings to unk_index
         if hasattr(self, 'pretrained'):
@@ -92,14 +93,14 @@ class CRFConstituencyModel(nn.Module):
         feat_embed = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
-        embed = torch.cat((word_embed, feat_embed), dim=-1)
+        embed = torch.cat((word_embed, feat_embed), -1)
 
-        x = pack_padded_sequence(embed, lens, True, False)
+        x = pack_padded_sequence(embed, mask.sum(1), True, False)
         x, _ = self.lstm(x)
         x, _ = pad_packed_sequence(x, True, total_length=seq_len)
         x = self.lstm_dropout(x)
 
-        x_f, x_b = x.chunk(2, dim=-1)
+        x_f, x_b = x.chunk(2, -1)
         x = torch.cat((x_f[:, :-1], x_b[:, 1:]), -1)
         # apply MLPs to the BiLSTM output states
         span_l = self.mlp_span_l(x)
@@ -123,9 +124,7 @@ class CRFConstituencyModel(nn.Module):
         return loss, span_probs
 
     def decode(self, s_span, s_label, mask):
-        pred_spans = cky(s_span, mask)
-        pred_labels = s_label.argmax(-1).tolist()
-        preds = [[(i, j, labels[i][j]) for i, j in spans]
-                 for spans, labels in zip(pred_spans, pred_labels)]
-
-        return preds
+        span_preds = cky(s_span, mask)
+        label_preds = s_label.argmax(-1).tolist()
+        return [[(i, j, labels[i][j]) for i, j in spans]
+                for spans, labels in zip(span_preds, label_preds)]

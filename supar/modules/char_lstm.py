@@ -45,7 +45,7 @@ class CharLSTM(nn.Module):
         x = pack_padded_sequence(x, lens[char_mask], True, False)
         x, (h, _) = self.lstm(x)
         # [n, fix_len, n_out]
-        h = torch.cat(torch.unbind(h), dim=-1)
+        h = torch.cat(torch.unbind(h), -1)
         # [batch_size, seq_len, n_out]
         embed = h.new_zeros(*lens.shape, self.n_out)
         embed = embed.masked_scatter_(char_mask.unsqueeze(-1), h)

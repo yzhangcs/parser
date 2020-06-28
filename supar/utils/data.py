@@ -1,81 +1,83 @@
 # -*- coding: utf-8 -*-
 
-from collections.abc import Iterable
-from itertools import chain
-
 import torch
+import torch.distributed as dist
 from supar.utils.alg import kmeans
-from supar.utils.field import Field
-from supar.utils.fn import pad
-from torch.utils.data import DataLoader, Dataset, Sampler
 
 
-class TextDataLoader(DataLoader):
+class Dataset(torch.utils.data.Dataset):
 
-    def __init__(self, *args, **kwargs):
-        super(TextDataLoader, self).__init__(*args, **kwargs)
+    def __init__(self, transform, data, **kwargs):
+        super(Dataset, self).__init__()
 
-        self.fields = self.dataset.fields
+        self.transform = transform
+        self.sentences = transform.load(data, **kwargs)
 
-    def __iter__(self):
-        for raw_batch in super(TextDataLoader, self).__iter__():
-            batch, device = [], 'cuda' if torch.cuda.is_available() else 'cpu'
-            for data, field in zip(raw_batch, self.fields):
-                if isinstance(field, Field):
-                    if isinstance(data[0], torch.Tensor):
-                        data = pad(data, field.pad_index).to(device)
-                    elif isinstance(data[0], Iterable):
-                        data = [pad(f, field.pad_index).to(device)
-                                for f in zip(*data)]
-                batch.append(data)
-            yield batch
+    def __repr__(self):
+        s = f"{self.__class__.__name__}("
+        s += f"n_sentences={len(self.sentences)}"
+        if hasattr(self, 'loader'):
+            s += f", n_batches={len(self.loader)}"
+        if hasattr(self, 'buckets'):
+            s += f", n_buckets={len(self.buckets)}"
+        s += ")"
 
-
-class TextDataset(Dataset):
-
-    def __init__(self, corpus, fields, n_buckets=1):
-        super(TextDataset, self).__init__()
-
-        self.corpus = corpus
-        self.fields = list(chain(*[
-            field if isinstance(field, Iterable) else [field]
-            for field in fields if field is not None
-        ]))
-        for field in self.fields:
-            setattr(self,
-                    field.name,
-                    field.transform(getattr(corpus, field.name)))
-        # NOTE: the final bucket count is roughly equal to n_buckets
-        # FIXME: the lengths should be those of the wordpieces,
-        # not of corpus tokens
-        self.lengths = [len(i) + sum([bool(field.bos), bool(field.eos)])
-                        for i in corpus]
-        self.buckets = dict(zip(*kmeans(self.lengths, n_buckets)))
-
-    def __getitem__(self, index):
-        for field in self.fields:
-            yield getattr(self, field.name)[index]
+        return s
 
     def __len__(self):
-        return len(self.corpus)
+        return len(self.sentences)
 
-    @property
-    def loader(self):
-        if hasattr(self, 'data_loader'):
-            return self.data_loader
+    def __getitem__(self, index):
+        if not hasattr(self, 'fields'):
+            raise AttributeError("The fields are not numericalized. "
+                                 "Please build the dataset first.")
+        for d in self.fields.values():
+            yield d[index]
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        return [getattr(sentence, name) for sentence in self.sentences]
+
+    def __setattr__(self, name, value):
+        if 'sentences' in self.__dict__ and name in self.sentences[0]:
+            # restore the order of sequences in the buckets
+            indices = torch.tensor([i
+                                    for bucket in self.buckets.values()
+                                    for i in bucket]).argsort()
+            for index, sentence in zip(indices, self.sentences):
+                setattr(sentence, name, value[index])
         else:
-            raise AttributeError
+            self.__dict__[name] = value
 
-    @loader.setter
-    def loader(self, data_loader):
-        self.data_loader = data_loader
+    def collate_fn(self, batch):
+        return {f: d for f, d in zip(self.fields.keys(), zip(*batch))}
 
-    @classmethod
-    def collate_fn(cls, batch):
-        return (field for field in zip(*batch))
+    def build(self, batch_size, n_buckets=1, num_workers=0, shuffle=False):
+        # numericalize all fields
+        self.fields = self.transform(self.sentences)
+        # NOTE: the final bucket count is roughly equal to n_buckets
+        self.lengths = [len(i) for i in self.fields[next(iter(self.fields))]]
+        self.buckets = dict(zip(*kmeans(self.lengths, n_buckets)))
+        self.loader = DataLoader(dataset=self,
+                                 batch_sampler=Sampler(buckets=self.buckets,
+                                                       batch_size=batch_size,
+                                                       shuffle=shuffle),
+                                 collate_fn=self.collate_fn,
+                                 num_workers=0)
 
 
-class TextSampler(Sampler):
+class DataLoader(torch.utils.data.DataLoader):
+
+    def __init__(self, *args, **kwargs):
+        super(DataLoader, self).__init__(*args, **kwargs)
+
+    def __iter__(self):
+        for batch in super(DataLoader, self).__iter__():
+            yield [f.compose(d) for f, d in batch.items()]
+
+
+class Sampler(torch.utils.data.Sampler):
 
     def __init__(self, buckets, batch_size, shuffle=False):
         self.batch_size = batch_size
@@ -83,34 +85,37 @@ class TextSampler(Sampler):
         self.sizes, self.buckets = zip(*[
             (size, bucket) for size, bucket in buckets.items()
         ])
-        # the number of chunks in each bucket, which is clipped by
-        # range [1, len(bucket)]
+        # number of chunks in each bucket, clipped by range [1, len(bucket)]
         self.chunks = [
             min(len(bucket), max(round(size * len(bucket) / batch_size), 1))
             for size, bucket in zip(self.sizes, self.buckets)
         ]
 
+        self.rank = dist.get_rank() if dist.is_initialized() else 0
+        self.replicas = dist.get_world_size() if dist.is_initialized() else 1
+        self.epoch = 0
+
     def __iter__(self):
+        g = torch.Generator()
+        g.manual_seed(self.epoch)
+        count = 0
+        range_fn = torch.arange
         # if shuffle, shuffle both the buckets and samples in each bucket
-        range_fn = torch.randperm if self.shuffle else torch.arange
+        # for distributed training, make sure each process
+        # generte the same random sequence at each epoch
+        if self.shuffle:
+            def range_fn(x):
+                return torch.randperm(x, generator=g)
         for i in range_fn(len(self.buckets)).tolist():
             split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
                            for j in range(self.chunks[i])]
             # DON'T use `torch.chunk` which may return wrong number of chunks
             for batch in range_fn(len(self.buckets[i])).split(split_sizes):
-                yield [self.buckets[i][j] for j in batch.tolist()]
+                if count % self.replicas == self.rank:
+                    yield [self.buckets[i][j] for j in batch.tolist()]
+                count += 1
+        self.epoch += 1
 
     def __len__(self):
-        return sum(self.chunks)
-
-
-def batchify(dataset, batch_size, shuffle=False, num_workers=0):
-    batch_sampler = TextSampler(buckets=dataset.buckets,
-                                batch_size=batch_size,
-                                shuffle=shuffle)
-    loader = TextDataLoader(dataset=dataset,
-                            batch_sampler=batch_sampler,
-                            collate_fn=dataset.collate_fn,
-                            num_workers=num_workers)
-
-    return loader
+        x, y = divmod(sum(self.chunks), self.replicas)
+        return x + (self.rank < y)

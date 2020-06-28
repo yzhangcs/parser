@@ -5,10 +5,10 @@ import torch.autograd as autograd
 import torch.nn as nn
 
 
-class MatrixTreeTheorem(nn.Module):
+class MatrixTree(nn.Module):
 
     def __init__(self, *args, **kwargs):
-        super(MatrixTreeTheorem, self).__init__(*args, **kwargs)
+        super(MatrixTree, self).__init__(*args, **kwargs)
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None):

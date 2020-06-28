@@ -26,6 +26,9 @@ class RawField(object):
     def transform(self, sequences):
         return [self.preprocess(seq) for seq in sequences]
 
+    def compose(self, sequences):
+        return sequences
+
 
 class Field(RawField):
 
@@ -82,14 +85,18 @@ class Field(RawField):
     @property
     def bos_index(self):
         if hasattr(self, 'vocab'):
-            return self.vocab[self.bos]
-        return self.specials.index(self.bos)
+            return self.vocab[self.bos] if self.bos else 0
+        return self.specials.index(self.bos) if self.bos else 0
 
     @property
     def eos_index(self):
         if hasattr(self, 'vocab'):
-            return self.vocab[self.eos]
-        return self.specials.index(self.eos)
+            return self.vocab[self.eos] if self.eos else 0
+        return self.specials.index(self.eos) if self.eos else 0
+
+    @property
+    def device(self):
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def preprocess(self, sequence):
         if self.fn is not None:
@@ -101,10 +108,10 @@ class Field(RawField):
 
         return sequence
 
-    def build(self, corpus, min_freq=1, embed=None):
+    def build(self, dataset, min_freq=1, embed=None):
         if hasattr(self, 'vocab'):
             return
-        sequences = getattr(corpus, self.name)
+        sequences = getattr(dataset, self.name)
         counter = Counter(token
                           for seq in sequences
                           for token in self.preprocess(seq))
@@ -136,6 +143,9 @@ class Field(RawField):
 
         return sequences
 
+    def compose(self, sequences):
+        return pad(sequences, self.pad_index).to(self.device)
+
 
 class SubwordField(Field):
 
@@ -143,10 +153,10 @@ class SubwordField(Field):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
         super(SubwordField, self).__init__(*args, **kwargs)
 
-    def build(self, corpus, min_freq=1, embed=None):
+    def build(self, dataset, min_freq=1, embed=None):
         if hasattr(self, 'vocab'):
             return
-        sequences = getattr(corpus, self.name)
+        sequences = getattr(dataset, self.name)
         counter = Counter(piece
                           for seq in sequences
                           for token in seq
@@ -190,9 +200,9 @@ class SubwordField(Field):
 
 class ChartField(Field):
 
-    def build(self, corpus, min_freq=1):
+    def build(self, dataset, min_freq=1):
         counter = Counter(label
-                          for seq in getattr(corpus, self.name)
+                          for seq in getattr(dataset, self.name)
                           for i, j, label in self.preprocess(seq))
 
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
@@ -212,3 +222,6 @@ class ChartField(Field):
             labels.append(label_chart)
 
         return list(zip(spans, labels))
+
+    def compose(self, sequences):
+        return [pad(i).to(self.device) for i in zip(*sequences)]
