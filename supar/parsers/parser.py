@@ -24,6 +24,10 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
+    @property
+    def is_master(self):
+        return not dist.is_initialized() or dist.get_rank() == 0
+
     def train(self, train, dev, test, logger=None, **kwargs):
         args = self.args.update(locals())
         logger = logger or init_logger(path=args.path)
@@ -69,7 +73,7 @@ class Parser(object):
             # save the model if it is the best so far
             if dev_metric > best_metric:
                 best_e, best_metric = epoch, dev_metric
-                if not dist.is_initialized() or dist.get_rank() == 0:
+                if self.is_master:
                     self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
@@ -159,7 +163,10 @@ class Parser(object):
         return cls(args, model, transform)
 
     def save(self, path):
-        state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+        model = self.model
+        if hasattr(model, 'module'):
+            model = self.model.module
+        state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)
         state = {'args': self.args,
                  'state_dict': state_dict,

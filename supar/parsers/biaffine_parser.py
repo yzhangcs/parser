@@ -127,8 +127,9 @@ class BiaffineParser(Parser):
             elif args.feat == 'bert':
                 from transformers import AutoTokenizer
                 tokenizer = AutoTokenizer.from_pretrained(args.bert)
-                if args.bert.startswith('bert'):
+                if tokenizer.bos_token:
                     tokenizer.bos_token = tokenizer.cls_token
+                if tokenizer.eos_token:
                     tokenizer.eos_token = tokenizer.sep_token
                 FEAT = SubwordField('bert',
                                     pad=tokenizer.pad_token,
