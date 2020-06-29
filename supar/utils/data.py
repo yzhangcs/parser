@@ -29,8 +29,8 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         if not hasattr(self, 'fields'):
-            raise AttributeError("The fields are not numericalized. "
-                                 "Please build the dataset first.")
+            raise RuntimeError("The fields are not numericalized. "
+                               "Please build the dataset first.")
         for d in self.fields.values():
             yield d[index]
 
@@ -100,14 +100,14 @@ class Sampler(torch.utils.data.Sampler):
         g.manual_seed(self.epoch)
         range_fn = torch.arange
         # if shuffle, shuffle both the buckets and samples in each bucket
-        # for distributed training, make sure each process
-        # generte the same random sequence at each epoch
+        # for distributed training, make sure each process generte the same
+        # random sequence at each epoch
         if self.shuffle:
             def range_fn(x):
                 return torch.randperm(x, generator=g)
         total, count = 0, 0
-        # we directly discard the uneven data right now
-        # TODO: more elegant way to deal with uneven data
+        # TODO: more elegant way to deal with uneven data, which we
+        # directly discard right now
         for i in range_fn(len(self.buckets)).tolist():
             split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
                            for j in range(self.chunks[i])]

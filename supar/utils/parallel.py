@@ -22,9 +22,9 @@ class DistributedDataParallel(nn.parallel.DistributedDataParallel):
 def init_device(device, backend='nccl', host=None, port=None):
     os.environ['CUDA_VISIBLE_DEVICES'] = device
     if torch.cuda.device_count() > 1:
-        if not host:
+        if not host and 'MASTER_ADDR' not in os.environ['MASTER_ADDR']:
             host = 'localhost'
-        if not port:
+        if not port and 'MASTER_PORT' not in os.environ['MASTER_PORT']:
             port = str(torch.randint(10000, 20000, (1,)).item())
         os.environ['MASTER_ADDR'] = host
         os.environ['MASTER_PORT'] = port
