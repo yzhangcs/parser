@@ -22,7 +22,5 @@ if __name__ == '__main__':
                         choices=PARSERS.keys())
     parser.add_argument('--backend', default='nccl',
                         choices=['gloo', 'nccl'])
-    parser.add_argument('--local_rank', default=0, type=int,
-                        help='node rank for distributed training')
     args, _ = parser.parse_known_args()
     PARSERS[args.model].run(Config(args.conf).update(vars(args)))

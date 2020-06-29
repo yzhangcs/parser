@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import os
 
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 from supar.parsers.biaffine_parser import BiaffineParser
 from supar.utils.logging import init_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
+from supar.utils.parallel import init_device
 
 
 class CRFDependencyParser(BiaffineParser):
@@ -182,16 +181,11 @@ def run(args):
                            help='path to predicted result')
     args.update(vars(parser.parse_known_args()[0]))
 
-    dist.init_process_group(args.backend)
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
-    torch.cuda.set_device(args.local_rank)
+    init_device(args.device)
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger = init_logger(path=args.path)
-    logger.info(f"Set the max num of threads to {args.threads}")
-    logger.info(f"Set the seed for generating random numbers to {args.seed}")
-    logger.info(f"Set the device with ID {args.device} visible")
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
