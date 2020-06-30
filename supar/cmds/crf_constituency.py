@@ -11,6 +11,8 @@ def main():
         description='Create the Biaffine Parser model.'
     )
     parser.set_defaults(Parser=CRFConstituencyParser)
+    parser.add_argument('--mbr', action='store_true',
+                        help='whether to use mbr decoding')
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser(
         'train',
@@ -21,15 +23,13 @@ def main():
                            help='choices of additional features')
     subparser.add_argument('--build', '-b', action='store_true',
                            help='whether to build the model first')
-    subparser.add_argument('--punct', action='store_true',
-                           help='whether to include punctuation')
     subparser.add_argument('--max-len', default=None, type=int,
                            help='max length of the sentences')
-    subparser.add_argument('--train', default='data/ptb/train.conllx',
+    subparser.add_argument('--train', default='data/ptb/train.pid',
                            help='path to train file')
-    subparser.add_argument('--dev', default='data/ptb/dev.conllx',
+    subparser.add_argument('--dev', default='data/ptb/dev.pid',
                            help='path to dev file')
-    subparser.add_argument('--test', default='data/ptb/test.conllx',
+    subparser.add_argument('--test', default='data/ptb/test.pid',
                            help='path to test file')
     subparser.add_argument('--embed', default='data/glove.6B.100d.txt',
                            help='path to pretrained embeddings')
@@ -42,9 +42,7 @@ def main():
         'evaluate',
         help='Evaluate the specified parser and dataset.'
     )
-    subparser.add_argument('--punct', action='store_true',
-                           help='whether to include punctuation')
-    subparser.add_argument('--data', default='data/ptb/test.conllx',
+    subparser.add_argument('--data', default='data/ptb/test.pid',
                            help='path to dataset')
     # predict
     subparser = subparsers.add_parser(
@@ -53,9 +51,9 @@ def main():
     )
     subparser.add_argument('--prob', action='store_true',
                            help='whether to output probs')
-    subparser.add_argument('--data', default='data/ptb/test.conllx',
+    subparser.add_argument('--data', default='data/ptb/test.pid',
                            help='path to dataset')
-    subparser.add_argument('--pred', default='pred.conllx',
+    subparser.add_argument('--pred', default='pred.pid',
                            help='path to predicted result')
     parse(parser)
 
