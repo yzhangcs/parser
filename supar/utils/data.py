@@ -60,10 +60,10 @@ class Dataset(torch.utils.data.Dataset):
         self.lengths = [len(i) for i in self.fields[next(iter(self.fields))]]
         self.buckets = dict(zip(*kmeans(self.lengths, n_buckets)))
         self.loader = DataLoader(dataset=self,
-                                 batch_sampler=Sampler(buckets=self.buckets,
-                                                       batch_size=batch_size,
-                                                       shuffle=shuffle,
-                                                       distributed=distributed),
+                                 batch_sampler=Sampler(self.buckets,
+                                                       batch_size,
+                                                       shuffle,
+                                                       distributed),
                                  collate_fn=self.collate_fn)
 
 

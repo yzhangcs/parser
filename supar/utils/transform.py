@@ -3,7 +3,6 @@
 from collections.abc import Iterable
 
 import nltk
-from supar.utils.fn import binarize, factorize, isprojective
 
 
 class Transform(object):
@@ -137,11 +136,11 @@ class CoNLL(Transform):
         return s + '\n'
 
     @classmethod
-    def numericalize(cls, sequence):
+    def get_arcs(cls, sequence):
         return [int(i) for i in sequence]
 
     @classmethod
-    def numericalize_sibs(cls, sequence):
+    def get_sibs(cls, sequence):
         sibs = [-1] * (len(sequence) + 1)
         heads = [0] + [int(i) for i in sequence]
 
@@ -158,6 +157,32 @@ class CoNLL(Transform):
                     break
         return sibs[1:]
 
+    @classmethod
+    def isprojective(cls, sequence):
+        arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
+        for i, (hi, di) in enumerate(arcs):
+            for hj, dj in arcs[i+1:]:
+                (li, ri), (lj, rj) = sorted([hi, di]), sorted([hj, dj])
+                if li <= hj <= ri and hi == dj:
+                    return False
+                if lj <= hi <= rj and hj == di:
+                    return False
+                if (li < lj < ri or li < rj < ri) and (li - lj)*(ri - rj) > 0:
+                    return False
+        return True
+
+    @classmethod
+    def istree(cls, sequence, proj=False, multiroot=False):
+        from supar.utils.alg import tarjan
+        if proj and not cls.isprojective(sequence):
+            return False
+        n_roots = sum(head == 0 for head in sequence[1:])
+        if n_roots == 0:
+            return False
+        if not multiroot and n_roots > 1:
+            return False
+        return next(tarjan(sequence), None) is None
+
     def load(self, data, proj=False, max_len=None, **kwargs):
         start, sentences = 0, []
         if isinstance(data, str):
@@ -172,7 +197,7 @@ class CoNLL(Transform):
                 start = i + 1
         if proj:
             sentences = [i for i in sentences
-                         if isprojective([0] + list(map(int, i.arcs)))]
+                         if self.isprojective([0] + list(map(int, i.arcs)))]
         if max_len is not None:
             sentences = [i for i in sentences if len(i) < max_len]
 
@@ -233,6 +258,63 @@ class Tree(Transform):
         tree = ' '.join([f"({pos} {word})" for word, pos in tokens])
         return nltk.Tree.fromstring(f"({root} {tree})")
 
+    @classmethod
+    def binarize(cls, tree):
+        tree = tree.copy(True)
+        nodes = [tree]
+        while nodes:
+            node = nodes.pop()
+            if isinstance(node, nltk.Tree):
+                nodes.extend([child for child in node])
+                if len(node) > 1:
+                    for i, child in enumerate(node):
+                        if not isinstance(child[0], nltk.Tree):
+                            node[i] = nltk.Tree(f"{node.label()}|<>", [child])
+        tree.chomsky_normal_form('left', 0, 0)
+        tree.collapse_unary()
+
+        return tree
+
+    @classmethod
+    def factorize(cls, tree, delete_labels=None, equal_labels=None):
+        def track(tree, i):
+            label = tree.label()
+            if delete_labels is not None and label in delete_labels:
+                label = None
+            if equal_labels is not None:
+                label = equal_labels.get(label, label)
+            if len(tree) == 1 and not isinstance(tree[0], nltk.Tree):
+                return (i+1 if label is not None else i), []
+            j, spans = i, []
+            for child in tree:
+                j, s = track(child, j)
+                spans += s
+            if label is not None and j > i:
+                spans = [(i, j, label)] + spans
+            return j, spans
+        return track(tree, 0)[1]
+
+    @classmethod
+    def build(cls, tree, sequence):
+        root = tree.label()
+        leaves = [subtree for subtree in tree.subtrees()
+                  if not isinstance(subtree[0], nltk.Tree)]
+
+        def track(node):
+            i, j, label = next(node)
+            if j == i+1:
+                children = [leaves[i]]
+            else:
+                children = track(node) + track(node)
+            if label.endswith('|<>'):
+                return children
+            labels = label.split('+')
+            tree = nltk.Tree(labels[-1], children)
+            for label in reversed(labels[:-1]):
+                tree = nltk.Tree(label, [tree])
+            return [tree]
+        return nltk.Tree(root, track(iter(sequence)))
+
     def load(self, data, max_len=None, **kwargs):
         if isinstance(data, str):
             with open(data, 'r') as f:
@@ -258,7 +340,9 @@ class TreeSentence(Sentence):
         # the values contain words, pos tags, raw trees, and spans
         # the tree is first left-binarized before factorized
         # spans are the factorization of tree traversed in pre-order
-        self.values = [*zip(*tree.pos()), tree, factorize(binarize(tree)[0])]
+        self.values = [*zip(*tree.pos()),
+                       tree,
+                       Tree.factorize(Tree.binarize(tree)[0])]
 
     def __repr__(self):
         return self.values[-2].pformat(1000000)

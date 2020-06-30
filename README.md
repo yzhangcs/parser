@@ -91,9 +91,9 @@ optional arguments:
 
 Commands:
   {evaluate,predict,train}
-    evaluate            Evaluate the specified model and dataset.
-    predict             Use a trained model to make predictions.
-    train               Train a model.
+    evaluate            Evaluate the specified parser and dataset.
+    predict             Use a trained parser to make predictions.
+    train               Train a parser.
 ```
 
 Before triggering the subcommands, please make sure that the data files must be in CoNLL-X format. 

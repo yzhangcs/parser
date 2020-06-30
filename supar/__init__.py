@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from .config import Config
 from .parsers import (BiaffineParser, CRF2oDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser,
                       MSTDependencyParser)
 
-__all__ = ['Config',
-           'BiaffineParser',
+__all__ = ['BiaffineParser',
            'CRF2oDependencyParser',
            'CRFConstituencyParser',
            'CRFDependencyParser',

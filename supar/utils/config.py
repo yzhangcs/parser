@@ -44,3 +44,6 @@ class Config(object):
             setattr(self, name, value)
 
         return self
+
+    def pop(self, key):
+        return self.__dict__.pop(key)

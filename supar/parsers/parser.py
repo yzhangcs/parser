@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.distributed as dist
-from supar.models import MODELS
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
+
 from supar.utils import Dataset
 from supar.utils.field import Field
 from supar.utils.logging import init_logger
 from supar.utils.metric import AttachmentMetric
 from supar.utils.parallel import DistributedDataParallel as DDP
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
 
 
 class Parser(object):
@@ -155,7 +155,7 @@ class Parser(object):
         args = state['args']
         args.update({'path': path, **kwargs})
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = MODELS[args.model](args)
+        model = cls.Model(args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
