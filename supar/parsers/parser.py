@@ -48,7 +48,9 @@ class Parser(object):
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
             self.model = self.model.to(args.device)
-            self.model = DDP(self.model, device_ids=[dist.get_rank()])
+            self.model = DDP(self.model,
+                             device_ids=[dist.get_rank()],
+                             find_unused_parameters=True)
         self.optimizer = Adam(self.model.parameters(),
                               args.lr,
                               (args.mu, args.nu),
