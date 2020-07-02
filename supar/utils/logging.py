@@ -2,48 +2,32 @@
 
 import logging
 import os
-import sys
-import torch.distributed as dist
 from datetime import datetime
 
+import torch.distributed as dist
 from tqdm import tqdm
 
+logger = logging.getLogger('supar')
 
-def init_logger(name=datetime.now().strftime("%y-%m-%d_%H.%M.%S"),
-                path=None,
-                tqdm=True,
+
+def init_logger(path=None,
+                mode='a',
                 level=None,
-                mode='a'):
+                handlers=None):
     if level is None:
         level = logging.INFO
         if dist.is_initialized() and dist.get_rank() != 0:
             level = logging.WARNING
-    formatter = logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s",
-                                  datefmt='%Y-%m-%d %H:%M:%S')
-    logger = logging.getLogger(name)
-    logger.propagate = False
-
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(formatter)
-    attached_to_std = False
-    for handler in logger.handlers:
-        if isinstance(handler, logging.StreamHandler):
-            if handler.stream == sys.stderr or handler.stream == sys.stdout:
-                attached_to_std = True
-                break
-    if not attached_to_std:
-        logger.addHandler(consoleHandler)
-    logger.setLevel(level)
-    consoleHandler.setLevel(level)
-
-    if path:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        fileHandler = logging.FileHandler(f"{path}.{name}.log", mode=mode)
-        fileHandler.setFormatter(formatter)
-        logger.addHandler(fileHandler)
-        fileHandler.setLevel(level)
-
-    return logger
+    if not handlers:
+        handlers = [logging.StreamHandler()]
+        if path:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            name = datetime.now().strftime("%y-%m-%d_%H.%M.%S")
+            handlers.append(logging.FileHandler(f"{path}.{name}.log", mode))
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=level,
+                        handlers=handlers)
 
 
 def progress_bar(iterator,
@@ -55,6 +39,3 @@ def progress_bar(iterator,
                 bar_format=bar_format,
                 ascii=True,
                 disable=(dist.is_initialized() and dist.get_rank() != 0))
-
-
-logger = init_logger(name='supar')

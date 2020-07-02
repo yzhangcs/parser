@@ -9,7 +9,7 @@ from supar.parsers.parser import Parser
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import bos, eos, pad, unk
 from supar.utils.field import ChartField, Field, RawField, SubwordField
-from supar.utils.logging import init_logger, progress_bar
+from supar.utils.logging import logger, progress_bar
 from supar.utils.metric import BracketMetric
 from supar.utils.transform import Tree
 
@@ -109,9 +109,8 @@ class CRFConstituencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, logger=None, **kwargs):
+    def build(cls, path, **kwargs):
         args = Config().update(locals())
-        logger = logger or init_logger()
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)

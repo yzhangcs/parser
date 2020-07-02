@@ -10,6 +10,10 @@ def main():
     parser = argparse.ArgumentParser(
         description='Create the Biaffine Parser.'
     )
+    parser.add_argument('--tree', action='store_true',
+                        help='whether to ensure well-formedness')
+    parser.add_argument('--proj', action='store_true',
+                        help='whether to projectivise the data')
     parser.set_defaults(Parser=BiaffineParser)
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser(
@@ -19,10 +23,6 @@ def main():
     subparser.add_argument('--feat', '-f', default='char',
                            choices=['tag', 'char', 'bert'],
                            help='choices of additional features')
-    subparser.add_argument('--tree', action='store_true',
-                           help='whether to ensure well-formedness')
-    subparser.add_argument('--proj', action='store_true',
-                           help='whether to projectivise the data')
     subparser.add_argument('--build', '-b', action='store_true',
                            help='whether to build the model first')
     subparser.add_argument('--punct', action='store_true',

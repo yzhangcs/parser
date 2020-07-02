@@ -4,7 +4,6 @@ import os
 
 import torch
 import torch.nn as nn
-
 from supar.models import (BiaffineParserModel, CRF2oDependencyModel,
                           CRFDependencyModel, MSTDependencyModel)
 from supar.parsers.parser import Parser
@@ -12,7 +11,7 @@ from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import bos, pad, unk
 from supar.utils.field import Field, SubwordField
 from supar.utils.fn import ispunct
-from supar.utils.logging import init_logger, progress_bar
+from supar.utils.logging import logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
 
@@ -112,9 +111,8 @@ class BiaffineParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, logger=None, **kwargs):
+    def build(cls, path, **kwargs):
         args = Config().update(locals())
-        logger = logger or init_logger()
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
@@ -359,9 +357,8 @@ class CRF2oDependencyParser(BiaffineParser):
         return preds
 
     @classmethod
-    def build(cls, path, logger=None, **kwargs):
+    def build(cls, path, **kwargs):
         args = Config().update(locals())
-        logger = logger or init_logger()
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
@@ -396,11 +393,14 @@ class CRF2oDependencyParser(BiaffineParser):
         SIB = Field('sibs', bos=bos, use_vocab=False, fn=CoNLL.get_sibs)
         REL = Field('rels', bos=bos)
         if args.feat in ('char', 'bert'):
-            fields = CoNLL(FORM=(WORD, FEAT), HEAD=(ARC, SIB), DEPREL=REL)
+            transform = CoNLL(FORM=(WORD, FEAT),
+                              HEAD=(ARC, SIB), DEPREL=REL)
         else:
-            fields = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=(ARC, SIB), DEPREL=REL)
+            transform = CoNLL(FORM=WORD, CPOS=FEAT,
+                              HEAD=(ARC, SIB), DEPREL=REL)
 
-        train = CoNLL.load(args.train)
+        train = Dataset(transform, args.train)
+        embed = None
         embed = None
         if args.embed:
             embed = Embedding.load(args.embed, args.unk)
@@ -418,7 +418,7 @@ class CRF2oDependencyParser(BiaffineParser):
         })
         model = cls.Model(args)
         model = model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, fields)
+        return cls(args, model, transform)
 
 
 class MSTDependencyParser(BiaffineParser):

@@ -5,14 +5,13 @@ from datetime import datetime, timedelta
 
 import torch
 import torch.distributed as dist
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
-
 from supar.utils import Dataset
 from supar.utils.field import Field
-from supar.utils.logging import init_logger
+from supar.utils.logging import logger
 from supar.utils.metric import AttachmentMetric
 from supar.utils.parallel import DistributedDataParallel as DDP
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class Parser(object):
@@ -28,9 +27,8 @@ class Parser(object):
     def is_master(self):
         return not dist.is_initialized() or dist.get_rank() == 0
 
-    def train(self, train, dev, test, logger=None, **kwargs):
+    def train(self, train, dev, test, **kwargs):
         args = self.args.update(locals())
-        logger = logger or init_logger(path=args.path)
 
         if dist.is_initialized():
             args.batch_size = args.batch_size // dist.get_world_size()
@@ -90,9 +88,8 @@ class Parser(object):
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
-    def evaluate(self, data, logger=None, **kwargs):
+    def evaluate(self, data, **kwargs):
         args = self.args.update(locals())
-        logger = logger or init_logger()
 
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
@@ -106,9 +103,8 @@ class Parser(object):
         logger.info(f"{elapsed}s elapsed, "
                     f"{len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
-    def predict(self, data, pred=None, prob=True, logger=None, **kwargs):
+    def predict(self, data, pred=None, prob=True, **kwargs):
         args = self.args.update(locals())
-        logger = logger or init_logger()
 
         self.transform.eval()
         if args.prob:

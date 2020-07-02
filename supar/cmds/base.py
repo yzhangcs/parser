@@ -2,7 +2,7 @@
 
 import torch
 from supar.utils import Config
-from supar.utils.logging import init_logger
+from supar.utils.logging import init_logger, logger
 from supar.utils.parallel import init_device
 
 
@@ -28,14 +28,14 @@ def parse(parser):
 
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
+    init_logger(args.path)
     init_device(args.device)
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    logger = init_logger(path=args.path)
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
-        parser = Parser.build(**args, logger=logger)
-        parser.train(**args, logger=logger)
+        parser = Parser.build(**args)
+        parser.train(**args)
     elif args.mode == 'evaluate':
         parser = Parser.load(args.path)
         parser.evaluate(**args)

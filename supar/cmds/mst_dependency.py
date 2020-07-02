@@ -11,6 +11,8 @@ def main():
         description='Create the Biaffine Parser model.'
     )
     parser.set_defaults(Parser=MSTDependencyParser)
+    parser.add_argument('--mbr', action='store_true',
+                        help='whether to use mbr decoding')
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser(
         'train',

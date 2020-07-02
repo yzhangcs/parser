@@ -11,6 +11,14 @@ def main():
         description='Create the Biaffine Parser model.'
     )
     parser.set_defaults(Parser=CRF2oDependencyParser)
+    parser.add_argument('--mbr', action='store_true',
+                        help='whether to use mbr decoding')
+    parser.add_argument('--tree', action='store_true',
+                        help='whether to ensure well-formedness')
+    parser.add_argument('--proj', action='store_true',
+                        help='whether to projectivize the data')
+    parser.add_argument('--partial', action='store_true',
+                        help='whether partial annotation is included')
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser(
         'train',
