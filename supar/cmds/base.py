@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 import torch
 from supar.utils import Config
 from supar.utils.logging import init_logger, logger
-from supar.utils.parallel import init_device
+from supar.utils.parallel import init_device, is_master
 
 
 def parse(parser):
@@ -31,6 +33,7 @@ def parse(parser):
     init_logger(args.path)
     init_device(args.device)
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.setLevel(logging.INFO if is_master() else logging.WARNING)
     logger.info('\n' + str(args))
 
     if args.mode == 'train':

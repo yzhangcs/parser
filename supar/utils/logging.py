@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import datetime
 
-import torch.distributed as dist
+from supar.utils.parallel import is_master
 from tqdm import tqdm
 
 logger = logging.getLogger('supar')
@@ -14,10 +14,7 @@ def init_logger(path=None,
                 mode='a',
                 level=None,
                 handlers=None):
-    if level is None:
-        level = logging.INFO
-        if dist.is_initialized() and dist.get_rank() != 0:
-            level = logging.WARNING
+    level = level or logging.WARNING
     if not handlers:
         handlers = [logging.StreamHandler()]
         if path:
@@ -38,4 +35,4 @@ def progress_bar(iterator,
                 ncols=ncols,
                 bar_format=bar_format,
                 ascii=True,
-                disable=(dist.is_initialized() and dist.get_rank() != 0))
+                disable=(not is_master()))

@@ -31,3 +31,7 @@ def init_device(device, backend='nccl', host=None, port=None):
         os.environ['MASTER_PORT'] = port
         dist.init_process_group(backend)
         torch.cuda.set_device(dist.get_rank())
+
+
+def is_master():
+    return not dist.is_initialized() or dist.get_rank() == 0

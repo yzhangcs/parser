@@ -10,6 +10,7 @@ from supar.utils.field import Field
 from supar.utils.logging import logger
 from supar.utils.metric import AttachmentMetric
 from supar.utils.parallel import DistributedDataParallel as DDP
+from supar.utils.parallel import is_master
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
@@ -22,10 +23,6 @@ class Parser(object):
         self.args = args
         self.model = model
         self.transform = transform
-
-    @property
-    def is_master(self):
-        return not dist.is_initialized() or dist.get_rank() == 0
 
     def train(self, train, dev, test, **kwargs):
         args = self.args.update(locals())
@@ -73,7 +70,7 @@ class Parser(object):
             # save the model if it is the best so far
             if dev_metric > best_metric:
                 best_e, best_metric = epoch, dev_metric
-                if self.is_master:
+                if is_master():
                     self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
