@@ -19,8 +19,7 @@ def init_logger(path=None,
         handlers = [logging.StreamHandler()]
         if path:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            name = datetime.now().strftime("%y-%m-%d_%H.%M.%S")
-            handlers.append(logging.FileHandler(f"{path}.{name}.log", mode))
+            handlers.append(logging.FileHandler(path, mode))
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=level,

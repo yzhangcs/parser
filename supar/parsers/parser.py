@@ -9,7 +9,7 @@ import torch.distributed as dist
 from supar.utils import Dataset
 from supar.utils.field import Field
 from supar.utils.logging import logger
-from supar.utils.metric import AttachmentMetric
+from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import is_master
 from torch.optim import Adam
@@ -58,7 +58,7 @@ class Parser(object):
                                        args.decay**(1/args.decay_steps))
 
         elapsed = timedelta()
-        best_e, best_metric = 1, AttachmentMetric()
+        best_e, best_metric = 1, Metric()
 
         for epoch in range(1, args.epochs + 1):
             start = datetime.now()
@@ -72,10 +72,9 @@ class Parser(object):
 
             t = datetime.now() - start
             # save the model if it is the best so far
-            if dev_metric > best_metric:
+            if dev_metric > best_metric and is_master():
                 best_e, best_metric = epoch, dev_metric
-                if is_master():
-                    self.save(args.path)
+                self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
                 logger.info(f"{t}s elapsed\n")
@@ -150,10 +149,9 @@ class Parser(object):
         if os.path.exists(path):
             state = torch.load(path)
         else:
-            if path in supar.PRETRAINED:
-                path = supar.PRETRAINED[path]
+            path = supar.PRETRAINED[path] if path in supar.PRETRAINED else path
             state = torch.hub.load_state_dict_from_url(path)
-        cls = supar.PARSER[state['name']]
+        cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args']
         args.update({'path': path, **kwargs})
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'

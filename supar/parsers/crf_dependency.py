@@ -19,8 +19,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def _train(self, loader):
         self.model.train()
 
-        progress = progress_bar(loader)
         metric = AttachmentMetric()
+        progress = progress_bar(loader)
 
         for words, feats, arcs, rels in progress:
             self.optimizer.zero_grad()

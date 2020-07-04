@@ -30,7 +30,7 @@ def parse(parser):
 
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
-    init_logger(args.path)
+    init_logger(f"{args.path}.{args.mode}.log")
     init_device(args.device)
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.setLevel(logging.INFO if is_master() else logging.WARNING)
