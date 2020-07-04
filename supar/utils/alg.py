@@ -133,7 +133,7 @@ def eisner2o(scores, mask):
         starts = p_i.new_tensor(range(n)).unsqueeze(0)
         # I(j->i) = max(I(j->r) + S(j->r, i)), i < r < j |
         #               C(j->j) + C(i->j-1))
-        #         + s(j->i)
+        #           + s(j->i)
         # [n, w, batch_size]
         il = stripe(s_i, n, w, (w, 1)) + stripe(s_s, n, w, (1, 0), 0)
         il += stripe(s_sib[range(w, n+w), range(n)], n, w, (0, 1))
@@ -147,7 +147,7 @@ def eisner2o(scores, mask):
         p_i.diagonal(-w).copy_(il_path + starts + 1)
         # I(i->j) = max(I(i->r) + S(i->r, j), i < r < j |
         #               C(i->i) + C(j->i+1))
-        #         + s(i->j)
+        #           + s(i->j)
         # [n, w, batch_size]
         ir = stripe(s_i, n, w) + stripe(s_s, n, w, (0, w), 0)
         ir += stripe(s_sib[range(n), range(w, n+w)], n, w)

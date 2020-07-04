@@ -2,8 +2,6 @@
 
 import unicodedata
 
-import nltk
-
 
 def ispunct(token):
     return all(unicodedata.category(char).startswith('P')
@@ -27,30 +25,6 @@ def isdigit(token):
 
 def tohalfwidth(token):
     return unicodedata.normalize('NFKC', token)
-
-
-def isprojective(sequence):
-    arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
-    for i, (hi, di) in enumerate(arcs):
-        for hj, dj in arcs[i+1:]:
-            (li, ri), (lj, rj) = sorted([hi, di]), sorted([hj, dj])
-            if (li <= hj <= ri and hi == dj) or (lj <= hi <= rj and hj == di):
-                return False
-            if (li < lj < ri or li < rj < ri) and (li - lj) * (ri - rj) > 0:
-                return False
-    return True
-
-
-def istree(sequence, proj=False, multiroot=False):
-    from supar.utils.alg import tarjan
-    if proj and not isprojective(sequence):
-        return False
-    n_roots = sum(head == 0 for head in sequence[1:])
-    if n_roots == 0:
-        return False
-    if not multiroot and n_roots > 1:
-        return False
-    return next(tarjan(sequence), None) is None
 
 
 def stripe(x, n, w, offset=(0, 0), dim=1):
@@ -97,60 +71,3 @@ def pad(tensors, padding_value=0, total_length=None):
     for i, tensor in enumerate(tensors):
         out_tensor[i][[slice(0, i) for i in tensor.size()]] = tensor
     return out_tensor
-
-
-def binarize(tree):
-    tree = tree.copy(True)
-    nodes = [tree]
-    while nodes:
-        node = nodes.pop()
-        if isinstance(node, nltk.Tree):
-            nodes.extend([child for child in node])
-            if len(node) > 1:
-                for i, child in enumerate(node):
-                    if not isinstance(child[0], nltk.Tree):
-                        node[i] = nltk.Tree(f"{node.label()}|<>", [child])
-    tree.chomsky_normal_form('left', 0, 0)
-    tree.collapse_unary()
-
-    return tree
-
-
-def factorize(tree, delete_labels=None, equal_labels=None):
-    def track(tree, i):
-        label = tree.label()
-        if delete_labels is not None and label in delete_labels:
-            label = None
-        if equal_labels is not None:
-            label = equal_labels.get(label, label)
-        if len(tree) == 1 and not isinstance(tree[0], nltk.Tree):
-            return (i+1 if label is not None else i), []
-        j, spans = i, []
-        for child in tree:
-            j, s = track(child, j)
-            spans += s
-        if label is not None and j > i:
-            spans = [(i, j, label)] + spans
-        return j, spans
-    return track(tree, 0)[1]
-
-
-def build(tree, sequence):
-    root = tree.label()
-    leaves = [subtree for subtree in tree.subtrees()
-              if not isinstance(subtree[0], nltk.Tree)]
-
-    def track(node):
-        i, j, label = next(node)
-        if j == i+1:
-            children = [leaves[i]]
-        else:
-            children = track(node) + track(node)
-        if label.endswith('|<>'):
-            return children
-        labels = label.split('+')
-        tree = nltk.Tree(labels[-1], children)
-        for label in reversed(labels[:-1]):
-            tree = nltk.Tree(label, [tree])
-        return [tree]
-    return nltk.Tree(root, track(iter(sequence)))

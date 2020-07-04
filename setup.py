@@ -23,6 +23,15 @@ setup(
         'setuptools>=18.0',
     ],
     install_requires=["torch", "transformers"],
+    entry_points={
+        'console_scripts': [
+            'biaffine-parser=supar.cmds.biaffine_parser:main',
+            'crf2o-dependency=supar.cmds.crf2o_dependency:main',
+            'crf-constituency=supar.cmds.crf_constituency:main',
+            'crf-dependency=supar.cmds.crf_dependency:main',
+            'mst-dependency=supar.cmds.mst_dependency:main'
+        ]
+    },
     python_requires='>=3.7',
     zip_safe=False
 )

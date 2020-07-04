@@ -3,19 +3,23 @@
 import os
 from datetime import datetime, timedelta
 
+import supar
 import torch
 import torch.distributed as dist
-from supar.models import MODELS
 from supar.utils import Dataset
 from supar.utils.field import Field
-from supar.utils.logging import init_logger
-from supar.utils.metric import AttachmentMetric
+from supar.utils.logging import logger
+from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
+from supar.utils.parallel import is_master
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 
 class Parser(object):
+
+    NAME = None
+    MODEL = None
 
     def __init__(self, args, model, transform):
         super(Parser, self).__init__()
@@ -24,20 +28,17 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
-    def train(self, train, dev, test, logger=None, **kwargs):
-        params = locals()
-        params.pop('logger')    # cant be pickled
-        args = self.args.update(params)
-        logger = logger or init_logger(path=args.path)
+    def train(self, train, dev, test, **kwargs):
+        args = self.args.update(locals())
 
         if dist.is_initialized():
             args.batch_size = args.batch_size // dist.get_world_size()
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
         test = Dataset(self.transform, args.test)
-        train.build(args.batch_size, args.buckets, args.num_workers, True)
-        dev.build(args.batch_size, args.buckets, args.num_workers)
-        test.build(args.batch_size, args.buckets, args.num_workers)
+        train.build(args.batch_size, args.buckets, True, dist.is_initialized())
+        dev.build(args.batch_size, args.buckets)
+        test.build(args.batch_size, args.buckets)
         logger.info(f"Load the datasets\n"
                     f"{'train:':6} {train}\n"
                     f"{'dev:':6} {dev}\n"
@@ -46,7 +47,9 @@ class Parser(object):
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
             self.model = self.model.to(args.device)
-            self.model = DDP(self.model, device_ids=[dist.get_rank()])
+            self.model = DDP(self.model,
+                             device_ids=[dist.get_rank()],
+                             find_unused_parameters=True)
         self.optimizer = Adam(self.model.parameters(),
                               args.lr,
                               (args.mu, args.nu),
@@ -55,7 +58,7 @@ class Parser(object):
                                        args.decay**(1/args.decay_steps))
 
         elapsed = timedelta()
-        best_e, best_metric = 1, AttachmentMetric()
+        best_e, best_metric = 1, Metric()
 
         for epoch in range(1, args.epochs + 1):
             start = datetime.now()
@@ -69,9 +72,8 @@ class Parser(object):
 
             t = datetime.now() - start
             # save the model if it is the best so far
-            if dev_metric > best_metric:
+            if dev_metric > best_metric and is_master():
                 best_e, best_metric = epoch, dev_metric
-                # if not dist.is_initialized() or dist.get_rank() == 0:
                 self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
@@ -86,12 +88,11 @@ class Parser(object):
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
-    def evaluate(self, data, logger=None, **kwargs):
+    def evaluate(self, data, **kwargs):
         args = self.args.update(locals())
-        logger = logger or init_logger()
 
         dataset = Dataset(self.transform, data)
-        dataset.build(args.batch_size, args.buckets, args.num_workers)
+        dataset.build(args.batch_size, args.buckets)
         logger.info(f"Load the dataset\n{dataset}")
 
         logger.info("Evaluate the dataset")
@@ -102,18 +103,15 @@ class Parser(object):
         logger.info(f"{elapsed}s elapsed, "
                     f"{len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
-    def predict(self, data, pred=None, prob=True, logger=None, **kwargs):
-        params = locals()
-        params.pop('logger')    # cant be pickled
-        args = self.args.update(params)
-        logger = logger or init_logger()
+    def predict(self, data, pred=None, prob=True, **kwargs):
+        args = self.args.update(locals())
 
         self.transform.eval()
         if args.prob:
             self.transform.append(Field('probs'))
 
         dataset = Dataset(self.transform, data)
-        dataset.build(args.batch_size, args.buckets, args.num_workers)
+        dataset.build(args.batch_size, args.buckets)
         logger.info(f"Load the dataset\n{dataset}")
 
         logger.info("Make predictions on the dataset")
@@ -134,15 +132,15 @@ class Parser(object):
     def _train(self, loader):
         raise NotImplementedError
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _evaluate(self, loader):
         raise NotImplementedError
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def _predict(self, loader):
         raise NotImplementedError
 
-    @ classmethod
+    @classmethod
     def build(cls, path, **kwargs):
         raise NotImplementedError
 
@@ -151,11 +149,13 @@ class Parser(object):
         if os.path.exists(path):
             state = torch.load(path)
         else:
+            path = supar.PRETRAINED[path] if path in supar.PRETRAINED else path
             state = torch.hub.load_state_dict_from_url(path)
+        cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args']
         args.update({'path': path, **kwargs})
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = MODELS[args.model](args)
+        model = cls.MODEL(args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
@@ -163,9 +163,13 @@ class Parser(object):
         return cls(args, model, transform)
 
     def save(self, path):
-        state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+        model = self.model
+        if hasattr(model, 'module'):
+            model = self.model.module
+        state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)
-        state = {'args': self.args,
+        state = {'name': self.NAME,
+                 'args': self.args,
                  'state_dict': state_dict,
                  'pretrained': pretrained,
                  'transform': self.transform}
