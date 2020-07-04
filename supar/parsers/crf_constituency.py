@@ -16,7 +16,8 @@ from supar.utils.transform import Tree
 
 class CRFConstituencyParser(Parser):
 
-    Model = CRFConstituencyModel
+    NAME = 'crf-constituency'
+    MODEL = CRFConstituencyModel
 
     def __init__(self, args, model, fields):
         super(CRFConstituencyParser, self).__init__(args, model, fields)
@@ -114,7 +115,7 @@ class CRFConstituencyParser(Parser):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
-            parser.model = cls.Model(parser.args)
+            parser.model = cls.MODEL(parser.args)
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
@@ -167,6 +168,6 @@ class CRFConstituencyParser(Parser):
             'eos_index': WORD.eos_index,
             'feat_pad_index': FEAT.pad_index
         })
-        model = cls.Model(args)
+        model = cls.MODEL(args)
         model.load_pretrained(WORD.embed).to(args.device)
         return cls(args, model, transform)

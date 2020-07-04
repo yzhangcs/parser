@@ -3,6 +3,7 @@
 import os
 from datetime import datetime, timedelta
 
+import supar
 import torch
 import torch.distributed as dist
 from supar.utils import Dataset
@@ -16,6 +17,9 @@ from torch.optim.lr_scheduler import ExponentialLR
 
 
 class Parser(object):
+
+    NAME = None
+    MODEL = None
 
     def __init__(self, args, model, transform):
         super(Parser, self).__init__()
@@ -146,11 +150,14 @@ class Parser(object):
         if os.path.exists(path):
             state = torch.load(path)
         else:
+            if path in supar.PRETRAINED:
+                path = supar.PRETRAINED[path]
             state = torch.hub.load_state_dict_from_url(path)
+        cls = supar.PARSER[state['name']]
         args = state['args']
         args.update({'path': path, **kwargs})
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = cls.Model(args)
+        model = cls.MODEL(args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
@@ -163,7 +170,8 @@ class Parser(object):
             model = self.model.module
         state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)
-        state = {'args': self.args,
+        state = {'name': self.NAME,
+                 'args': self.args,
                  'state_dict': state_dict,
                  'pretrained': pretrained,
                  'transform': self.transform}

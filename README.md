@@ -1,9 +1,9 @@
 # Biaffine Parser
 
-[![Travis](https://img.shields.io/travis/yzhangcs/biaffine-parser.svg)](https://travis-ci.org/yzhangcs/biaffine-parser)
-[![LICENSE](https://img.shields.io/github/license/yzhangcs/biaffine-parser.svg)](https://github.com/yzhangcs/biaffine-parser/blob/master/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/yzhangcs/biaffine-parser.svg)](https://github.com/yzhangcs/biaffine-parser/stargazers)		
-[![GitHub forks](https://img.shields.io/github/forks/yzhangcs/biaffine-parser.svg)](https://github.com/yzhangcs/biaffine-parser/network/members)
+[![Travis](https://img.shields.io/travis/yzhangcs/parser.svg)](https://travis-ci.org/yzhangcs/parser)
+[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
+[![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
 
 An implementation of "Deep Biaffine Attention for Neural Dependency Parsing".
 
@@ -17,8 +17,8 @@ e.g., character-level embeddings (CHAR) and BERT.
 ## Requirements
 
 * `python`: 3.7.0
-* [`pytorch`](https://github.com/pytorch/pytorch): 1.3.0
-* [`transformers`](https://github.com/huggingface/transformers): 2.1.1
+* [`pytorch`](https://github.com/pytorch/pytorch): 1.4.0
+* [`transformers`](https://github.com/huggingface/transformers): 3.0.0
 
 ## Datasets
 

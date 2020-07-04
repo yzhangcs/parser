@@ -3,7 +3,7 @@
 import argparse
 
 from supar import CRFDependencyParser
-from supar.cmds.base import parse
+from supar.cmds.cmd import parse
 
 
 def main():

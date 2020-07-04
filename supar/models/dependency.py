@@ -11,7 +11,7 @@ from supar.utils.transform import CoNLL
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
-class BiaffineParserModel(nn.Module):
+class BiaffineDependencyModel(nn.Module):
 
     r'''The implementation of
     "Deep Biaffine Attention for Neural Dependency Parsing":
@@ -19,7 +19,7 @@ class BiaffineParserModel(nn.Module):
     '''
 
     def __init__(self, args):
-        super(BiaffineParserModel, self).__init__()
+        super(BiaffineDependencyModel, self).__init__()
 
         self.args = args
         # the embedding layer
@@ -146,7 +146,7 @@ class BiaffineParserModel(nn.Module):
         return arc_preds, rel_preds
 
 
-class MSTDependencyModel(BiaffineParserModel):
+class MSTDependencyModel(BiaffineDependencyModel):
 
     def __init__(self, args):
         super(MSTDependencyModel, self).__init__(args)
@@ -166,7 +166,7 @@ class MSTDependencyModel(BiaffineParserModel):
         return loss, arc_probs
 
 
-class CRFDependencyModel(BiaffineParserModel):
+class CRFDependencyModel(BiaffineDependencyModel):
 
     r'''The implementation of
     "Efficient Second-Order TreeCRF for Neural Dependency Parsing":
@@ -192,7 +192,7 @@ class CRFDependencyModel(BiaffineParserModel):
         return loss, arc_probs
 
 
-class CRF2oDependencyModel(BiaffineParserModel):
+class CRF2oDependencyModel(BiaffineDependencyModel):
 
     r'''The implementation of
     "Efficient Second-Order TreeCRF for Neural Dependency Parsing":

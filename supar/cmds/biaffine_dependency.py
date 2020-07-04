@@ -2,8 +2,8 @@
 
 import argparse
 
-from supar import BiaffineParser
-from supar.cmds.base import parse
+from supar import BiaffineDependencyParser
+from supar.cmds.cmd import parse
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
                         help='whether to ensure well-formedness')
     parser.add_argument('--proj', action='store_true',
                         help='whether to projectivise the data')
-    parser.set_defaults(Parser=BiaffineParser)
+    parser.set_defaults(Parser=BiaffineDependencyParser)
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser(
         'train',
