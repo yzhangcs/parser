@@ -21,26 +21,53 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     MODEL = CRF2oDependencyModel
 
     def __init__(self, *args, **kwargs):
-        super(CRF2oDependencyParser, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+
+    def train(self, train, dev, test, buckets=32, punct=False,
+              mbr=True, tree=False, proj=False, partial=False, **kwargs):
+        super().train(train, dev, test, buckets,
+                      punct=punct,
+                      mbr=mbr,
+                      tree=tree,
+                      proj=proj,
+                      partial=partial,
+                      **kwargs)
+
+    def evaluate(self, data, buckets=8, punct=False,
+                 mbr=True, tree=False, proj=False, partial=False, **kwargs):
+        return super().evaluate(data, buckets,
+                                punct=punct,
+                                mbr=mbr,
+                                tree=tree,
+                                proj=proj,
+                                partial=partial,
+                                **kwargs)
+
+    def predict(self, data, pred=None, buckets=8, prob=False,
+                mbr=True, tree=False, proj=False, **kwargs):
+        return super().predict(data, pred, buckets, prob,
+                               mbr=mbr,
+                               tree=tree,
+                               proj=proj,
+                               **kwargs)
 
     def _train(self, loader):
         self.model.train()
 
-        metric = AttachmentMetric()
-        progress = progress_bar(loader)
+        bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for words, feats, arcs, sibs, rels in progress:
+        for words, feats, arcs, sibs, rels in bar:
             self.optimizer.zero_grad()
 
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel,
-                                          arcs, sibs, rels, mask)
+            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                          self.args.mbr,
+                                          self.args.partial)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(),
-                                     self.args.clip)
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
@@ -51,9 +78,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
-                                     f"loss: {loss:.4f} - "
-                                     f"{metric}")
+            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+                                f"loss: {loss:.4f} - "
+                                f"{metric}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -66,9 +93,12 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel,
-                                          arcs, sibs, rels, mask)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                          self.args.mbr,
+                                          self.args.partial)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
+                                                     self.args.tree,
+                                                     self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
@@ -94,7 +124,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             s_arc, s_sib, s_rel = self.model(words, feats)
             if self.args.mbr:
                 s_arc = self.model.crf((s_arc, s_rel), mask, mbr=True)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
+                                                     self.args.tree,
+                                                     self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -110,7 +142,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+    def build(cls, path, min_freq=2, fix_len=20, verbose=True, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -163,4 +195,4 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         })
         model = cls.MODEL(**args)
         model = model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform)
+        return cls(args, model, transform, verbose)

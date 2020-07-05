@@ -70,10 +70,10 @@ class Dataset(torch.utils.data.Dataset):
 class DataLoader(torch.utils.data.DataLoader):
 
     def __init__(self, *args, **kwargs):
-        super(DataLoader, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __iter__(self):
-        for batch in super(DataLoader, self).__iter__():
+        for batch in super().__iter__():
             yield [f.compose(d) for f, d in batch.items()]
 
 

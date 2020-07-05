@@ -10,7 +10,7 @@ from torch.nn.utils.rnn import PackedSequence
 class BiLSTM(nn.Module):
 
     def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
-        super(BiLSTM, self).__init__()
+        super().__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size

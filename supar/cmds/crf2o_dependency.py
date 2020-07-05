@@ -33,6 +33,8 @@ def main():
                            help='whether to include punctuation')
     subparser.add_argument('--max-len', default=None, type=int,
                            help='max length of the sentences')
+    subparser.add_argument('--buckets', default=32, type=int,
+                           help='max num of buckets to use')
     subparser.add_argument('--train', default='data/ptb/train.conllx',
                            help='path to train file')
     subparser.add_argument('--dev', default='data/ptb/dev.conllx',
@@ -52,6 +54,8 @@ def main():
     )
     subparser.add_argument('--punct', action='store_true',
                            help='whether to include punctuation')
+    subparser.add_argument('--buckets', default=8, type=int,
+                           help='max num of buckets to use')
     subparser.add_argument('--data', default='data/ptb/test.conllx',
                            help='path to dataset')
     # predict
@@ -61,6 +65,8 @@ def main():
     )
     subparser.add_argument('--prob', action='store_true',
                            help='whether to output probs')
+    subparser.add_argument('--buckets', default=8, type=int,
+                           help='max num of buckets to use')
     subparser.add_argument('--data', default='data/ptb/test.conllx',
                            help='path to dataset')
     subparser.add_argument('--pred', default='pred.conllx',

@@ -19,22 +19,37 @@ class CRFConstituencyParser(Parser):
     NAME = 'crf-constituency'
     MODEL = CRFConstituencyModel
 
-    def __init__(self, args, model, fields):
-        super(CRFConstituencyParser, self).__init__(args, model, fields)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        if args.feat in ('char', 'bert'):
+        if self.args.feat in ('char', 'bert'):
             self.WORD, self.FEAT = self.transform.WORD
         else:
             self.WORD, self.FEAT = self.transform.WORD, self.transform.POS
         self.TREE = self.transform.TREE
         self.CHART = self.transform.CHART
 
+    def train(self, train, dev, test, buckets=32, mbr=True,
+              delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
+              equal={'ADVP': 'PRT'},
+              ** kwargs,):
+        super().train(train, dev, test, buckets, mbr=mbr, delete=delete, equal=equal, **kwargs)
+
+    def evaluate(self, data, buckets=8,  mbr=True,
+                 delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
+                 equal={'ADVP': 'PRT'},
+                 ** kwargs,):
+        return super().evaluate(data, buckets, mbr=mbr, delete=delete, equal=equal, **kwargs)
+
+    def predict(self, data, pred=None, buckets=8, prob=False, mbr=True, **kwargs):
+        return super().predict(data, pred, buckets, prob, mbr=mbr, **kwargs)
+
     def _train(self, loader):
         self.model.train()
 
-        progress = progress_bar(loader)
+        bar = progress_bar(loader)
 
-        for words, feats, trees, (spans, labels) in progress:
+        for words, feats, trees, (spans, labels) in bar:
             self.optimizer.zero_grad()
 
             batch_size, seq_len = words.shape
@@ -42,16 +57,14 @@ class CRFConstituencyParser(Parser):
             mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
             mask = mask & mask.new_ones(seq_len-1, seq_len-1).triu_(1)
             s_span, s_label = self.model(words, feats)
-            loss, _ = self.model.loss(s_span, s_label,
-                                      spans, labels, mask)
+            loss, _ = self.model.loss(s_span, s_label, spans, labels, mask, self.args.mbr)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(),
-                                     self.args.clip)
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
-            progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
-                                     f"loss: {loss:.4f}")
+            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+                                f"loss: {loss:.4f}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -65,20 +78,15 @@ class CRFConstituencyParser(Parser):
             mask = lens.new_tensor(range(seq_len - 1)) < lens.view(-1, 1, 1)
             mask = mask & mask.new_ones(seq_len-1, seq_len-1).triu_(1)
             s_span, s_label = self.model(words, feats)
-            loss, s_span = self.model.loss(s_span, s_label,
-                                           spans, labels, mask)
+            loss, s_span = self.model.loss(s_span, s_label, spans, labels, mask, self.args.mbr)
             chart_preds = self.model.decode(s_span, s_label, mask)
             # since the evaluation relies on terminals,
             # the tree should be first built and then factorized
-            preds = [Tree.build(tree,
-                                [(i, j, self.CHART.vocab[label])
-                                 for i, j, label in chart])
+            preds = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                      for tree, chart in zip(trees, chart_preds)]
             total_loss += loss.item()
-            metric([Tree.factorize(tree, self.args.delete, self.args.equal)
-                    for tree in preds],
-                   [Tree.factorize(tree, self.args.delete, self.args.equal)
-                    for tree in trees])
+            metric([Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
+                   [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
         total_loss /= len(loader)
 
         return total_loss, metric
@@ -98,9 +106,7 @@ class CRFConstituencyParser(Parser):
             if self.args.mbr:
                 s_span = self.model.crf(s_span, mask, mbr=True)
             chart_preds = self.model.decode(s_span, s_label, mask)
-            preds['trees'].extend([Tree.build(tree,
-                                              [(i, j, self.CHART.vocab[label])
-                                               for i, j, label in chart])
+            preds['trees'].extend([Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                                    for tree, chart in zip(trees, chart_preds)])
             if self.args.prob:
                 probs.extend(s_span.tolist())
@@ -110,7 +116,7 @@ class CRFConstituencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+    def build(cls, path, min_freq=2, fix_len=20, verbose=True, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -163,4 +169,4 @@ class CRFConstituencyParser(Parser):
         })
         model = cls.MODEL(**args)
         model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform)
+        return cls(args, model, transform, verbose)

@@ -7,7 +7,7 @@ from supar.modules.dropout import SharedDropout
 class MLP(nn.Module):
 
     def __init__(self, n_in, n_out, dropout=0):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self.n_in = n_in
         self.n_out = n_out

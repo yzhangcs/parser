@@ -7,7 +7,7 @@ import torch.nn as nn
 class Triaffine(nn.Module):
 
     def __init__(self, n_in, bias_x=False, bias_y=False):
-        super(Triaffine, self).__init__()
+        super().__init__()
 
         self.n_in = n_in
         self.bias_x = bias_x

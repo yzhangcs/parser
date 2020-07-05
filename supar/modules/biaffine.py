@@ -7,7 +7,7 @@ import torch.nn as nn
 class Biaffine(nn.Module):
 
     def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
-        super(Biaffine, self).__init__()
+        super().__init__()
 
         self.n_in = n_in
         self.n_out = n_out

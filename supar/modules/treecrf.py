@@ -9,7 +9,7 @@ from supar.utils.fn import stripe
 class CRFDependency(nn.Module):
 
     def __init__(self):
-        super(CRFDependency, self).__init__()
+        super().__init__()
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False, partial=False):
@@ -95,7 +95,7 @@ class CRFDependency(nn.Module):
 class CRF2oDependency(nn.Module):
 
     def __init__(self):
-        super(CRF2oDependency, self).__init__()
+        super().__init__()
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=True, partial=False):
@@ -162,7 +162,7 @@ class CRF2oDependency(nn.Module):
             n = seq_len - w
             # I(j->i) = logsum(exp(I(j->r) + S(j->r, i)) +, i < r < j
             #                  exp(C(j->j) + C(i->j-1)))
-            #         + s(j->i)
+            #           + s(j->i)
             # [n, w, batch_size]
             il = stripe(s_i, n, w, (w, 1)) + stripe(s_s, n, w, (1, 0), 0)
             il += stripe(s_sib[range(w, n+w), range(n)], n, w, (0, 1))
@@ -177,7 +177,7 @@ class CRF2oDependency(nn.Module):
             s_i.diagonal(-w).copy_(il + s_arc.diagonal(-w))
             # I(i->j) = logsum(exp(I(i->r) + S(i->r, j)) +, i < r < j
             #                  exp(C(i->i) + C(j->i+1)))
-            #         + s(i->j)
+            #           + s(i->j)
             # [n, w, batch_size]
             ir = stripe(s_i, n, w) + stripe(s_s, n, w, (0, w), 0)
             ir += stripe(s_sib[range(n), range(w, n+w)], n, w)
@@ -217,7 +217,7 @@ class CRF2oDependency(nn.Module):
 class CRFConstituency(nn.Module):
 
     def __init__(self):
-        super(CRFConstituency, self).__init__()
+        super().__init__()
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False):
@@ -240,7 +240,7 @@ class CRFConstituency(nn.Module):
 
         return loss, probs
 
-    def inside(self, scores, mask, cands=None):
+    def inside(self, scores, mask):
         batch_size, seq_len, _ = scores.shape
         # [seq_len, seq_len, batch_size]
         scores, mask = scores.permute(1, 2, 0), mask.permute(1, 2, 0)

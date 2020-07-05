@@ -17,7 +17,7 @@ class BertEmbedding(nn.Module):
         :param n_out: the requested size of the embeddings.
         If 0, use the size of the pretrained embedding model
         """
-        super(BertEmbedding, self).__init__()
+        super().__init__()
 
         config = AutoConfig.from_pretrained(model, output_hidden_states=True)
         self.bert = AutoModel.from_pretrained(model, config=config)

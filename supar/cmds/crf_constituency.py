@@ -25,6 +25,8 @@ def main():
                            help='whether to build the model first')
     subparser.add_argument('--max-len', default=None, type=int,
                            help='max length of the sentences')
+    subparser.add_argument('--buckets', default=32, type=int,
+                           help='max num of buckets to use')
     subparser.add_argument('--train', default='data/ptb/train.pid',
                            help='path to train file')
     subparser.add_argument('--dev', default='data/ptb/dev.pid',
@@ -42,6 +44,8 @@ def main():
         'evaluate',
         help='Evaluate the specified parser and dataset.'
     )
+    subparser.add_argument('--buckets', default=8, type=int,
+                           help='max num of buckets to use')
     subparser.add_argument('--data', default='data/ptb/test.pid',
                            help='path to dataset')
     # predict
@@ -51,6 +55,8 @@ def main():
     )
     subparser.add_argument('--prob', action='store_true',
                            help='whether to output probs')
+    subparser.add_argument('--buckets', default=8, type=int,
+                           help='max num of buckets to use')
     subparser.add_argument('--data', default='data/ptb/test.pid',
                            help='path to dataset')
     subparser.add_argument('--pred', default='pred.pid',

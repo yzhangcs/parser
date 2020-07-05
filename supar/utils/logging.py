@@ -2,7 +2,6 @@
 
 import logging
 import os
-from datetime import datetime
 
 from supar.utils.parallel import is_master
 from tqdm import tqdm
@@ -10,10 +9,12 @@ from tqdm import tqdm
 logger = logging.getLogger('supar')
 
 
-def init_logger(path=None,
+def init_logger(logger,
+                path=None,
                 mode='a',
                 level=None,
-                handlers=None):
+                handlers=None,
+                verbose=True):
     level = level or logging.WARNING
     if not handlers:
         handlers = [logging.StreamHandler()]
@@ -24,6 +25,7 @@ def init_logger(path=None,
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=level,
                         handlers=handlers)
+    logger.setLevel(logging.INFO if is_master() and verbose else logging.WARNING)
 
 
 def progress_bar(iterator,

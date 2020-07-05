@@ -15,25 +15,23 @@ class MSTDependencyParser(BiaffineDependencyParser):
     MODEL = MSTDependencyModel
 
     def __init__(self, *args, **kwargs):
-        super(MSTDependencyParser, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _train(self, loader):
         self.model.train()
 
-        metric = AttachmentMetric()
-        progress = progress_bar(loader)
+        bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for words, feats, arcs, rels in progress:
+        for words, feats, arcs, rels in bar:
             self.optimizer.zero_grad()
 
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask)
+            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(),
-                                     self.args.clip)
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
@@ -42,9 +40,9 @@ class MSTDependencyParser(BiaffineDependencyParser):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
-                                     f"loss: {loss:.4f} - "
-                                     f"{metric}")
+            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+                                f"loss: {loss:.4f} - "
+                                f"{metric}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -57,7 +55,7 @@ class MSTDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask)
+            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
             # ignore all punctuation if not specified
             if not self.args.punct:

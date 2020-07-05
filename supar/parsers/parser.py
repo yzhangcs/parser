@@ -9,7 +9,7 @@ import torch.distributed as dist
 from supar.utils import Dataset
 from supar.utils.config import Config
 from supar.utils.field import Field
-from supar.utils.logging import logger
+from supar.utils.logging import init_logger, logger
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import is_master
@@ -22,14 +22,15 @@ class Parser(object):
     NAME = None
     MODEL = None
 
-    def __init__(self, args, model, transform):
-        super(Parser, self).__init__()
-
+    def __init__(self, args, model, transform, verbose=True):
         self.args = args
         self.model = model
         self.transform = transform
+        init_logger(logger, verbose=verbose)
 
     def train(self, train, dev, test,
+              buckets=32,
+              batch_size=5000,
               lr=2e-3,
               mu=.9,
               nu=.9,
@@ -37,7 +38,6 @@ class Parser(object):
               clip=5.0,
               decay=.75,
               decay_steps=5000,
-              batch_size=5000,
               epochs=5000,
               patience=100,
               **kwargs):
@@ -99,7 +99,7 @@ class Parser(object):
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
-    def evaluate(self, data, **kwargs):
+    def evaluate(self, data, buckets=8, **kwargs):
         args = self.args.update(locals())
 
         dataset = Dataset(self.transform, data)
@@ -114,7 +114,9 @@ class Parser(object):
         logger.info(f"{elapsed}s elapsed, "
                     f"{len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
-    def predict(self, data, pred=None, prob=True, **kwargs):
+        return loss, metric
+
+    def predict(self, data, pred=None, buckets=8, prob=True, **kwargs):
         args = self.args.update(locals())
 
         self.transform.eval()
@@ -152,11 +154,11 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def build(cls, path, **kwargs):
+    def build(cls, path, verbose=True, **kwargs):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, **kwargs):
+    def load(cls, path, verbose=True, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -172,7 +174,7 @@ class Parser(object):
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
         transform = state['transform']
-        return cls(args, model, transform)
+        return cls(args, model, transform, verbose)
 
     def save(self, path):
         model = self.model

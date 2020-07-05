@@ -20,44 +20,44 @@ class BiaffineDependencyParser(Parser):
     NAME = 'biaffine-dependency'
     MODEL = BiaffineDependencyModel
 
-    def __init__(self, args, model, transform):
-        super(BiaffineDependencyParser, self).__init__(args, model, transform)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        if args.feat in ('char', 'bert'):
+        if self.args.feat in ('char', 'bert'):
             self.WORD, self.FEAT = self.transform.FORM
         else:
             self.WORD, self.FEAT = self.transform.FORM, self.transform.CPOS
         self.ARC, self.REL = self.transform.HEAD, self.transform.DEPREL
         self.puncts = torch.tensor([i
                                     for s, i in self.WORD.vocab.stoi.items()
-                                    if ispunct(s)]).to(args.device)
+                                    if ispunct(s)]).to(self.args.device)
 
-    def train(self, train, dev, test, punct=False, tree=False, **kwargs):
-        super(BiaffineDependencyParser, self).train(train, dev, test,
-                                                    punct=punct,
-                                                    tree=tree,
-                                                    **kwargs)
+    def train(self, train, dev, test, buckets=32, punct=False, tree=False, proj=False, **kwargs):
+        super().train(train, dev, test, buckets,
+                      punct=punct,
+                      tree=tree,
+                      proj=proj,
+                      **kwargs)
 
-    def evaluate(self, data, punct=False, tree=True, **kwargs):
-        super(BiaffineDependencyParser, self).evaluate(data,
-                                                       punct=punct,
-                                                       tree=tree,
-                                                       **kwargs)
+    def evaluate(self, data, buckets=8, punct=False, tree=True, proj=False, **kwargs):
+        return super().evaluate(data, buckets,
+                                punct=punct,
+                                tree=tree,
+                                proj=proj,
+                                **kwargs)
 
-    def predict(self, data, pred=None, tree=True, prob=False, **kwargs):
-        super(BiaffineDependencyParser, self).predict(data,
-                                                      pred=pred,
-                                                      tree=tree,
-                                                      prob=prob,
-                                                      **kwargs)
+    def predict(self, data, pred=None, buckets=8, prob=False, tree=True, proj=False, **kwargs):
+        return super().predict(data, pred, buckets, prob,
+                               tree=tree,
+                               proj=proj,
+                               **kwargs)
 
     def _train(self, loader):
         self.model.train()
 
-        metric = AttachmentMetric()
-        progress = progress_bar(loader)
+        bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for words, feats, arcs, rels in progress:
+        for words, feats, arcs, rels in bar:
             self.optimizer.zero_grad()
 
             mask = words.ne(self.WORD.pad_index)
@@ -66,8 +66,7 @@ class BiaffineDependencyParser(Parser):
             s_arc, s_rel = self.model(words, feats)
             loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(),
-                                     self.args.clip)
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
@@ -76,9 +75,9 @@ class BiaffineDependencyParser(Parser):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
-                                     f"loss: {loss:.4f} - "
-                                     f"{metric}")
+            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+                                f"loss: {loss:.4f} - "
+                                f"{metric}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -134,7 +133,7 @@ class BiaffineDependencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+    def build(cls, path, min_freq=2, fix_len=20, verbose=True, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -185,4 +184,4 @@ class BiaffineDependencyParser(Parser):
         })
         model = cls.MODEL(**args)
         model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform)
+        return cls(args, model, transform, verbose)

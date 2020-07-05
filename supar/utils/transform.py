@@ -104,7 +104,7 @@ class CoNLL(Transform):
     def __init__(self,
                  ID=None, FORM=None, LEMMA=None, CPOS=None, POS=None,
                  FEATS=None, HEAD=None, DEPREL=None, PHEAD=None, PDEPREL=None):
-        super(CoNLL, self).__init__()
+        super().__init__()
 
         self.ID = ID
         self.FORM = FORM
@@ -207,7 +207,7 @@ class CoNLL(Transform):
 class CoNLLSentence(Sentence):
 
     def __init__(self, transform, lines):
-        super(CoNLLSentence, self).__init__(transform)
+        super().__init__(transform)
 
         self.values = []
         # record annotations for post-recovery
@@ -236,7 +236,7 @@ class Tree(Transform):
     fields = ['WORD', 'POS', 'TREE', 'CHART']
 
     def __init__(self, WORD=None, POS=None, TREE=None, CHART=None):
-        super(Tree, self).__init__()
+        super().__init__()
 
         self.WORD = WORD
         self.POS = POS
@@ -335,7 +335,7 @@ class Tree(Transform):
 class TreeSentence(Sentence):
 
     def __init__(self, transform, tree):
-        super(TreeSentence, self).__init__(transform)
+        super().__init__(transform)
 
         # the values contain words, pos tags, raw trees, and spans
         # the tree is first left-binarized before factorized

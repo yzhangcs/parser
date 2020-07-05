@@ -17,7 +17,7 @@ class ScalarMix(nn.Module):
     '''
 
     def __init__(self, n_layers, dropout=0):
-        super(ScalarMix, self).__init__()
+        super().__init__()
 
         self.n_layers = n_layers
 

@@ -25,7 +25,7 @@ class Metric(object):
 class AttachmentMetric(Metric):
 
     def __init__(self, eps=1e-8):
-        super(AttachmentMetric, self).__init__()
+        super().__init__()
 
         self.eps = eps
 
@@ -79,7 +79,7 @@ class AttachmentMetric(Metric):
 class BracketMetric(Metric):
 
     def __init__(self, eps=1e-8):
-        super(BracketMetric, self).__init__()
+        super().__init__()
 
         self.n = 0.0
         self.n_ucm = 0.0

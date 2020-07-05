@@ -41,7 +41,7 @@ class BiaffineDependencyModel(nn.Module):
                  pad_index=0,
                  unk_index=1,
                  **kwargs):
-        super(BiaffineDependencyModel, self).__init__()
+        super().__init__()
 
         self.args = Config().update(locals())
         # the embedding layer
@@ -170,7 +170,7 @@ class BiaffineDependencyModel(nn.Module):
 class MSTDependencyModel(BiaffineDependencyModel):
 
     def __init__(self, **kwargs):
-        super(MSTDependencyModel, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.matrix_tree = MatrixTree()
 
@@ -195,16 +195,15 @@ class CRFDependencyModel(BiaffineDependencyModel):
     '''
 
     def __init__(self, **kwargs):
-        super(CRFDependencyModel, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.crf = CRFDependency()
 
-    def loss(self, s_arc, s_rel, arcs, rels, mask):
+    def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True, partial=False):
         batch_size, seq_len = mask.shape
-        arc_loss, arc_probs = self.crf(s_arc, mask, arcs,
-                                       self.args.mbr, self.args.partial)
+        arc_loss, arc_probs = self.crf(s_arc, mask, arcs, mbr, partial)
         # -1 denotes un-annotated arcs
-        if self.args.partial:
+        if partial:
             mask = mask & arcs.ge(0)
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
@@ -220,8 +219,8 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     https://www.aclweb.org/anthology/2020.acl-main.302.
     '''
 
-    def __init__(self, **kwargs):
-        super(CRF2oDependencyModel, self).__init__(**kwargs)
+    def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):
+        super().__init__(**kwargs)
 
         self.mlp_sib_s = MLP(n_in=n_lstm_hidden*2,
                              n_out=n_mlp_sib,
@@ -282,13 +281,12 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
 
         return s_arc, s_sib, s_rel
 
-    def loss(self, s_arc, s_sib, s_rel, arcs, sibs, rels, mask):
+    def loss(self, s_arc, s_sib, s_rel, arcs, sibs, rels, mask, mbr=True, partial=False):
         batch_size, seq_len = mask.shape
         scores, target = (s_arc, s_sib), (arcs, sibs)
-        arc_loss, arc_probs = self.crf(scores, mask, target,
-                                       self.args.mbr, self.args.partial)
+        arc_loss, arc_probs = self.crf(scores, mask, target, mbr, partial)
         # -1 denotes un-annotated arcs
-        if self.args.partial:
+        if partial:
             mask = mask & arcs.ge(0)
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
