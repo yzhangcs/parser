@@ -142,7 +142,7 @@ All the optional arguments of the subcommands are as follows:
 
 ```sh
 $ python run.py train -h
-usage: run.py train [-h] [--path PATH] [--conf CONF] [--device DEVICE]
+usage: run.py train [-h] [--path PATH] [--device DEVICE]
                     [--seed SEED] [--threads THREADS]
                     [--batch-size BATCH_SIZE] [--buckets BUCKETS] [--partial]
                     [--mbr] [--tree] [--proj] [--feat {tag,char,bert}]
@@ -153,7 +153,6 @@ usage: run.py train [-h] [--path PATH] [--conf CONF] [--device DEVICE]
 optional arguments:
   -h, --help            show this help message and exit
   --path PATH, -p PATH  path to model file
-  --conf CONF, -c CONF  path to config file
   --device DEVICE, -d DEVICE
                         ID of GPU to use
   --seed SEED, -s SEED  seed for generating random numbers
@@ -181,7 +180,7 @@ optional arguments:
 
 $ python run.py evaluate -h
 usage: run.py evaluate [-h] [--batch-size BATCH_SIZE] [--buckets BUCKETS]
-                       [--punct] [--fdata FDATA] [--conf CONF] [--file FILE]
+                       [--punct] [--fdata FDATA] [--file FILE]
                        [--preprocess] [--device DEVICE] [--seed SEED]
                        [--threads THREADS] [--tree] [--feat {tag,char,bert}]
 
@@ -192,7 +191,6 @@ optional arguments:
   --buckets BUCKETS     max num of buckets to use
   --punct               whether to include punctuation
   --fdata FDATA         path to dataset
-  --conf CONF, -c CONF  path to config file
   --file FILE, -f FILE  path to saved files
   --preprocess, -p      whether to preprocess the data first
   --device DEVICE, -d DEVICE
@@ -205,7 +203,7 @@ optional arguments:
                         choices of additional features
 
 $ python run.py predict -h
-usage: run.py predict [-h] [--path PATH] [--conf CONF] [--device DEVICE]
+usage: run.py predict [-h] [--path PATH] [--device DEVICE]
                       [--seed SEED] [--threads THREADS]
                       [--batch-size BATCH_SIZE] [--buckets BUCKETS]
                       [--partial] [--mbr] [--tree] [--proj] [--prob]
@@ -214,7 +212,6 @@ usage: run.py predict [-h] [--path PATH] [--conf CONF] [--device DEVICE]
 optional arguments:
   -h, --help            show this help message and exit
   --path PATH, -p PATH  path to model file
-  --conf CONF, -c CONF  path to config file
   --device DEVICE, -d DEVICE
                         ID of GPU to use
   --seed SEED, -s SEED  seed for generating random numbers

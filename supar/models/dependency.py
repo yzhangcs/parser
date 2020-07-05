@@ -7,6 +7,7 @@ from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency
 from supar.utils.alg import eisner, mst
+from supar.utils.config import Config
 from supar.utils.transform import CoNLL
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -18,68 +19,88 @@ class BiaffineDependencyModel(nn.Module):
     https://arxiv.org/abs/1611.01734.
     '''
 
-    def __init__(self, args):
+    def __init__(self,
+                 n_words,
+                 n_feats,
+                 n_rels,
+                 feat='char',
+                 n_embed=100,
+                 n_feat_embed=100,
+                 n_char_embed=50,
+                 bert=None,
+                 n_bert_layers=4,
+                 mix_dropout=.0,
+                 embed_dropout=.33,
+                 n_lstm_hidden=400,
+                 n_lstm_layers=3,
+                 lstm_dropout=.33,
+                 n_mlp_arc=500,
+                 n_mlp_rel=100,
+                 mlp_dropout=.33,
+                 feat_pad_index=0,
+                 pad_index=0,
+                 unk_index=1,
+                 **kwargs):
         super(BiaffineDependencyModel, self).__init__()
 
-        self.args = args
+        self.args = Config().update(locals())
         # the embedding layer
-        self.word_embed = nn.Embedding(num_embeddings=args.n_words,
-                                       embedding_dim=args.n_embed)
-        if args.feat == 'char':
-            self.feat_embed = CharLSTM(n_chars=args.n_feats,
-                                       n_embed=args.n_char_embed,
-                                       n_out=args.n_feat_embed,
-                                       pad_index=args.feat_pad_index)
-        elif args.feat == 'bert':
-            self.feat_embed = BertEmbedding(model=args.bert,
-                                            n_layers=args.n_bert_layers,
-                                            n_out=args.n_feat_embed,
-                                            pad_index=args.feat_pad_index,
-                                            dropout=args.mix_dropout)
-            self.args.n_feat_embed = self.feat_embed.n_out
+        self.word_embed = nn.Embedding(num_embeddings=n_words,
+                                       embedding_dim=n_embed)
+        if feat == 'char':
+            self.feat_embed = CharLSTM(n_chars=n_feats,
+                                       n_embed=n_char_embed,
+                                       n_out=n_feat_embed,
+                                       pad_index=feat_pad_index)
+        elif feat == 'bert':
+            self.feat_embed = BertEmbedding(model=bert,
+                                            n_layers=n_bert_layers,
+                                            n_out=n_feat_embed,
+                                            pad_index=feat_pad_index,
+                                            dropout=mix_dropout)
+            self.n_feat_embed = self.feat_embed.n_out
         else:
-            self.feat_embed = nn.Embedding(num_embeddings=args.n_feats,
-                                           embedding_dim=args.n_feat_embed)
-        self.embed_dropout = IndependentDropout(p=args.embed_dropout)
+            self.feat_embed = nn.Embedding(num_embeddings=n_feats,
+                                           embedding_dim=n_feat_embed)
+        self.embed_dropout = IndependentDropout(p=embed_dropout)
 
         # the lstm layer
-        self.lstm = BiLSTM(input_size=args.n_embed+args.n_feat_embed,
-                           hidden_size=args.n_lstm_hidden,
-                           num_layers=args.n_lstm_layers,
-                           dropout=args.lstm_dropout)
-        self.lstm_dropout = SharedDropout(p=args.lstm_dropout)
+        self.lstm = BiLSTM(input_size=n_embed+n_feat_embed,
+                           hidden_size=n_lstm_hidden,
+                           num_layers=n_lstm_layers,
+                           dropout=lstm_dropout)
+        self.lstm_dropout = SharedDropout(p=lstm_dropout)
 
         # the MLP layers
-        self.mlp_arc_d = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_arc,
-                             dropout=args.mlp_dropout)
-        self.mlp_arc_h = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_arc,
-                             dropout=args.mlp_dropout)
-        self.mlp_rel_d = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_rel,
-                             dropout=args.mlp_dropout)
-        self.mlp_rel_h = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_rel,
-                             dropout=args.mlp_dropout)
+        self.mlp_arc_d = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_arc,
+                             dropout=mlp_dropout)
+        self.mlp_arc_h = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_arc,
+                             dropout=mlp_dropout)
+        self.mlp_rel_d = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_rel,
+                             dropout=mlp_dropout)
+        self.mlp_rel_h = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_rel,
+                             dropout=mlp_dropout)
 
         # the Biaffine layers
-        self.arc_attn = Biaffine(n_in=args.n_mlp_arc,
+        self.arc_attn = Biaffine(n_in=n_mlp_arc,
                                  bias_x=True,
                                  bias_y=False)
-        self.rel_attn = Biaffine(n_in=args.n_mlp_rel,
-                                 n_out=args.n_rels,
+        self.rel_attn = Biaffine(n_in=n_mlp_rel,
+                                 n_out=n_rels,
                                  bias_x=True,
                                  bias_y=True)
         self.criterion = nn.CrossEntropyLoss()
-        self.pad_index = args.pad_index
-        self.unk_index = args.unk_index
+        self.pad_index = pad_index
+        self.unk_index = unk_index
 
     def load_pretrained(self, embed=None):
         if embed is not None:
             self.pretrained = nn.Embedding.from_pretrained(embed)
             nn.init.zeros_(self.word_embed.weight)
-
         return self
 
     def forward(self, words, feats):
@@ -130,15 +151,15 @@ class BiaffineDependencyModel(nn.Module):
 
         return arc_loss + rel_loss
 
-    def decode(self, s_arc, s_rel, mask):
+    def decode(self, s_arc, s_rel, mask, tree=False, proj=False):
         lens = mask.sum(1)
         # prevent self-loops
         s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
         arc_preds = s_arc.argmax(-1)
-        bad = [not CoNLL.istree(seq[:i+1], self.args.proj)
+        bad = [not CoNLL.istree(seq[:i+1], proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
-        if self.args.tree and any(bad):
-            alg = mst if self.args.proj else eisner
+        if tree and any(bad):
+            alg = mst if proj else eisner
             arc_preds[bad] = alg(s_arc[bad], mask[bad])
         rel_preds = s_rel.argmax(-1)
         rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
@@ -148,8 +169,8 @@ class BiaffineDependencyModel(nn.Module):
 
 class MSTDependencyModel(BiaffineDependencyModel):
 
-    def __init__(self, args):
-        super(MSTDependencyModel, self).__init__(args)
+    def __init__(self, **kwargs):
+        super(MSTDependencyModel, self).__init__(**kwargs)
 
         self.matrix_tree = MatrixTree()
 
@@ -173,8 +194,8 @@ class CRFDependencyModel(BiaffineDependencyModel):
     https://www.aclweb.org/anthology/2020.acl-main.302/.
     '''
 
-    def __init__(self, args):
-        super(CRFDependencyModel, self).__init__(args)
+    def __init__(self, **kwargs):
+        super(CRFDependencyModel, self).__init__(**kwargs)
 
         self.crf = CRFDependency()
 
@@ -199,20 +220,20 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     https://www.aclweb.org/anthology/2020.acl-main.302.
     '''
 
-    def __init__(self, args):
-        super(CRF2oDependencyModel, self).__init__(args)
+    def __init__(self, **kwargs):
+        super(CRF2oDependencyModel, self).__init__(**kwargs)
 
-        self.mlp_sib_s = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_sib,
-                             dropout=args.mlp_dropout)
-        self.mlp_sib_d = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_sib,
-                             dropout=args.mlp_dropout)
-        self.mlp_sib_h = MLP(n_in=args.n_lstm_hidden*2,
-                             n_out=args.n_mlp_sib,
-                             dropout=args.mlp_dropout)
+        self.mlp_sib_s = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_sib,
+                             dropout=mlp_dropout)
+        self.mlp_sib_d = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_sib,
+                             dropout=mlp_dropout)
+        self.mlp_sib_h = MLP(n_in=n_lstm_hidden*2,
+                             n_out=n_mlp_sib,
+                             dropout=mlp_dropout)
 
-        self.sib_attn = Triaffine(n_in=args.n_mlp_sib,
+        self.sib_attn = Triaffine(n_in=n_mlp_sib,
                                   bias_x=True,
                                   bias_y=True)
         self.crf = CRF2oDependency()

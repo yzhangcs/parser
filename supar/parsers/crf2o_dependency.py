@@ -110,33 +110,27 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         return preds
 
     @classmethod
-    def build(cls, path, **kwargs):
-        args = Config().update(locals())
+    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+        args = Config(**locals())
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
-            parser.model = cls.MODEL(parser.args)
+            parser.model = cls.MODEL(**parser.args)
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
         logger.info("Build the fields")
         WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
         if args.feat == 'char':
-            FEAT = SubwordField('chars',
-                                pad=pad,
-                                unk=unk,
-                                bos=bos,
-                                fix_len=args.fix_len)
+            FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
         elif args.feat == 'bert':
             from transformers import AutoTokenizer
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
-            if args.bert.startswith('bert'):
-                tokenizer.bos_token = tokenizer.cls_token
-                tokenizer.eos_token = tokenizer.sep_token
             FEAT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,
-                                bos=tokenizer.bos_token,
+                                bos=tokenizer.bos_token or tokenizer.cls_token,
                                 fix_len=args.fix_len,
                                 tokenize=tokenizer.tokenize)
             FEAT.vocab = tokenizer.get_vocab()
@@ -146,11 +140,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         SIB = Field('sibs', bos=bos, use_vocab=False, fn=CoNLL.get_sibs)
         REL = Field('rels', bos=bos)
         if args.feat in ('char', 'bert'):
-            transform = CoNLL(FORM=(WORD, FEAT),
-                              HEAD=(ARC, SIB), DEPREL=REL)
+            transform = CoNLL(FORM=(WORD, FEAT), HEAD=(ARC, SIB), DEPREL=REL)
         else:
-            transform = CoNLL(FORM=WORD, CPOS=FEAT,
-                              HEAD=(ARC, SIB), DEPREL=REL)
+            transform = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=(ARC, SIB), DEPREL=REL)
 
         train = Dataset(transform, args.train)
         embed = None
@@ -169,6 +161,6 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index
         })
-        model = cls.MODEL(args)
+        model = cls.MODEL(**args)
         model = model.load_pretrained(WORD.embed).to(args.device)
         return cls(args, model, transform)

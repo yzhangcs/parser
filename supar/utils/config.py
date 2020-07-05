@@ -1,19 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from ast import literal_eval
-from configparser import ConfigParser
-
 
 class Config(object):
 
-    def __init__(self, path=[]):
-        super(Config, self).__init__()
-
-        config = ConfigParser()
-        config.read(path)
-        self.update(dict((name, literal_eval(value))
-                         for section in config.sections()
-                         for name, value in config.items(section)))
+    def __init__(self, **kwargs):
+        self.update(kwargs)
 
     def __repr__(self):
         s = line = "-" * 15 + "-+-" + "-" * 25 + "\n"
@@ -36,6 +27,9 @@ class Config(object):
     def keys(self):
         return vars(self).keys()
 
+    def items(self):
+        return vars(self).items()
+
     def update(self, kwargs):
         for key in ('self', 'cls', '__class__'):
             kwargs.pop(key, None)
@@ -45,5 +39,5 @@ class Config(object):
 
         return self
 
-    def pop(self, key):
-        return self.__dict__.pop(key)
+    def pop(self, key, val=None):
+        return self.__dict__.pop(key, val)

@@ -11,10 +11,22 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class CRFConstituencyModel(nn.Module):
 
-    def __init__(self, args):
+    def __init__(self,
+                 n_embed=100,
+                 n_char_embed=50,
+                 n_feat_embed=100,
+                 n_bert_layers=4,
+                 mix_dropout=.0,
+                 embed_dropout=.33,
+                 n_lstm_hidden=400,
+                 n_lstm_layers=3,
+                 lstm_dropout=.33,
+                 n_mlp_span=500,
+                 n_mlp_label=100,
+                 mlp_dropout=.33):
         super(CRFConstituencyModel, self).__init__()
 
-        self.args = args
+        self.args = Config().update(locals())
         # the embedding layer
         self.word_embed = nn.Embedding(num_embeddings=args.n_words,
                                        embedding_dim=args.n_embed)

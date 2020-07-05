@@ -7,6 +7,7 @@ import supar
 import torch
 import torch.distributed as dist
 from supar.utils import Dataset
+from supar.utils.config import Config
 from supar.utils.field import Field
 from supar.utils.logging import logger
 from supar.utils.metric import Metric
@@ -28,7 +29,18 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
-    def train(self, train, dev, test, **kwargs):
+    def train(self, train, dev, test,
+              lr=2e-3,
+              mu=.9,
+              nu=.9,
+              epsilon=1e-12,
+              clip=5.0,
+              decay=.75,
+              decay_steps=5000,
+              batch_size=5000,
+              epochs=5000,
+              patience=100,
+              **kwargs):
         args = self.args.update(locals())
 
         if dist.is_initialized():
@@ -46,7 +58,6 @@ class Parser(object):
 
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
-            self.model = self.model.to(args.device)
             self.model = DDP(self.model,
                              device_ids=[dist.get_rank()],
                              find_unused_parameters=True)
@@ -146,16 +157,17 @@ class Parser(object):
 
     @classmethod
     def load(cls, path, **kwargs):
+        args = Config(**locals())
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
         if os.path.exists(path):
             state = torch.load(path)
         else:
             path = supar.PRETRAINED[path] if path in supar.PRETRAINED else path
             state = torch.hub.load_state_dict_from_url(path)
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
-        args = state['args']
-        args.update({'path': path, **kwargs})
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = cls.MODEL(args)
+        args = state['args'].update(args)
+        model = cls.MODEL(**args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)

@@ -32,6 +32,25 @@ class BiaffineDependencyParser(Parser):
                                     for s, i in self.WORD.vocab.stoi.items()
                                     if ispunct(s)]).to(args.device)
 
+    def train(self, train, dev, test, punct=False, tree=False, **kwargs):
+        super(BiaffineDependencyParser, self).train(train, dev, test,
+                                                    punct=punct,
+                                                    tree=tree,
+                                                    **kwargs)
+
+    def evaluate(self, data, punct=False, tree=True, **kwargs):
+        super(BiaffineDependencyParser, self).evaluate(data,
+                                                       punct=punct,
+                                                       tree=tree,
+                                                       **kwargs)
+
+    def predict(self, data, pred=None, tree=True, prob=False, **kwargs):
+        super(BiaffineDependencyParser, self).predict(data,
+                                                      pred=pred,
+                                                      tree=tree,
+                                                      prob=prob,
+                                                      **kwargs)
+
     def _train(self, loader):
         self.model.train()
 
@@ -73,7 +92,9 @@ class BiaffineDependencyParser(Parser):
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
             loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
+                                                     self.args.tree,
+                                                     self.args.proj)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
@@ -95,7 +116,9 @@ class BiaffineDependencyParser(Parser):
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
             s_arc, s_rel = self.model(words, feats)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
+                                                     self.args.tree,
+                                                     self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -111,33 +134,27 @@ class BiaffineDependencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, **kwargs):
-        args = Config().update(locals())
+    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+        args = Config(**locals())
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
-            parser.model = cls.MODEL(parser.args)
+            parser.model = cls.MODEL(**parser.args)
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
         logger.info("Build the fields")
         WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
         if args.feat == 'char':
-            FEAT = SubwordField('chars',
-                                pad=pad,
-                                unk=unk,
-                                bos=bos,
-                                fix_len=args.fix_len)
+            FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
         elif args.feat == 'bert':
             from transformers import AutoTokenizer
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
-            if args.bert.startswith('bert'):
-                tokenizer.bos_token = tokenizer.cls_token
-                tokenizer.eos_token = tokenizer.sep_token
             FEAT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,
-                                bos=tokenizer.bos_token,
+                                bos=tokenizer.bos_token or tokenizer.cls_token,
                                 fix_len=args.fix_len,
                                 tokenize=tokenizer.tokenize)
             FEAT.vocab = tokenizer.get_vocab()
@@ -166,6 +183,6 @@ class BiaffineDependencyParser(Parser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index
         })
-        model = cls.MODEL(args)
+        model = cls.MODEL(**args)
         model.load_pretrained(WORD.embed).to(args.device)
         return cls(args, model, transform)
