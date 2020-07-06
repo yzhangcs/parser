@@ -188,10 +188,9 @@ class SubwordField(Field):
             sequences = [[[self.bos_index]] + seq for seq in sequences]
         if self.eos:
             sequences = [seq + [[self.eos_index]] for seq in sequences]
-        sequences = [pad([torch.tensor(ids[:self.fix_len]) for ids in seq],
-                         self.pad_index,
-                         self.fix_len)
-                     for seq in sequences]
+        lens = [min(self.fix_len, max(len(ids) for ids in seq)) for seq in sequences]
+        sequences = [pad([torch.tensor(ids[:i]) for ids in seq], self.pad_index, i)
+                     for i, seq in zip(lens, sequences)]
 
         return sequences
 
