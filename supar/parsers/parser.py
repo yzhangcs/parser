@@ -83,9 +83,10 @@ class Parser(object):
 
             t = datetime.now() - start
             # save the model if it is the best so far
-            if dev_metric > best_metric and is_master():
+            if dev_metric > best_metric:
                 best_e, best_metric = epoch, dev_metric
-                self.save(args.path)
+                if is_master():
+                    self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
                 logger.info(f"{t}s elapsed\n")

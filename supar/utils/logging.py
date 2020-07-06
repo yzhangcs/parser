@@ -11,7 +11,7 @@ logger = logging.getLogger('supar')
 
 def init_logger(logger,
                 path=None,
-                mode='a',
+                mode='w',
                 level=None,
                 handlers=None,
                 verbose=True):
