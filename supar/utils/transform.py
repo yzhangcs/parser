@@ -59,11 +59,11 @@ class Sentence(object):
     def __init__(self, transform):
         self.transform = transform
 
-        # the mapping from each nested field to their proper position
+        # mapping from each nested field to their proper position
         self.maps = dict()
-        # the names of each field
+        # names of each field
         self.keys = set()
-        # the values of each position
+        # values of each position
         self.values = []
         for i, field in enumerate(self.transform):
             if not isinstance(field, Iterable):
