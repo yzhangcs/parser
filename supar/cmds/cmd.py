@@ -7,6 +7,8 @@ from supar.utils.parallel import init_device
 
 
 def parse(parser):
+    parser.add_argument('--conf', '-c', default=None,
+                        help='path to config file')
     parser.add_argument('--path', '-p', default=None,
                         help='path to model file')
     parser.add_argument('--device', '-d', default='-1',
