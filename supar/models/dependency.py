@@ -14,9 +14,12 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class BiaffineDependencyModel(nn.Module):
 
-    r'''The implementation of
-    "Deep Biaffine Attention for Neural Dependency Parsing":
-    https://arxiv.org/abs/1611.01734.
+    r'''The implementation of Biaffine Parser.
+
+    References::
+    - Timothy Dozat and Christopher D. Manning (ICLR'17)
+      Deep Biaffine Attention for Neural Dependency Parsing
+      https://arxiv.org/abs/1611.01734
     '''
 
     def __init__(self,
@@ -169,6 +172,18 @@ class BiaffineDependencyModel(nn.Module):
 
 class MSTDependencyModel(BiaffineDependencyModel):
 
+    r'''The implementation of MST Dependency Parser.
+    "":
+
+    References::
+    - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
+      Neural Probabilistic Model for Non-projective MST Parsing
+      https://www.aclweb.org/anthology/I17-1007
+    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
+      Structured Prediction Models via the Matrix-Tree Theorem
+      https://www.aclweb.org/anthology/D07-1015
+    '''
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -186,9 +201,13 @@ class MSTDependencyModel(BiaffineDependencyModel):
 
 class CRFDependencyModel(BiaffineDependencyModel):
 
-    r'''The implementation of
-    "Efficient Second-Order TreeCRF for Neural Dependency Parsing":
-    https://www.aclweb.org/anthology/2020.acl-main.302/.
+    r'''The implementation of first-order CRF Dependency Parser.
+    "":
+
+    References::
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302
     '''
 
     def __init__(self, **kwargs):
@@ -211,9 +230,13 @@ class CRFDependencyModel(BiaffineDependencyModel):
 
 class CRF2oDependencyModel(BiaffineDependencyModel):
 
-    r'''The implementation of
-    "Efficient Second-Order TreeCRF for Neural Dependency Parsing":
-    https://www.aclweb.org/anthology/2020.acl-main.302.
+    r'''The implementation of second-order CRF Dependency Parser.
+    "":
+
+    References::
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302
     '''
 
     def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):
