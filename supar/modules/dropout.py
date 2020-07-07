@@ -22,10 +22,10 @@ class SharedDropout(nn.Module):
     def forward(self, x):
         if self.training:
             if self.batch_first:
-                mask = self.get_mask(x[:, 0], self.p)
+                mask = self.get_mask(x[:, 0], self.p).unsqueeze(1)
             else:
                 mask = self.get_mask(x[0], self.p)
-            x *= mask.unsqueeze(1) if self.batch_first else mask
+            x = x * mask
 
         return x
 

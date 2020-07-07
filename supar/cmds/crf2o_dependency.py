@@ -8,7 +8,7 @@ from supar.cmds.cmd import parse
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Create the Biaffine Parser model.'
+        description='Create second-order CRF Dependency Parser.'
     )
     parser.set_defaults(Parser=CRF2oDependencyParser)
     parser.add_argument('--mbr', action='store_true',

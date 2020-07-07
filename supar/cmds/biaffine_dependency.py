@@ -8,7 +8,7 @@ from supar.cmds.cmd import parse
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Create the Biaffine Parser.'
+        description='Create Biaffine Dependency Parser.'
     )
     parser.add_argument('--tree', action='store_true',
                         help='whether to ensure well-formedness')
