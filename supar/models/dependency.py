@@ -174,12 +174,9 @@ class MSTDependencyModel(BiaffineDependencyModel):
 
         self.matrix_tree = MatrixTree()
 
-    def loss(self, s_arc, s_rel, arcs, rels, mask):
+    def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True):
         batch_size, seq_len = mask.shape
-        arc_loss, arc_probs = self.matrix_tree(s_arc, mask, arcs)
-        # -1 denotes un-annotated arcs
-        if self.args.partial:
-            mask = mask & arcs.ge(0)
+        arc_loss, arc_probs = self.matrix_tree(s_arc, mask, arcs, mbr)
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
         rel_loss = self.criterion(s_rel, rels)

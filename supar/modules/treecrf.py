@@ -13,14 +13,11 @@ class CRFDependency(nn.Module):
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False, partial=False):
-        lens = mask.sum(1)
-        total = mask.sum()
         batch_size, seq_len, _ = scores.shape
         training = scores.requires_grad
         # always enable the gradient computation of scores
         # in order for the computation of marginal probs
-        s_i, s_c = self.inside(scores.requires_grad_(), mask)
-        logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
+        logZ = self.inside(scores.requires_grad_(), mask)
         # marginal probs are used for decoding, and can be computed by
         # combining the inside pass and autograd mechanism
         probs = scores
@@ -31,11 +28,10 @@ class CRFDependency(nn.Module):
             return probs
         # the second inside process is needed if use partial annotation
         if partial:
-            s_i, s_c = self.inside(scores, mask, target)
-            score = s_c[0].gather(0, lens.unsqueeze(0))
+            score = self.inside(scores, mask, target)
         else:
-            score = scores.gather(-1, target.unsqueeze(-1)).squeeze(-1)[mask]
-        loss = (logZ - score.sum()) / total
+            score = scores.gather(-1, target.unsqueeze(-1)).squeeze(-1)[mask].sum()
+        loss = (logZ - score) / mask.sum()
 
         return loss, probs
 
@@ -89,7 +85,7 @@ class CRFDependency(nn.Module):
             # disable multi words to modify the root
             s_c[0, w][lens.ne(w)] = float('-inf')
 
-        return s_i, s_c
+        return s_c[0].gather(0, lens.unsqueeze(0)).sum()
 
 
 class CRF2oDependency(nn.Module):
@@ -99,15 +95,12 @@ class CRF2oDependency(nn.Module):
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=True, partial=False):
-        lens = mask.sum(1)
-        total = mask.sum()
         s_arc, s_sib = scores
         batch_size, seq_len, _ = s_arc.shape
         training = s_arc.requires_grad
         # always enable the gradient computation of scores
         # in order for the computation of marginal probs
-        s_i, s_s, s_c = self.inside((s.requires_grad_() for s in scores), mask)
-        logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
+        logZ = self.inside((s.requires_grad_() for s in scores), mask)
         # marginal probs are used for decoding, and can be computed by
         # combining the inside pass and autograd mechanism
         probs = s_arc
@@ -119,8 +112,7 @@ class CRF2oDependency(nn.Module):
         arcs, sibs = target
         # the second inside process is needed if use partial annotation
         if partial:
-            s_i, s_s, s_c = self.inside(scores, mask, arcs)
-            score = s_c[0].gather(0, lens.unsqueeze(0)).sum()
+            score = self.inside(scores, mask, arcs)
         else:
             arc_seq, sib_seq = arcs[mask], sibs[mask]
             arc_mask, sib_mask = mask, sib_seq.gt(0)
@@ -129,7 +121,7 @@ class CRF2oDependency(nn.Module):
             s_arc = s_arc[arc_mask].gather(-1, arc_seq.unsqueeze(-1))
             s_sib = s_sib[sib_mask].gather(-1, sib_seq.unsqueeze(-1))
             score = s_arc.sum() + s_sib.sum()
-        loss = (logZ - score) / total
+        loss = (logZ - score) / mask.sum()
 
         return loss, probs
 
@@ -211,7 +203,7 @@ class CRF2oDependency(nn.Module):
             # disable multi words to modify the root
             s_c[0, w][lens.ne(w)] = float('-inf')
 
-        return s_i, s_s, s_c
+        return s_c[0].gather(0, lens.unsqueeze(0)).sum()
 
 
 class CRFConstituency(nn.Module):
@@ -221,14 +213,10 @@ class CRFConstituency(nn.Module):
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False):
-        lens = mask[:, 0].sum(-1)
-        total = lens.sum()
-        batch_size, seq_len, _ = scores.shape
         training = scores.requires_grad
         # always enable the gradient computation of scores
         # in order for the computation of marginal probs
-        s = self.inside(scores.requires_grad_(), mask)
-        logZ = s[0].gather(0, lens.unsqueeze(0)).sum()
+        logZ = self.inside(scores.requires_grad_(), mask)
         # marginal probs are used for decoding, and can be computed by
         # combining the inside pass and autograd mechanism
         probs = scores
@@ -236,11 +224,12 @@ class CRFConstituency(nn.Module):
             probs, = autograd.grad(logZ, scores, retain_graph=training)
         if target is None:
             return probs
-        loss = (logZ - scores[mask & target].sum()) / total
+        loss = (logZ - scores[mask & target].sum()) / mask[:, 0].sum()
 
         return loss, probs
 
     def inside(self, scores, mask):
+        lens = mask[:, 0].sum(-1)
         batch_size, seq_len, _ = scores.shape
         # [seq_len, seq_len, batch_size]
         scores, mask = scores.permute(1, 2, 0), mask.permute(1, 2, 0)
@@ -263,4 +252,4 @@ class CRFConstituency(nn.Module):
             s_s = s_s.logsumexp(-1)
             s.diagonal(w).copy_(s_s + scores.diagonal(w))
 
-        return s
+        return s[0].gather(0, lens.unsqueeze(0)).sum()
