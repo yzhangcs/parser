@@ -37,8 +37,8 @@ class MatrixTree(nn.Module):
         #  log(det(exp(M)))= log(det(exp(M - m) * exp(m)))
         #                  = log(det(exp(M - m)) * exp(m)^n)
         #                  = log(det(exp(M - m))) + m*n
-        m = scores.view(1, -1).max(-1)[0]
-        A = torch.exp(scores.requires_grad_() - m.view(-1, 1, 1))
+        m = scores.view(batch_size, -1).max(-1)[0]
+        A = torch.exp(scores - m.view(-1, 1, 1))
         # D is the weighted degree matrix
         # D(i, j) = sum_j(A(i, j)), if h == m
         #           0,              otherwise
