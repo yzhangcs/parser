@@ -1,23 +1,21 @@
 # -*- coding: utf-8 -*-
 
-from typing import List
-
 import torch
 from supar.utils.fn import pad, stripe
 
 
-def kmeans(x: List[int], k: int, max_it: int = 32) -> (List[float], List[List[int]]):
+def kmeans(x, k, max_it=32):
     """
     KMeans algorithm for clustering the sentences by length.
 
     Args:
-        x (`List[int]`) : Lengths of sentences.
+        x (List[int]): Lengths of sentences.
         k (int): Number of clusters.
             This is an approximate value.
             The final number of clusters can be less or equal to k.
         max_it (int): Maxumum number of iterations.
-            If the centroids does not converge after several iterations,
-            the clustering algorithm will be eraly stopped.
+            If centroids does not converge after several iterations,
+            the algorithm will be early stopped.
 
     Returns:
         centroids (List[float]): Average lengths in each cluster
@@ -67,11 +65,20 @@ def kmeans(x: List[int], k: int, max_it: int = 32) -> (List[float], List[List[in
 
 def eisner(scores, mask):
     """
+    First-order Eisner algorithm for projective decoding.
 
     References::
     - Ryan McDonald, Koby Crammer and Fernando Pereira (ACL'05)
       Online Large-Margin Training of Dependency Parsers
       https://www.aclweb.org/anthology/P05-1012/
+
+    Args:
+        scores (Tensor): The scores of arcs.
+        mask (BoolTensor):
+
+    Returns:
+        Tensor: [batch_size, seq_len]
+            Projective parse trees.
     """
 
     lens = mask.sum(1)
@@ -137,11 +144,16 @@ def eisner(scores, mask):
 
 def eisner2o(scores, mask):
     """
+    Second-order Eisner algorithm for projective decoding.
 
     References::
     - Ryan McDonald and Fernando Pereira (EACL'06)
       Online Learning of Approximate Dependency Parsing Algorithms
       https://www.aclweb.org/anthology/E06-1011/
+
+    Returns:
+        Tensor: [batch_size, seq_len]
+            Projective parse trees.
     """
 
     # the end position of each sentence in a batch
@@ -332,6 +344,15 @@ def tarjan(sequence):
 
 
 def chuliu_edmonds(s):
+    """
+    ChuLiu/Edmods algorithm for non-projective decoding.
+
+    References::
+    - Ryan McDonald et al. (EMNLP'05)
+      Non-projective Dependency Parsing using Spanning Tree Algorithms
+      https: // www.aclweb.org/anthology/H05-1066/
+    """
+
     tree = s.argmax(-1)
     # return the cycle finded by tarjan algorithm lazily
     cycle = next(tarjan(tree.tolist()), None)
@@ -402,13 +423,25 @@ def chuliu_edmonds(s):
 
 def mst(scores, mask, multiroot=False):
     """
-    Please note that the ChuLiu/Edmod algorithm does not guarantee
-    to parse a tree with single root.
+    MST algorithm for decoding a non-pojective tree.
+    This is a wrapper for ChuLiu/Edmonds algorithm.
 
-    References::
-    - Ryan McDonald et al. (EMNLP'05)
-      Non-projective Dependency Parsing using Spanning Tree Algorithms
-      https: // www.aclweb.org/anthology/H05-1066/
+    If multiroot is specified to True, the algorithm behaves just like the ChuLiu/Edmonds.
+    Otherwise it first runs ChuLiu/Edmonds to parse a tree and then have a check,
+    if there exist multi-roots, the algorithm seeks to find a best single-root tree by
+    iterating all possible single-root trees parsed by ChuLiu/Edmonds.
+
+    Args:
+        scores (Tensor): [batch_size, seq_len, seq_len]
+            The scores of arcs.
+        mask (torch.BoolTensor): [batch_size, seq_len]
+            All valid positions.
+        muliroot (bool):
+            Ensures to parse a single-root if set to False.
+
+    Returns:
+        Tensor: [batch_size, seq_len]
+            Non-projective parse trees.
     """
 
     batch_size, seq_len, _ = scores.shape

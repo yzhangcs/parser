@@ -98,40 +98,40 @@ class Sentence(object):
 
 class CoNLL(Transform):
 
-        """
-        CoNLL format template.
+    """
+    CoNLL format template.
 
-        Parameters
-        ----------
-        id : int
-            Token counter, starting at 1 for each new sentence.
-        form : str
-            Word form or punctuation symbol.
-        lemma : str
-            Lemma or stem (depending on the particular treebank) of word form, or an underscore if not available.
-        cpos : str
-            Coarse-grained part-of-speech tag, where the tagset depends on the treebank.
-        pos : str
-            Fine-grained part-of-speech tag, where the tagset depends on the treebank.
-        feats : str
-            Unordered set of syntactic and/or morphological features (depending on the particular treebank),
-            or an underscore if not available.
-        head : Union[int, List[int]]
-            Head of the current token, which is either a value of ID,
-            or zero (’0’) if the token links to the virtual root node of the sentence.
-        deprel : Union[str, List[str]]
-            Dependency relation to the HEAD.
-        phead : int
-            Projective head of current token, which is either a value of ID or zero (’0’),
-            or an underscore if not available.
-        pdeprel : str
-            Dependency relation to the PHEAD, or an underscore if not available.
+    Parameters
+    ----------
+    id : int
+        Token counter, starting at 1 for each new sentence.
+    form : str
+        Word form or punctuation symbol.
+    lemma : str
+        Lemma or stem (depending on the particular treebank) of word form, or an underscore if not available.
+    cpos : str
+        Coarse-grained part-of-speech tag, where the tagset depends on the treebank.
+    pos : str
+        Fine-grained part-of-speech tag, where the tagset depends on the treebank.
+    feats : str
+        Unordered set of syntactic and/or morphological features (depending on the particular treebank),
+        or an underscore if not available.
+    head : Union[int, List[int]]
+        Head of the current token, which is either a value of ID,
+        or zero (’0’) if the token links to the virtual root node of the sentence.
+    deprel : Union[str, List[str]]
+        Dependency relation to the HEAD.
+    phead : int
+        Projective head of current token, which is either a value of ID or zero (’0’),
+        or an underscore if not available.
+    pdeprel : str
+        Dependency relation to the PHEAD, or an underscore if not available.
 
-        References::
-        - Sabine Buchholz and Erwin Marsi (CoNLL'06)
-          CoNLL-X Shared Task on Multilingual Dependency Parsing
-          http://anthology.aclweb.org/W/W06/W06-2920/302/
-        """
+    References::
+    - Sabine Buchholz and Erwin Marsi (CoNLL'06)
+        CoNLL-X Shared Task on Multilingual Dependency Parsing
+        http://anthology.aclweb.org/W/W06/W06-2920/302/
+    """
 
     fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
               'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']
