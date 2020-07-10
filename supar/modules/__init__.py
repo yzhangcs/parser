@@ -9,5 +9,4 @@ from .matrix_tree import MatrixTree
 from .mlp import MLP
 from .triaffine import Triaffine
 
-__all__ = ['MLP', 'BertEmbedding', 'Biaffine', 'BiLSTM', 'CharLSTM',
-           'MatrixTree', 'Triaffine', 'dropout', 'treecrf']
+__all__ = ['MLP', 'BertEmbedding', 'Biaffine', 'BiLSTM', 'CharLSTM', 'MatrixTree', 'Triaffine', 'dropout', 'treecrf']

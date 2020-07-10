@@ -28,14 +28,15 @@ def tohalfwidth(token):
 
 
 def stripe(x, n, w, offset=(0, 0), dim=1):
-    r'''Returns a diagonal stripe of the tensor.
+    """
+    Returns a diagonal stripe of the tensor.
 
     Parameters:
         x (Tensor): the input tensor with 2 or more dims.
         n (int): the length of the stripe.
         w (int): the width of the stripe.
         offset (tuple): the offset of the first two dims.
-        dim (int): 0 if returns a horizontal stripe; 1 else.
+        dim (int): 0 if returns a horizontal stripe; 1 otherwise.
 
     Example::
     >>> x = torch.arange(25).view(5, 5)
@@ -51,7 +52,7 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
     >>> stripe(x, 2, 3, dim=0)
     tensor([[ 0,  5, 10],
             [ 6, 11, 16]])
-    '''
+    """
     x, seq_len = x.contiguous(), x.size(1)
     stride, numel = list(x.stride()), x[0, 0].numel()
     stride[0] = (seq_len + 1) * numel

@@ -5,16 +5,13 @@ import torch.nn as nn
 
 
 class ScalarMix(nn.Module):
-    '''
-    Computes a parameterised scalar mixture of N tensors,
-    ``mixture = gamma * sum(s_k * tensor_k)``
+    """
+    Computes a parameterised scalar mixture of N tensors, ``mixture = gamma * sum(s_k * tensor_k)``
     where ``s = softmax(w)``, with ``w`` and ``gamma`` scalar parameters.
-
-    If ``dropout > 0``, then for each scalar weight, adjust its
-    softmax weight mass to 0 with the dropout probability (i.e.,
-    setting the unnormalized weight to -inf). This effectively should
-    redistribute dropped probability mass to all other weights.
-    '''
+    If ``dropout > 0``, then for each scalar weight, adjust its softmax weight mass to 0 with
+    the dropout probability (i.e., setting the unnormalized weight to -inf). This effectively
+    should redistribute dropped probability mass to all other weights.
+    """
 
     def __init__(self, n_layers, dropout=0):
         super().__init__()

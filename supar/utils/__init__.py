@@ -6,5 +6,4 @@ from .data import Dataset
 from .embedding import Embedding
 from .vocab import Vocab
 
-__all__ = ['Config', 'Dataset', 'Embedding',
-           'Vocab', 'field', 'fn', 'metric', 'transform']
+__all__ = ['Config', 'Dataset', 'Embedding', 'Vocab', 'field', 'fn', 'metric', 'transform']

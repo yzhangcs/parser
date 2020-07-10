@@ -14,13 +14,14 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class BiaffineDependencyModel(nn.Module):
 
-    r'''The implementation of Biaffine Parser.
+    """
+    The implementation of Biaffine Dependency Parser.
 
     References::
     - Timothy Dozat and Christopher D. Manning (ICLR'17)
       Deep Biaffine Attention for Neural Dependency Parsing
-      https://arxiv.org/abs/1611.01734
-    '''
+      https://openreview.net/pdf?id=Hk95PK9le/
+    """
 
     def __init__(self,
                  n_words,
@@ -107,6 +108,33 @@ class BiaffineDependencyModel(nn.Module):
         return self
 
     def forward(self, words, feats):
+        """
+        Computes the arc and tag loss for a sequence given gold heads and tags.
+        Parameters
+        ----------
+        s_arc : ``torch.Tensor``, required.
+            A tensor of shape (batch_size, sequence_length, tags_count),
+            which will be used to generate predictions for the dependency tags
+            for the given arcs.
+        s_rel : ``torch.Tensor``, required
+            A tensor of shape (batch_size, sequence_length, tags_count),
+            which will be used to generate predictions for the dependency tags
+            for the given arcs.
+        arcs : ``torch.Tensor``, required.
+            A tensor of shape (batch_size, sequence_length).
+            The indices of the heads for each word.
+        rels : ``torch.Tensor``, required.
+            A tensor of shape (batch_size, sequence_length).
+            The dependency labels of the heads for each word.
+        mask : ``torch.Tensor``, required.
+            A mask of shape (batch_size, sequence_length), denoting unpadded
+            elements in the sequence.
+        Returns
+        -------
+        loss : ``torch.Tensor``.
+            The sum of the cross-entropy losses from the arcs and rels predictions.
+        """
+
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
@@ -172,17 +200,17 @@ class BiaffineDependencyModel(nn.Module):
 
 class MSTDependencyModel(BiaffineDependencyModel):
 
-    r'''The implementation of MST Dependency Parser.
-    "":
+    """
+    The implementation of MST Dependency Parser.
 
     References::
     - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
       Neural Probabilistic Model for Non-projective MST Parsing
-      https://www.aclweb.org/anthology/I17-1007
+      https://www.aclweb.org/anthology/I17-1007/
     - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
       Structured Prediction Models via the Matrix-Tree Theorem
-      https://www.aclweb.org/anthology/D07-1015
-    '''
+      https://www.aclweb.org/anthology/D07-1015/
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -201,14 +229,14 @@ class MSTDependencyModel(BiaffineDependencyModel):
 
 class CRFDependencyModel(BiaffineDependencyModel):
 
-    r'''The implementation of first-order CRF Dependency Parser.
-    "":
+    """
+    The implementation of first-order CRF Dependency Parser.
 
     References::
     - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
       Efficient Second-Order TreeCRF for Neural Dependency Parsing
-      https://www.aclweb.org/anthology/2020.acl-main.302
-    '''
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -230,14 +258,14 @@ class CRFDependencyModel(BiaffineDependencyModel):
 
 class CRF2oDependencyModel(BiaffineDependencyModel):
 
-    r'''The implementation of second-order CRF Dependency Parser.
-    "":
+    """
+    The implementation of second-order CRF Dependency Parser.
 
     References::
     - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
       Efficient Second-Order TreeCRF for Neural Dependency Parsing
-      https://www.aclweb.org/anthology/2020.acl-main.302
-    '''
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    """
 
     def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):
         super().__init__(**kwargs)

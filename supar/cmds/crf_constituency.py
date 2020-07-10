@@ -15,8 +15,7 @@ def main():
                         help='whether to use mbr decoding')
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser(
-        'train',
-        help='Train a parser.'
+        'train', help='Train a parser.'
     )
     subparser.add_argument('--feat', '-f', default='char',
                            choices=['tag', 'char', 'bert'],
@@ -41,8 +40,7 @@ def main():
                            help='which bert model to use')
     # evaluate
     subparser = subparsers.add_parser(
-        'evaluate',
-        help='Evaluate the specified parser and dataset.'
+        'evaluate', help='Evaluate the specified parser and dataset.'
     )
     subparser.add_argument('--buckets', default=8, type=int,
                            help='max num of buckets to use')
@@ -50,8 +48,7 @@ def main():
                            help='path to dataset')
     # predict
     subparser = subparsers.add_parser(
-        'predict',
-        help='Use a trained parser to make predictions.'
+        'predict', help='Use a trained parser to make predictions.'
     )
     subparser.add_argument('--prob', action='store_true',
                            help='whether to output probs')

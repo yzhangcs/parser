@@ -12,13 +12,14 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class CRFConstituencyModel(nn.Module):
 
-    r'''The implementation of CRF Constituency Parser.
-    This parser is also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) parser.
+    """
+    The implementation of CRF Constituency Parser.
+    This parser is also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) Parser.
 
     References::
     - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
       Fast and Accurate Neural CRF Constituency Parsing
-    '''
+    """
 
     def __init__(self,
                  n_words,

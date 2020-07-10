@@ -182,7 +182,7 @@ class SubwordField(Field):
                                for seq in sequences
                                for token in seq)
         if self.use_vocab:
-            sequences = [[[self.vocab[i] for i in token] for token in seq]
+            sequences = [[[self.vocab[i] for i in token] if token else [self.unk] for token in seq]
                          for seq in sequences]
         if self.bos:
             sequences = [[[self.bos_index]] + seq for seq in sequences]

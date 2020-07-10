@@ -20,6 +20,8 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
 PRETRAINED = {
     'biff-dep-en': 'https://github.com/yzhangcs/supar/release/downloads/ptb.biaffine.dependency.zip',
     'biff-dep-zh': 'https://github.com/yzhangcs/supar/release/downloads/ctb7.biaffine.dependency.zip',
+    'mst-dep-en': 'https://github.com/yzhangcs/parser/release/downloads/ptb.mst.dependency.zip',
+    'mst-dep-zh': 'https://github.com/yzhangcs/parser/release/downloads/ctb7.mst.dependency.zip',
     'crf-dep-en': 'https://github.com/yzhangcs/parser/release/downloads/ptb.crf.dependency.zip',
     'crf-dep-zh': 'https://github.com/yzhangcs/parser/release/downloads/ctb7.crf.dependency.zip',
     'crf2o-dep-en': 'https://github.com/yzhangcs/parser/release/downloads/ptb.crf2o.dependency.zip',

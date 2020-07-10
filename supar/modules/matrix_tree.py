@@ -34,9 +34,9 @@ class MatrixTree(nn.Module):
         mask = mask.index_fill(1, mask.new_tensor(0).long(), 1)
         scores = scores.masked_fill(~(mask.unsqueeze(-1) & mask.unsqueeze(-2)), float('-inf'))
 
-        #  log(det(exp(M)))= log(det(exp(M - m) * exp(m)))
-        #                  = log(det(exp(M - m)) * exp(m)^n)
-        #                  = log(det(exp(M - m))) + m*n
+        #  log(det(exp(M))) = log(det(exp(M - m) * exp(m)))
+        #                   = log(det(exp(M - m)) * exp(m)^n)
+        #                   = log(det(exp(M - m))) + m*n
         m = scores.view(batch_size, -1).max(-1)[0]
         A = torch.exp(scores - m.view(-1, 1, 1))
         # D is the weighted degree matrix

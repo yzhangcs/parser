@@ -1,10 +1,29 @@
 # -*- coding: utf-8 -*-
 
+from typing import List
+
 import torch
 from supar.utils.fn import pad, stripe
 
 
-def kmeans(x, k, max_it=32):
+def kmeans(x: List[int], k: int, max_it: int = 32) -> (List[float], List[List[int]]):
+    """
+    KMeans algorithm for clustering the sentences by length.
+
+    Args:
+        x (`List[int]`) : Lengths of sentences.
+        k (int): Number of clusters.
+            This is an approximate value.
+            The final number of clusters can be less or equal to k.
+        max_it (int): Maxumum number of iterations.
+            If the centroids does not converge after several iterations,
+            the clustering algorithm will be eraly stopped.
+
+    Returns:
+        centroids (List[float]): Average lengths in each cluster
+        clusters (List[List[int]]): List of clusters, which hold indices of data points
+    """
+
     # the number of clusters must not be greater than the number of datapoints
     x, k = torch.tensor(x, dtype=torch.float), min(len(x), k)
     # initialize k centroids randomly
@@ -14,8 +33,7 @@ def kmeans(x, k, max_it=32):
 
     for _ in range(max_it):
         # if an empty cluster is encountered,
-        # choose the farthest datapoint from the biggest cluster
-        # and move that the empty one
+        # choose the farthest datapoint from the biggest cluster and move that the empty one
         mask = torch.arange(k).unsqueeze(-1).eq(y)
         none = torch.where(~mask.any(-1))[0].tolist()
         while len(none) > 0:
@@ -48,6 +66,14 @@ def kmeans(x, k, max_it=32):
 
 
 def eisner(scores, mask):
+    """
+
+    References::
+    - Ryan McDonald, Koby Crammer and Fernando Pereira (ACL'05)
+      Online Large-Margin Training of Dependency Parsers
+      https://www.aclweb.org/anthology/P05-1012/
+    """
+
     lens = mask.sum(1)
     batch_size, seq_len, _ = scores.shape
     scores = scores.permute(2, 1, 0)
@@ -110,6 +136,14 @@ def eisner(scores, mask):
 
 
 def eisner2o(scores, mask):
+    """
+
+    References::
+    - Ryan McDonald and Fernando Pereira (EACL'06)
+      Online Learning of Approximate Dependency Parsing Algorithms
+      https://www.aclweb.org/anthology/E06-1011/
+    """
+
     # the end position of each sentence in a batch
     lens = mask.sum(1)
     s_arc, s_sib = scores
@@ -139,8 +173,7 @@ def eisner2o(scores, mask):
         il += stripe(s_sib[range(w, n+w), range(n)], n, w, (0, 1))
         # [n, 1, batch_size]
         il0 = stripe(s_c, n, 1, (w, w)) + stripe(s_c, n, 1, (0, w - 1))
-        # il0[0] are set to zeros since the scores of the complete spans
-        # starting from 0 are always -inf
+        # il0[0] are set to zeros since the scores of the complete spans starting from 0 are always -inf
         il[:, -1] = il0.index_fill_(0, lens.new_tensor(0), 0).squeeze(1)
         il_span, il_path = il.permute(2, 0, 1).max(-1)
         s_i.diagonal(-w).copy_(il_span + s_arc.diagonal(-w))
@@ -254,6 +287,10 @@ def cky(scores, mask):
 
 
 def tarjan(sequence):
+    """
+    Tarjan's algorithm for finding strongly connected components (cycles) of a graph
+    """
+
     sequence[0] = -1
     # record the search order, i.e., the timestep
     dfn = [-1] * len(sequence)
@@ -364,10 +401,16 @@ def chuliu_edmonds(s):
 
 
 def mst(scores, mask, multiroot=False):
-    r'''
+    """
     Please note that the ChuLiu/Edmod algorithm does not guarantee
     to parse a tree with single root.
-    '''
+
+    References::
+    - Ryan McDonald et al. (EMNLP'05)
+      Non-projective Dependency Parsing using Spanning Tree Algorithms
+      https: // www.aclweb.org/anthology/H05-1066/
+    """
+
     batch_size, seq_len, _ = scores.shape
     scores = scores.cpu().unbind()
 
