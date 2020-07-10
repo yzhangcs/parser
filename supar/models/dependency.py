@@ -3,9 +3,9 @@
 import torch
 import torch.nn as nn
 from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
-                           MatrixTree, Triaffine)
+                           Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
-from supar.modules.treecrf import CRF2oDependency, CRFDependency
+from supar.modules.treecrf import CRF2oDependency, CRFDependency, MatrixTree
 from supar.utils.alg import eisner, mst
 from supar.utils.config import Config
 from supar.utils.transform import CoNLL
@@ -17,7 +17,7 @@ class BiaffineDependencyModel(nn.Module):
     """
     The implementation of Biaffine Dependency Parser.
 
-    References::
+    References:
     - Timothy Dozat and Christopher D. Manning (ICLR'17)
       Deep Biaffine Attention for Neural Dependency Parsing
       https://openreview.net/pdf?id=Hk95PK9le/
@@ -203,7 +203,7 @@ class MSTDependencyModel(BiaffineDependencyModel):
     """
     The implementation of MST Dependency Parser.
 
-    References::
+    References:
     - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
       Neural Probabilistic Model for Non-projective MST Parsing
       https://www.aclweb.org/anthology/I17-1007/
@@ -232,7 +232,7 @@ class CRFDependencyModel(BiaffineDependencyModel):
     """
     The implementation of first-order CRF Dependency Parser.
 
-    References::
+    References:
     - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
       Efficient Second-Order TreeCRF for Neural Dependency Parsing
       https://www.aclweb.org/anthology/2020.acl-main.302/
@@ -261,7 +261,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     """
     The implementation of second-order CRF Dependency Parser.
 
-    References::
+    References:
     - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
       Efficient Second-Order TreeCRF for Neural Dependency Parsing
       https://www.aclweb.org/anthology/2020.acl-main.302/

@@ -127,10 +127,10 @@ class CoNLL(Transform):
     pdeprel : str
         Dependency relation to the PHEAD, or an underscore if not available.
 
-    References::
+    References:
     - Sabine Buchholz and Erwin Marsi (CoNLL'06)
-        CoNLL-X Shared Task on Multilingual Dependency Parsing
-        http://anthology.aclweb.org/W/W06/W06-2920/302/
+      CoNLL-X Shared Task on Multilingual Dependency Parsing
+      http://anthology.aclweb.org/W/W06/W06-2920/302/
     """
 
     fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',

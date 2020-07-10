@@ -18,8 +18,8 @@ def kmeans(x, k, max_it=32):
             the algorithm will be early stopped.
 
     Returns:
-        centroids (List[float]): Average lengths in each cluster
-        clusters (List[List[int]]): List of clusters, which hold indices of data points
+        centroids (List[float]): Average lengths in each cluster.
+        clusters (List[List[int]]): List of clusters, which hold indices of data points.
     """
 
     # the number of clusters must not be greater than the number of datapoints
@@ -67,14 +67,17 @@ def eisner(scores, mask):
     """
     First-order Eisner algorithm for projective decoding.
 
-    References::
+    References:
     - Ryan McDonald, Koby Crammer and Fernando Pereira (ACL'05)
       Online Large-Margin Training of Dependency Parsers
       https://www.aclweb.org/anthology/P05-1012/
 
     Args:
-        scores (Tensor): The scores of arcs.
-        mask (BoolTensor):
+        scores (Tensor): [batch_size, seq_len, seq_len]
+            The scores of dependent-head pairs.
+        mask (BoolTensor): [batch_size, seq_len]
+            Mask to avoid parsing over padding tokens.
+            The first column that involves pseudo words representing the root should be set to False.
 
     Returns:
         Tensor: [batch_size, seq_len]
@@ -145,11 +148,21 @@ def eisner(scores, mask):
 def eisner2o(scores, mask):
     """
     Second-order Eisner algorithm for projective decoding.
+    This is an extension of the first-order one that incorporates sibling scores into tree scoring.
 
-    References::
+    References:
     - Ryan McDonald and Fernando Pereira (EACL'06)
       Online Learning of Approximate Dependency Parsing Algorithms
       https://www.aclweb.org/anthology/E06-1011/
+
+    Args:
+        scores (Tuple[Tensor, Tensor]):
+            A tuple of two tensors representing the first-order scores and second-order scores repectively.
+            The first ([batch_size, seq_len, seq_len]) holds scores of dependent-head pairs.
+            The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the head-sibling-dependent triples.
+        mask (BoolTensor): [batch_size, seq_len]
+            Mask to avoid parsing over padding tokens.
+            The first column that involves pseudo words representing the root should be set to False.
 
     Returns:
         Tensor: [batch_size, seq_len]
@@ -261,6 +274,25 @@ def eisner2o(scores, mask):
 
 
 def cky(scores, mask):
+    """
+    The implementation of Cocke-Kasami-Younger algorithm to parse constituency trees.
+
+    References:
+    - Yu Zhang, Houquan Zhou and Zhenghua Li (IJCAI'20)
+      Fast and Accurate Neural CRF Constituency Parsing
+
+    Args:
+        scores (Tensor): [batch_size seq_len, seq_len]
+            The scores of all candidate constituents.
+        mask (BoolTensor): [batch_size, seq_len, seq_len]
+            Mask to avoid parsing over padding tokens.
+            For each square matrix in a batch, the positions except upper triangular part should be masked out.
+
+    Returns:
+        trees (List[List[int]]):
+            The factorized sequences of predicted trees traversed in pre-order.
+    """
+
     lens = mask[:, 0].sum(-1)
     scores = scores.permute(1, 2, 0)
     seq_len, seq_len, batch_size = scores.shape
@@ -300,7 +332,14 @@ def cky(scores, mask):
 
 def tarjan(sequence):
     """
-    Tarjan's algorithm for finding strongly connected components (cycles) of a graph
+    Tarjan's algorithm for finding Strongly Connected Components (SCCs) of a graph.
+
+    Args:
+        sequence (List):
+            List of head indices. The first element is a placeholder for the root.
+
+    Returns:
+        A generator that yields SCCs (cycles) lazily. All self-loops are ignored.
     """
 
     sequence[0] = -1
@@ -346,17 +385,27 @@ def tarjan(sequence):
 def chuliu_edmonds(s):
     """
     ChuLiu/Edmods algorithm for non-projective decoding.
+    NOTE: the algorithm does not guarantee to parse a single-root tree.
+    Some code is borrowed from tdozat's implementation (https://github.com/tdozat/Parser-v3).
 
-    References::
-    - Ryan McDonald et al. (EMNLP'05)
+    References:
+    - Ryan McDonald, Fernando Pereira, Kiril Ribarov and Jan Hajic (EMNLP'05)
       Non-projective Dependency Parsing using Spanning Tree Algorithms
-      https: // www.aclweb.org/anthology/H05-1066/
+      https://www.aclweb.org/anthology/H05-1066/
+
+    Args:
+        s (Tensor): [seq_len, seq_len]
+            The scores of dependent-head pairs.
+
+    Returns:
+        tree (Tensor): [seq_len]
+            A non-projective parse tree.
     """
 
     tree = s.argmax(-1)
     # return the cycle finded by tarjan algorithm lazily
     cycle = next(tarjan(tree.tolist()), None)
-    # if `tree` has no cycles, then it is a MST
+    # if the tree has no cycles, then it is a MST
     if not cycle:
         return tree
     # indices of cycle in the original tree
@@ -377,10 +426,9 @@ def chuliu_edmonds(s):
         # find the best cycle head for each noncycle dependent
         deps = s_dep.argmax(1)
         # calculate the scores of cycle's potential heads
-        # s(x->c) = max(s(x'->x) - s(a(x')->x') + s(cycle)),
-        #           x in noncycle and x' in cycle
-        #           a(v) is the predecessor of v in cycle
-        #           s(cycle) = sum(s(a(v)->v))
+        # s(x->c) = max(s(x'->x) - s(a(x')->x') + s(cycle)), x in noncycle and x' in cycle
+        #                                                    a(v) is the predecessor of v in cycle
+        #                                                    s(cycle) = sum(s(a(v)->v))
         s_head = s[cycle][:, noncycle] - s_cycle.view(-1, 1) + s_cycle.sum()
         # find the best noncycle head for each cycle dependent
         heads = s_head.argmax(0)
@@ -395,8 +443,7 @@ def chuliu_edmonds(s):
 
         return s, heads, deps
 
-    # keep track of the endpoints of the edges into and out of cycle
-    # for reconstruction later
+    # keep track of the endpoints of the edges into and out of cycle for reconstruction later
     s, heads, deps = contract(s)
 
     # y is the contracted tree
@@ -423,21 +470,22 @@ def chuliu_edmonds(s):
 
 def mst(scores, mask, multiroot=False):
     """
-    MST algorithm for decoding a non-pojective tree.
+    MST algorithm for decoding non-pojective trees.
     This is a wrapper for ChuLiu/Edmonds algorithm.
 
-    If multiroot is specified to True, the algorithm behaves just like the ChuLiu/Edmonds.
-    Otherwise it first runs ChuLiu/Edmonds to parse a tree and then have a check,
-    if there exist multi-roots, the algorithm seeks to find a best single-root tree by
-    iterating all possible single-root trees parsed by ChuLiu/Edmonds.
+    The algorithm first runs ChuLiu/Edmonds to parse a tree and then have a check of multi-roots,
+    If multiroot is set to True and there exist multi-roots, the algorithm seeks to find
+    a best single-root tree by iterating all possible single-root trees parsed by ChuLiu/Edmonds.
+    Otherwise the resulting tree is directly taken as the final output.
 
     Args:
         scores (Tensor): [batch_size, seq_len, seq_len]
-            The scores of arcs.
-        mask (torch.BoolTensor): [batch_size, seq_len]
-            All valid positions.
+            The scores of dependent-head pairs.
+        mask (BoolTensor): [batch_size, seq_len]
+            Mask to avoid parsing over padding tokens.
+            The first column that involves pseudo words representing the root should be set to False.
         muliroot (bool):
-            Ensures to parse a single-root if set to False.
+            Ensures to parse a single-root tree if set to False.
 
     Returns:
         Tensor: [batch_size, seq_len]
