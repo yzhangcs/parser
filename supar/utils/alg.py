@@ -148,7 +148,7 @@ def eisner(scores, mask):
 def eisner2o(scores, mask):
     """
     Second-order Eisner algorithm for projective decoding.
-    This is an extension of the first-order one that incorporates sibling scores into tree scoring.
+    This is an extension of the first-order one and further incorporates sibling scores into tree scoring.
 
     References:
     - Ryan McDonald and Fernando Pereira (EACL'06)
@@ -157,7 +157,7 @@ def eisner2o(scores, mask):
 
     Args:
         scores (Tuple[Tensor, Tensor]):
-            A tuple of two tensors representing the first-order scores and second-order scores repectively.
+            A tuple of two tensors representing the first-order and second-order scores repectively.
             The first ([batch_size, seq_len, seq_len]) holds scores of dependent-head pairs.
             The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the head-sibling-dependent triples.
         mask (BoolTensor): [batch_size, seq_len]
@@ -275,7 +275,7 @@ def eisner2o(scores, mask):
 
 def cky(scores, mask):
     """
-    The implementation of Cocke-Kasami-Younger algorithm to parse constituency trees.
+    The implementation of Cocke-Kasami-Younger (CKY) algorithm to parse constituency trees.
 
     References:
     - Yu Zhang, Houquan Zhou and Zhenghua Li (IJCAI'20)
@@ -337,6 +337,11 @@ def tarjan(sequence):
     Args:
         sequence (List):
             List of head indices. The first element is a placeholder for the root.
+
+    Example::
+        >>> # there exist a cycle: 1 -> 5 -> 2 -> 1
+        >>> next(tarjan([0, 2, 5, 0, 3, 1]))
+        [2, 5, 1]
 
     Returns:
         A generator that yields SCCs (cycles) lazily. All self-loops are ignored.

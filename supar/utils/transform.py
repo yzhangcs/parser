@@ -23,8 +23,7 @@ class Transform(object):
                 field = [field]
             for f in field:
                 if f is not None:
-                    pairs[f] = f.transform([getattr(i, f.name)
-                                            for i in sentences])
+                    pairs[f] = f.transform([getattr(i, f.name) for i in sentences])
 
         return pairs
 

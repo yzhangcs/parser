@@ -47,8 +47,7 @@ class BertEmbedding(nn.Module):
         mask = subwords.ne(self.pad_index)
         lens = mask.sum((1, 2))
 
-        if not self.requires_grad:
-            self.bert.eval()
+        self.bert.train(self.requires_grad)
         # [batch_size, n_subwords]
         subwords = pad_sequence(subwords[mask].split(lens.tolist()), True)
         bert_mask = pad_sequence(mask[mask].split(lens.tolist()), True)
