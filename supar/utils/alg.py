@@ -77,7 +77,7 @@ def eisner(scores, mask):
             The scores of dependent-head pairs.
         mask (BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
-            The first column that involves pseudo words representing the root should be set to False.
+            The first column with pseudo words as roots should be set to False.
 
     Returns:
         Tensor: [batch_size, seq_len]
@@ -162,7 +162,7 @@ def eisner2o(scores, mask):
             The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the head-sibling-dependent triples.
         mask (BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
-            The first column that involves pseudo words representing the root should be set to False.
+            The first column with pseudo words as roots should be set to False.
 
     Returns:
         Tensor: [batch_size, seq_len]
@@ -332,15 +332,14 @@ def cky(scores, mask):
 
 def tarjan(sequence):
     """
-    Tarjan's algorithm for finding Strongly Connected Components (SCCs) of a graph.
+    Tarjan algorithm for finding Strongly Connected Components (SCCs) of a graph.
 
     Args:
         sequence (List):
             List of head indices. The first element is a placeholder for the root.
 
     Example::
-        >>> # there exist a cycle: 1 -> 5 -> 2 -> 1
-        >>> next(tarjan([0, 2, 5, 0, 3, 1]))
+        >>> next(tarjan([0, 2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
         [2, 5, 1]
 
     Returns:
@@ -479,16 +478,16 @@ def mst(scores, mask, multiroot=False):
     This is a wrapper for ChuLiu/Edmonds algorithm.
 
     The algorithm first runs ChuLiu/Edmonds to parse a tree and then have a check of multi-roots,
-    If multiroot is set to True and there exist multi-roots, the algorithm seeks to find
-    a best single-root tree by iterating all possible single-root trees parsed by ChuLiu/Edmonds.
-    Otherwise the resulting tree is directly taken as the final output.
+    If multiroot is set to True and there indeed exist multi-roots, the algorithm seeks to find
+    best single-root trees by iterating all possible single-root trees parsed by ChuLiu/Edmonds.
+    Otherwise the resulting trees are directly taken as the final outputs.
 
     Args:
         scores (Tensor): [batch_size, seq_len, seq_len]
             The scores of dependent-head pairs.
         mask (BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
-            The first column that involves pseudo words representing the root should be set to False.
+            The first column with pseudo words as roots should be set to False.
         muliroot (bool):
             Ensures to parse a single-root tree if set to False.
 

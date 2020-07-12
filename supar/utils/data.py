@@ -10,12 +10,12 @@ class Dataset(torch.utils.data.Dataset):
     Dataset compatible with `torch.utils.data.Dataset`.
     This serves as a wrapper for manipulating all data fields
     with the operating behaviours defined in the `Transform` class.
-    The data fields in the instantiated sentences can be accessed as an attribute of the dataset.
+    The data fields in all the instantiated sentences can be accessed as an attribute of the dataset.
 
     Args:
         transform (Transform):
             An instance of a subclass of the `Transform` class and its derivations.
-            The instance holds a series of loading and processing behaviours of the specfic data format.
+            The instance holds a series of loading and processing behaviours with regard to the specfic data format.
         data (List[List] or str):
             A list of instances or a filename.
             This will be passed into `transform.load` to load the input data.
@@ -110,12 +110,12 @@ class Sampler(torch.utils.data.Sampler):
     Args:
         buckets (Dict):
             The dict that maps each centroid to the indices of the clustering sentences.
-            Each centroid corresponds to the average length of all sentences in the bucket.
+            The centroid corresponds to the average length of all sentences in the bucket.
         batch_size (int):
             Token-level batch size. The resulting batch contains roughly the same number of tokens as batch_size.
-        shuffle:
+        shuffle (bool, default: False):
             If True, the sampler will shuffle both the buckets and samples in each bucket.
-        distributed:
+        distributed (bool, default: False):
             If True, the sample will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
             that restricts data loading to a subset of the dataset.
     """
