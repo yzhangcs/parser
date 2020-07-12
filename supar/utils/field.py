@@ -45,8 +45,7 @@ class Field(RawField):
     It holds a Vocab object that defines the set of possible values
     for elements of the field and their corresponding numerical representations.
     The Field object also holds other parameters relating to how a datatype
-    should be numericalized, such as a tokenization method and the kind of
-    Tensor that should be produced.
+    should be numericalized, such as a tokenization method.
 
     Args:
         name (str):
@@ -58,7 +57,7 @@ class Field(RawField):
         bos_token (str, default: None):
             A token that will be prepended to every example using this
             field, or None for no bos_token.
-        eos_token (str, default: None)::
+        eos_token (str, default: None):
             A token that will be appended to every example using this
             field, or None for no eos_token.
         lower (bool, default: False):
@@ -240,6 +239,38 @@ class Field(RawField):
 
 
 class SubwordField(Field):
+    """
+    A field that conducts tokenization and numericalization over each token rather the sequence.
+
+    This is customized for models requiring character/subword-level inputs, e.g., CharLSTM or BERT.
+
+    Example::
+        >>> from transformers import AutoTokenizer
+        >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
+        >>> field = SubwordField('bert',
+                                 pad=tokenizer.pad_token,
+                                 unk=tokenizer.unk_token,
+                                 bos=tokenizer.cls_token,
+                                 eos=tokenizer.sep_token,
+                                 fix_len=20,
+                                 tokenize=tokenizer.tokenize)
+        >>> field.vocab = tokenizer.get_vocab()  # no need to re-build the vocab
+        >>> field.transform([['This', 'field', 'performs', 'token-level', 'tokenization']])[0]
+        tensor([[  101,     0,     0],
+                [ 1188,     0,     0],
+                [ 1768,     0,     0],
+                [10383,     0,     0],
+                [22559,   118,  1634],
+                [22559,  2734,     0],
+                [  102,     0,     0]])
+
+    Args:
+        fix_len (int):
+            A fixed length that all subword pieces will be padded to.
+            This is used for truncating the subword pieces beyond length.
+            To save the memory, the final length will be the smaller value
+            between the max length of subword pieces in a batch and fix_len.
+    """
 
     def __init__(self, *args, **kwargs):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
@@ -288,6 +319,38 @@ class SubwordField(Field):
 
 
 class ChartField(Field):
+    """
+    Field dealing with constituency trees.
+
+    This field receives sequences of binarized trees factorized in pre-order,
+    and returns two tensors representing the bracketing trees and labels on each constituent respectively.
+
+    Example::
+        >>> import nltk
+        >>> from supar.utils.transform import Tree
+        >>> tree = Tree.binarize(nltk.Tree.fromstring('''
+                                                      (TOP
+                                                        (S
+                                                          (NP (_ I))
+                                                            (ADVP (_ really))
+                                                              (VP (_ love) (NP (_ this) (_ game)))))
+                                                      '''))[0]  # binarized tree, ignoring the root
+        >>> spans, labels = field.transform([Tree.factorize(tree)])[0]  # this example field is built from ptb
+        >>> spans
+        tensor([[False,  True,  True, False, False,  True],
+                [False, False,  True, False, False, False],
+                [False, False, False,  True, False,  True],
+                [False, False, False, False,  True,  True],
+                [False, False, False, False, False,  True],
+                [False, False, False, False, False, False]])
+        >>> labels
+        tensor([[  0,  37, 107,   0,   0,  79],
+                [  0,   0,   6,   0,   0,   0],
+                [  0,   0,   0, 120,   0, 112],
+                [  0,   0,   0,   0,  52,  37],
+                [  0,   0,   0,   0,   0,  52],
+                [  0,   0,   0,   0,   0,   0]])
+    """
 
     def build(self, dataset, min_freq=1):
         counter = Counter(label
