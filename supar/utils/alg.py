@@ -17,6 +17,14 @@ def kmeans(x, k, max_it=32):
             If centroids does not converge after several iterations,
             the algorithm will be early stopped.
 
+    Example::
+        >>> x = torch.randint(10,20,(10,)).tolist()  # [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
+        >>> centroids, clusters = kmeans(x, 3)
+        >>> centroids
+        [10.5, 14.0, 17.799999237060547]
+        >>> clusters
+        [[1, 3], [0, 5, 9], [2, 4, 6, 7, 8]]
+
     Returns:
         centroids (List[float]): Average lengths in each cluster.
         clusters (List[List[int]]): List of clusters, which hold indices of data points.

@@ -242,7 +242,7 @@ class SubwordField(Field):
     """
     A field that conducts tokenization and numericalization over each token rather the sequence.
 
-    This is customized for models requiring character/subword-level inputs, e.g., CharLSTM or BERT.
+    This is customized for models requiring character/subword-level inputs, e.g., CharLSTM and BERT.
 
     Example::
         >>> from transformers import AutoTokenizer
@@ -267,7 +267,7 @@ class SubwordField(Field):
     Args:
         fix_len (int):
             A fixed length that all subword pieces will be padded to.
-            This is used for truncating the subword pieces beyond length.
+            This is used for truncating the subword pieces that exceed the length.
             To save the memory, the final length will be the smaller value
             between the max length of subword pieces in a batch and fix_len.
     """
@@ -334,7 +334,7 @@ class ChartField(Field):
                                                           (NP (_ I))
                                                             (ADVP (_ really))
                                                               (VP (_ love) (NP (_ this) (_ game)))))
-                                                      '''))[0]  # binarized tree, ignoring the root
+                                                      '''))[0]  # binarized tree
         >>> spans, labels = field.transform([Tree.factorize(tree)])[0]  # this example field is built from ptb
         >>> spans
         tensor([[False,  True,  True, False, False,  True],

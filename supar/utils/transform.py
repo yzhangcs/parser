@@ -6,6 +6,15 @@ import nltk
 
 
 class Transform(object):
+    """
+    A Transform object corresponds to a specific data format.
+    It holds several instances of data fields that provide instructions for preprocessing and numericalizing, etc.
+
+    Attributes:
+        training (bool, default: True):
+            Sets the object in training mode.
+            If False, some data fields not required for predictions won't be returned.
+    """
 
     fields = []
 
@@ -54,6 +63,9 @@ class Transform(object):
 
 
 class Sentence(object):
+    """
+    A Sentence object holds a sentence with regard to specific data format.
+    """
 
     def __init__(self, transform):
         self.transform = transform
@@ -96,44 +108,41 @@ class Sentence(object):
 
 
 class CoNLL(Transform):
-
     """
-    CoNLL format template.
+    This class holds ten fields required for CoNLL-X data format.
+    Each field is binded with one or more Field objects. For example,
+    the FORM field can contain both Field and SubwordField to produce tensors for words and subwords.
 
-    Parameters
-    ----------
-    id : int
-        Token counter, starting at 1 for each new sentence.
-    form : str
-        Word form or punctuation symbol.
-    lemma : str
-        Lemma or stem (depending on the particular treebank) of word form, or an underscore if not available.
-    cpos : str
-        Coarse-grained part-of-speech tag, where the tagset depends on the treebank.
-    pos : str
-        Fine-grained part-of-speech tag, where the tagset depends on the treebank.
-    feats : str
-        Unordered set of syntactic and/or morphological features (depending on the particular treebank),
-        or an underscore if not available.
-    head : Union[int, List[int]]
-        Head of the current token, which is either a value of ID,
-        or zero (’0’) if the token links to the virtual root node of the sentence.
-    deprel : Union[str, List[str]]
-        Dependency relation to the HEAD.
-    phead : int
-        Projective head of current token, which is either a value of ID or zero (’0’),
-        or an underscore if not available.
-    pdeprel : str
-        Dependency relation to the PHEAD, or an underscore if not available.
+    For each sentence, the ten fields are:
+        ID:
+            Token counter, starting at 1.
+        FORM:
+            Words in the sentence.
+        LEMMA:
+            Lemmas or stems (depending on the particular treebank) of words, or underscores if not available.
+        CPOS:
+            Coarse-grained part-of-speech tags, where the tagset depends on the treebank.
+        POS:
+            Fine-grained part-of-speech tags, where the tagset depends on the treebank.
+        FEATS:
+            Unordered set of syntactic and/or morphological features (depending on the particular treebank),
+            or underscores if not available.
+        HEAD:
+            Heads of the tokens, which are either values of ID or zeros.
+        DEPREL:
+            Dependency relations to the HEAD.
+        PHEAD:
+            Projective heads of tokens, which are either values of ID or zeros, or underscores if not available.
+        PDEPREL:
+            Dependency relations to the PHEAD, or underscores if not available.
 
     References:
     - Sabine Buchholz and Erwin Marsi (CoNLL'06)
       CoNLL-X Shared Task on Multilingual Dependency Parsing
-      http://anthology.aclweb.org/W/W06/W06-2920/302/
+      https://www.aclweb.org/anthology/W06-2920/
     """
 
-    fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS',
-              'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']
+    fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS', 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']
 
     def __init__(self,
                  ID=None, FORM=None, LEMMA=None, CPOS=None, POS=None,
@@ -160,16 +169,6 @@ class CoNLL(Transform):
         return self.HEAD, self.DEPREL
 
     @classmethod
-    def toconll(cls, tokens):
-        if isinstance(tokens[0], str):
-            s = '\n'.join([f"{i}\t{word}\t" + '\t'.join(['_']*8)
-                           for i, word in enumerate(tokens, 1)])
-        else:
-            s = '\n'.join([f"{i}\t{word}\t_\t{tag}\t" + '\t'.join(['_']*6)
-                           for i, (word, tag) in enumerate(tokens, 1)])
-        return s + '\n'
-
-    @classmethod
     def get_arcs(cls, sequence):
         return [int(i) for i in sequence]
 
@@ -192,7 +191,59 @@ class CoNLL(Transform):
         return sibs[1:]
 
     @classmethod
+    def toconll(cls, tokens):
+        """
+        Convert a list of tokens to a string in CoNLL-X format.
+        Missing fields are filled with underscores.
+
+        Args:
+            tokens (List[str] or List[tuple]):
+                This can be either a list of words or word/pos pairs.
+
+        Examples::
+            >>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope']))
+            1       I       _       _       _       _       _       _       _       _
+            2       saw     _       _       _       _       _       _       _       _
+            3       Sarah   _       _       _       _       _       _       _       _
+            4       with    _       _       _       _       _       _       _       _
+            5       a       _       _       _       _       _       _       _       _
+            6       telescope       _       _       _       _       _       _       _       _
+
+        Returns:
+            a string in CoNLL-X format.
+        """
+
+        if isinstance(tokens[0], str):
+            s = '\n'.join([f"{i}\t{word}\t" + '\t'.join(['_']*8)
+                           for i, word in enumerate(tokens, 1)])
+        else:
+            s = '\n'.join([f"{i}\t{word}\t_\t{tag}\t" + '\t'.join(['_']*6)
+                           for i, (word, tag) in enumerate(tokens, 1)])
+        return s + '\n'
+
+    @classmethod
     def isprojective(cls, sequence):
+        """
+        Check if the dependency tree is projective.
+        This also works for partial annotation.
+
+        Besides the obvious crossing arcs, the examples below illustrate two non-projective cases
+        that are hard to detect in the scenario of partial annotation.
+
+        Args:
+            sequence (List[int]):
+                A list of head indices. The first index is a placeholder for the root.
+
+        Examples::
+            >>> CoNLL.isprojective([0, 2, -1, 1])  # -1 denotes un-annotated cases
+            False
+            >>> CoNLL.isprojective([0, 3, -1, 2])
+            False
+
+        Returns:
+            True if the tree is projective, False otherwise.
+        """
+
         arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
         for i, (hi, di) in enumerate(arcs):
             for hj, dj in arcs[i+1:]:
@@ -207,6 +258,27 @@ class CoNLL(Transform):
 
     @classmethod
     def istree(cls, sequence, proj=False, multiroot=False):
+        """
+        Check if the arcs form an valid dependency tree.
+
+        Args:
+            sequence (List[int]):
+                A list of head indices.
+            proj (bool, default: False):
+                If True, requires the tree to be projective.
+            multiroot (bool, default: True):
+                If False, requires the tree to contain only a single root.
+
+        Examples::
+            >>> CoNLL.istree([0, 3, 0, 0, 3], multiroot=True)
+            True
+            >>> CoNLL.istree([0, 3, 0, 0, 3], proj=True)
+            False
+
+        Returns:
+            True if the arcs form an valid tree, False otherwise.
+        """
+
         from supar.utils.alg import tarjan
         if proj and not cls.isprojective(sequence):
             return False
@@ -218,6 +290,22 @@ class CoNLL(Transform):
         return next(tarjan(sequence), None) is None
 
     def load(self, data, proj=False, max_len=None, **kwargs):
+        """
+        Load data in CoNLL-X format.
+        Also support for loading data from CoNLL-U file with comments and non-integer IDs.
+
+        Args:
+            data (List[List] or str):
+                A list of instances or a filename.
+            proj (bool, default: False):
+                If True, discard all non-projective sentences.
+            max_len (int, default: None):
+                Sentences exceeding the length will be discarded.
+
+        Returns:
+            A list of CoNLLSentence instance.
+        """
+
         start, sentences = 0, []
         if isinstance(data, str):
             with open(data, 'r') as f:
@@ -239,6 +327,51 @@ class CoNLL(Transform):
 
 
 class CoNLLSentence(Sentence):
+    """
+    Sencence in CoNLL-X format.
+
+    Args:
+        transform (CoNLL):
+            A CoNLL object.
+        lines (List[str]):
+            A list of strings composing a sentence in CoNLL-X format.
+            Comments and non-integer IDs are permitted.
+
+    Example::
+        >>> lines = ['# text = But I found the location wonderful and the neighbors very kind.',
+                     '1\tBut\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '2\tI\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '3\tfound\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '4\tthe\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '5\tlocation\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '6\twonderful\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '7\tand\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '7.1\tfound\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '8\tthe\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '9\tneighbors\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '10\tvery\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '11\tkind\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '12\t.\t_\t_\t_\t_\t_\t_\t_\t_']
+        >>> sentence = CoNLLSentence(transform, lines)  # fields in transform are built from ptb.
+        >>> sentence.arcs = [3, 3, 0, 5, 6, 3, 6, 9, 11, 11, 6, 3]
+        >>> sentence.rels = ['cc', 'nsubj', 'root', 'det', 'nsubj', 'xcomp',
+                                'cc', 'det', 'dep', 'advmod', 'conj', 'punct']
+        >>> sentence
+        # text = But I found the location wonderful and the neighbors very kind.
+        1       But     _       _       _       _       3       cc      _       _
+        2       I       _       _       _       _       3       nsubj   _       _
+        3       found   _       _       _       _       0       root    _       _
+        4       the     _       _       _       _       5       det     _       _
+        5       location        _       _       _       _       6       nsubj   _       _
+        6       wonderful       _       _       _       _       3       xcomp   _       _
+        7       and     _       _       _       _       6       cc      _       _
+        7.1     found   _       _       _       _       _       _       _       _
+        8       the     _       _       _       _       9       det     _       _
+        9       neighbors       _       _       _       _       11      dep     _       _
+        10      very    _       _       _       _       11      advmod  _       _
+        11      kind    _       _       _       _       6       conj    _       _
+        12      .       _       _       _       _       3       punct   _       _
+    """
 
     def __init__(self, transform, lines):
         super().__init__(transform)
@@ -265,6 +398,17 @@ class CoNLLSentence(Sentence):
 
 
 class Tree(Transform):
+    """
+    This class factorize a constituency tree into four fields, each associated with one or more Field objects:
+        WORD:
+            Words in the sentence.
+        POS:
+            Part-of-speech tags, or underscores if not available.
+        TREE:
+            The raw constituency tree in `nltk.Tree` format.
+        CHART:
+            The factorized sequence of binarized tree traversed in pre-order.
+    """
 
     root = ''
     fields = ['WORD', 'POS', 'TREE', 'CHART']
@@ -287,6 +431,24 @@ class Tree(Transform):
 
     @classmethod
     def totree(cls, tokens, root=''):
+        """
+        Convert a list of tokens to a `nltk.Tree`.
+        Missing fields are filled with underscores.
+
+        Args:
+            tokens (List[str] or List[tuple]):
+                This can be either a list of words or word/pos pairs.
+            root (str, default: ''):
+                The root label of the tree.
+
+        Examples::
+            >>> print(Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP'))
+            (TOP (_ I) (_ really) (_ love) (_ this) (_ game))
+
+        Returns:
+            a `nltk.Tree` object.
+        """
+
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
         tree = ' '.join([f"({pos} {word})" for word, pos in tokens])
@@ -294,6 +456,35 @@ class Tree(Transform):
 
     @classmethod
     def binarize(cls, tree):
+        """
+        Conduct binarization over the tree.
+
+        First, the tree is transformed to satisfy Chomsky Normal Form (CNF).
+        Here we call the member function `chomsky_normal_form` in `nltk.Tree` to conduct left-binarization.
+        Second, all unary productions in the tree are collapsed.
+
+        Args:
+            tree (`nltk.Tree`):
+                the tree to be binarized.
+
+        Examples::
+            >>> tree = nltk.Tree.fromstring('''
+                                            (TOP
+                                              (S
+                                                (NP (_ I))
+                                                  (ADVP (_ really))
+                                                    (VP (_ love) (NP (_ this) (_ game)))))
+                                            ''')
+            >>> print(Tree.binarize(tree))
+            (TOP
+              (S
+                (S|<> (NP (_ I)) (ADVP (_ really)))
+                (VP (VP|<> (_ love)) (NP (NP|<> (_ this)) (NP|<> (_ game))))))
+
+        Returns:
+            the binarized tree.
+        """
+
         tree = tree.copy(True)
         nodes = [tree]
         while nodes:
@@ -311,6 +502,41 @@ class Tree(Transform):
 
     @classmethod
     def factorize(cls, tree, delete_labels=None, equal_labels=None):
+        """
+        Factorize the tree into a sequence.
+        The tree is traversed in pre-order.
+
+        Args:
+            tree (`nltk.Tree`):
+                the tree to be factorized.
+            delete_labels (Set[str], default: None):
+                A set of labels to be ignored.
+                If it is a pre-terminal label, delete the word along with the brackets.
+                If it is a non-terminal label, just delete the brackets (don't delete childrens).
+                This is used for evaluation. In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
+                {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
+            equal_labels (Set[str], default: None):
+                Labels in the set are considered equivalent.
+                This is used for evaluation.
+                The default list defined in EVALB is: {'ADVP': 'PRT'}
+
+        Examples::
+            >>> tree = nltk.Tree.fromstring('''
+                                            (TOP
+                                              (S
+                                                (NP (_ I))
+                                                  (ADVP (_ really))
+                                                    (VP (_ love) (NP (_ this) (_ game)))))
+                                            ''')
+            >>> Tree.factorize(tree)
+            [(0, 5, 'TOP'), (0, 5, 'S'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'), (3, 5, 'NP')]
+            >>> Tree.factorize(tree, delete_labels={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''})
+            [(0, 5, 'S'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'), (3, 5, 'NP')]
+
+        Returns:
+            The sequence of factorized tree.
+        """
+
         def track(tree, i):
             label = tree.label()
             if delete_labels is not None and label in delete_labels:
@@ -330,6 +556,33 @@ class Tree(Transform):
 
     @classmethod
     def build(cls, tree, sequence):
+        """
+        Build a constituency tree from the sequence. The sequence is generated in pre-order.
+        During building the tree, the sequence is de-binarized to the original format (i.e.,
+        the suffixes '|<>' are ignored, the collapsed labels are recovered).
+
+        Args:
+            tree (`nltk.Tree`):
+                An empty tree providing a base for building a result tree.
+            sequence (List[tuple]):
+                A list of tuples used for generating a tree.
+                Each tuple consits of the indices of left/right span boundaries and label of the span.
+
+        Examples::
+            >>> tree = Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP')
+            >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'),
+                            (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
+            >>> print(Tree.build(tree, sequence))
+            (TOP
+              (S
+                (NP (_ I))
+                  (ADVP (_ really))
+                    (VP (_ love) (NP (_ this) (_ game)))))
+
+        Returns:
+            A result constituency tree.
+        """
+
         root = tree.label()
         leaves = [subtree for subtree in tree.subtrees()
                   if not isinstance(subtree[0], nltk.Tree)]
@@ -350,6 +603,16 @@ class Tree(Transform):
         return nltk.Tree(root, track(iter(sequence)))
 
     def load(self, data, max_len=None, **kwargs):
+        """
+        Args:
+            data (List[List] or str):
+                A list of instances or a filename.
+            max_len (int, default: None):
+                Sentences exceeding the length will be discarded.
+
+        Returns:
+            A list of TreeSentence instance.
+        """
         if isinstance(data, str):
             with open(data, 'r') as f:
                 trees = [nltk.Tree.fromstring(string) for string in f]
@@ -367,6 +630,13 @@ class Tree(Transform):
 
 
 class TreeSentence(Sentence):
+    """
+    Args:
+        transform (Tree):
+            A Tree object.
+        tree (`nltk.Tree`):
+            A `nltk.Tree` object.
+    """
 
     def __init__(self, transform, tree):
         super().__init__(transform)
