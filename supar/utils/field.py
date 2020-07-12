@@ -244,7 +244,14 @@ class SubwordField(Field):
 
     This is customized for models requiring character/subword-level inputs, e.g., CharLSTM and BERT.
 
-    Example::
+    Args:
+        fix_len (int):
+            A fixed length that all subword pieces will be padded to.
+            This is used for truncating the subword pieces that exceed the length.
+            To save the memory, the final length will be the smaller value
+            between the max length of subword pieces in a batch and fix_len.
+
+    Examples::
         >>> from transformers import AutoTokenizer
         >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
         >>> field = SubwordField('bert',
@@ -263,13 +270,6 @@ class SubwordField(Field):
                 [22559,   118,  1634],
                 [22559,  2734,     0],
                 [  102,     0,     0]])
-
-    Args:
-        fix_len (int):
-            A fixed length that all subword pieces will be padded to.
-            This is used for truncating the subword pieces that exceed the length.
-            To save the memory, the final length will be the smaller value
-            between the max length of subword pieces in a batch and fix_len.
     """
 
     def __init__(self, *args, **kwargs):
@@ -325,7 +325,7 @@ class ChartField(Field):
     This field receives sequences of binarized trees factorized in pre-order,
     and returns two tensors representing the bracketing trees and labels on each constituent respectively.
 
-    Example::
+    Examples::
         >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'),
                         (2, 5, 'VP'), (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
         >>> spans, labels = field.transform([sequence])[0]  # this example field is built from ptb

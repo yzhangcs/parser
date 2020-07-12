@@ -9,25 +9,28 @@ def kmeans(x, k, max_it=32):
     KMeans algorithm for clustering the sentences by length.
 
     Args:
-        x (List[int]): Lengths of sentences.
-        k (int): Number of clusters.
-            This is an approximate value.
-            The final number of clusters can be less or equal to k.
-        max_it (int): Maxumum number of iterations.
-            If centroids does not converge after several iterations,
-            the algorithm will be early stopped.
+        x (List[int]):
+            Lengths of sentences.
+        k (int):
+            Number of clusters.
+            This is an approximate value. The final number of clusters can be less or equal to k.
+        max_it (int):
+            Maxumum number of iterations.
+            If centroids does not converge after several iterations, the algorithm will be early stopped.
 
-    Example::
+    Returns:
+        centroids (List[float]):
+            Average lengths in each cluster.
+        clusters (List[List[int]]):
+            List of clusters, which hold indices of data points.
+
+    Examples::
         >>> x = torch.randint(10,20,(10,)).tolist()  # [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
         >>> centroids, clusters = kmeans(x, 3)
         >>> centroids
         [10.5, 14.0, 17.799999237060547]
         >>> clusters
         [[1, 3], [0, 5, 9], [2, 4, 6, 7, 8]]
-
-    Returns:
-        centroids (List[float]): Average lengths in each cluster.
-        clusters (List[List[int]]): List of clusters, which hold indices of data points.
     """
 
     # the number of clusters must not be greater than the number of datapoints
@@ -346,12 +349,12 @@ def tarjan(sequence):
         sequence (List):
             List of head indices. The first element is a placeholder for the root.
 
-    Example::
-        >>> next(tarjan([0, 2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
-        [2, 5, 1]
-
     Returns:
         A generator that yields SCCs (cycles) lazily. All self-loops are ignored.
+
+    Examples::
+        >>> next(tarjan([0, 2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
+        [2, 5, 1]
     """
 
     sequence[0] = -1

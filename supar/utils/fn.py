@@ -38,7 +38,10 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
         offset (tuple): the offset of the first two dims.
         dim (int): 0 if returns a horizontal stripe; 1 otherwise.
 
-    Example::
+    Returns:
+        a diagonal stripe of the tensor.
+
+    Examples::
         >>> x = torch.arange(25).view(5, 5)
         >>> x
         tensor([[ 0,  1,  2,  3,  4],
@@ -52,9 +55,6 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
         >>> stripe(x, 2, 3, dim=0)
         tensor([[ 0,  5, 10],
                 [ 6, 11, 16]])
-
-    Returns:
-        a diagonal stripe of the tensor.
     """
 
     x, seq_len = x.contiguous(), x.size(1)

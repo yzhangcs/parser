@@ -200,6 +200,9 @@ class CoNLL(Transform):
             tokens (List[str] or List[tuple]):
                 This can be either a list of words or word/pos pairs.
 
+        Returns:
+            a string in CoNLL-X format.
+
         Examples::
             >>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope']))
             1       I       _       _       _       _       _       _       _       _
@@ -208,9 +211,6 @@ class CoNLL(Transform):
             4       with    _       _       _       _       _       _       _       _
             5       a       _       _       _       _       _       _       _       _
             6       telescope       _       _       _       _       _       _       _       _
-
-        Returns:
-            a string in CoNLL-X format.
         """
 
         if isinstance(tokens[0], str):
@@ -234,14 +234,14 @@ class CoNLL(Transform):
             sequence (List[int]):
                 A list of head indices. The first index is a placeholder for the root.
 
+        Returns:
+            True if the tree is projective, False otherwise.
+
         Examples::
             >>> CoNLL.isprojective([0, 2, -1, 1])  # -1 denotes un-annotated cases
             False
             >>> CoNLL.isprojective([0, 3, -1, 2])
             False
-
-        Returns:
-            True if the tree is projective, False otherwise.
         """
 
         arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
@@ -269,14 +269,14 @@ class CoNLL(Transform):
             multiroot (bool, default: True):
                 If False, requires the tree to contain only a single root.
 
+        Returns:
+            True if the arcs form an valid tree, False otherwise.
+
         Examples::
             >>> CoNLL.istree([0, 3, 0, 0, 3], multiroot=True)
             True
             >>> CoNLL.istree([0, 3, 0, 0, 3], proj=True)
             False
-
-        Returns:
-            True if the arcs form an valid tree, False otherwise.
         """
 
         from supar.utils.alg import tarjan
@@ -337,7 +337,7 @@ class CoNLLSentence(Sentence):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
 
-    Example::
+    Examples::
         >>> lines = ['# text = But I found the location wonderful and the neighbors very kind.',
                      '1\tBut\t_\t_\t_\t_\t_\t_\t_\t_',
                      '2\tI\t_\t_\t_\t_\t_\t_\t_\t_',
@@ -441,12 +441,12 @@ class Tree(Transform):
             root (str, default: ''):
                 The root label of the tree.
 
+        Returns:
+            a `nltk.Tree` object.
+
         Examples::
             >>> print(Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP'))
             (TOP (_ I) (_ really) (_ love) (_ this) (_ game))
-
-        Returns:
-            a `nltk.Tree` object.
         """
 
         if isinstance(tokens[0], str):
@@ -467,6 +467,9 @@ class Tree(Transform):
             tree (`nltk.Tree`):
                 the tree to be binarized.
 
+        Returns:
+            the binarized tree.
+
         Examples::
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
@@ -480,9 +483,6 @@ class Tree(Transform):
               (S
                 (S|<> (NP (_ I)) (ADVP (_ really)))
                 (VP (VP|<> (_ love)) (NP (NP|<> (_ this)) (NP|<> (_ game))))))
-
-        Returns:
-            the binarized tree.
         """
 
         tree = tree.copy(True)
@@ -520,6 +520,9 @@ class Tree(Transform):
                 This is used for evaluation.
                 The default list defined in EVALB is: {'ADVP': 'PRT'}
 
+        Returns:
+            The sequence of factorized tree.
+
         Examples::
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
@@ -532,9 +535,6 @@ class Tree(Transform):
             [(0, 5, 'TOP'), (0, 5, 'S'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'), (3, 5, 'NP')]
             >>> Tree.factorize(tree, delete_labels={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''})
             [(0, 5, 'S'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'), (3, 5, 'NP')]
-
-        Returns:
-            The sequence of factorized tree.
         """
 
         def track(tree, i):
@@ -568,6 +568,9 @@ class Tree(Transform):
                 A list of tuples used for generating a tree.
                 Each tuple consits of the indices of left/right span boundaries and label of the span.
 
+        Returns:
+            A result constituency tree.
+
         Examples::
             >>> tree = Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP')
             >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'),
@@ -578,9 +581,6 @@ class Tree(Transform):
                 (NP (_ I))
                   (ADVP (_ really))
                     (VP (_ love) (NP (_ this) (_ game)))))
-
-        Returns:
-            A result constituency tree.
         """
 
         root = tree.label()
