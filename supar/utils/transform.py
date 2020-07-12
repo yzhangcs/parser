@@ -263,7 +263,7 @@ class CoNLL(Transform):
 
         Args:
             sequence (List[int]):
-                A list of head indices.
+                A list of head indices. The first index is a placeholder for the root.
             proj (bool, default: False):
                 If True, requires the tree to be projective.
             multiroot (bool, default: True):
@@ -303,7 +303,7 @@ class CoNLL(Transform):
                 Sentences exceeding the length will be discarded.
 
         Returns:
-            A list of CoNLLSentence instance.
+            A list of CoNLLSentence instances.
         """
 
         start, sentences = 0, []
@@ -355,7 +355,7 @@ class CoNLLSentence(Sentence):
         >>> sentence = CoNLLSentence(transform, lines)  # fields in transform are built from ptb.
         >>> sentence.arcs = [3, 3, 0, 5, 6, 3, 6, 9, 11, 11, 6, 3]
         >>> sentence.rels = ['cc', 'nsubj', 'root', 'det', 'nsubj', 'xcomp',
-                                'cc', 'det', 'dep', 'advmod', 'conj', 'punct']
+                             'cc', 'det', 'dep', 'advmod', 'conj', 'punct']
         >>> sentence
         # text = But I found the location wonderful and the neighbors very kind.
         1       But     _       _       _       _       3       cc      _       _
@@ -611,7 +611,7 @@ class Tree(Transform):
                 Sentences exceeding the length will be discarded.
 
         Returns:
-            A list of TreeSentence instance.
+            A list of TreeSentence instances.
         """
         if isinstance(data, str):
             with open(data, 'r') as f:

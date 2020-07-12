@@ -326,16 +326,9 @@ class ChartField(Field):
     and returns two tensors representing the bracketing trees and labels on each constituent respectively.
 
     Example::
-        >>> import nltk
-        >>> from supar.utils.transform import Tree
-        >>> tree = Tree.binarize(nltk.Tree.fromstring('''
-                                                      (TOP
-                                                        (S
-                                                          (NP (_ I))
-                                                            (ADVP (_ really))
-                                                              (VP (_ love) (NP (_ this) (_ game)))))
-                                                      '''))[0]  # binarized tree
-        >>> spans, labels = field.transform([Tree.factorize(tree)])[0]  # this example field is built from ptb
+        >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'),
+                        (2, 5, 'VP'), (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
+        >>> spans, labels = field.transform([sequence])[0]  # this example field is built from ptb
         >>> spans
         tensor([[False,  True,  True, False, False,  True],
                 [False, False,  True, False, False, False],
