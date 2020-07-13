@@ -106,10 +106,16 @@ class Sentence(object):
         else:
             self.__dict__[name] = value
 
+    def __getstate__(self):
+        return vars(self)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
 
 class CoNLL(Transform):
     """
-    This class holds ten fields required for CoNLL-X data format.
+    The CoNLL object holds ten fields required for CoNLL-X data format.
     Each field is binded with one or more Field objects. For example,
     the FORM field can contain both Field and SubwordField to produce tensors for words and subwords.
 
@@ -399,13 +405,13 @@ class CoNLLSentence(Sentence):
 
 class Tree(Transform):
     """
-    This class factorize a constituency tree into four fields, each associated with one or more Field objects:
+    The Tree object factorize a constituency tree into four fields, each associated with one or more Field objects:
         WORD:
             Words in the sentence.
         POS:
             Part-of-speech tags, or underscores if not available.
         TREE:
-            The raw constituency tree in `nltk.Tree` format.
+            The raw constituency tree in nltk.Tree format.
         CHART:
             The factorized sequence of binarized tree traversed in pre-order.
     """
@@ -432,7 +438,7 @@ class Tree(Transform):
     @classmethod
     def totree(cls, tokens, root=''):
         """
-        Convert a list of tokens to a `nltk.Tree`.
+        Convert a list of tokens to a nltk.Tree.
         Missing fields are filled with underscores.
 
         Args:
@@ -442,7 +448,7 @@ class Tree(Transform):
                 The root label of the tree.
 
         Returns:
-            a `nltk.Tree` object.
+            a nltk.Tree object.
 
         Examples::
             >>> print(Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP'))
@@ -460,11 +466,11 @@ class Tree(Transform):
         Conduct binarization over the tree.
 
         First, the tree is transformed to satisfy Chomsky Normal Form (CNF).
-        Here we call the member function `chomsky_normal_form` in `nltk.Tree` to conduct left-binarization.
+        Here we call the member function `chomsky_normal_form` in nltk.Tree to conduct left-binarization.
         Second, all unary productions in the tree are collapsed.
 
         Args:
-            tree (`nltk.Tree`):
+            tree (nltk.Tree):
                 the tree to be binarized.
 
         Returns:
@@ -507,18 +513,17 @@ class Tree(Transform):
         The tree is traversed in pre-order.
 
         Args:
-            tree (`nltk.Tree`):
+            tree (nltk.Tree):
                 the tree to be factorized.
             delete_labels (Set[str], default: None):
-                A set of labels to be ignored.
+                A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
-                This is used for evaluation. In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
+                In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
             equal_labels (Set[str], default: None):
-                Labels in the set are considered equivalent.
-                This is used for evaluation.
-                The default list defined in EVALB is: {'ADVP': 'PRT'}
+                Labels in the set are considered equivalent. This is used for evaluation.
+                The default set defined in EVALB is: {'ADVP': 'PRT'}
 
         Returns:
             The sequence of factorized tree.
@@ -562,7 +567,7 @@ class Tree(Transform):
         the suffixes '|<>' are ignored, the collapsed labels are recovered).
 
         Args:
-            tree (`nltk.Tree`):
+            tree (nltk.Tree):
                 An empty tree providing a base for building a result tree.
             sequence (List[tuple]):
                 A list of tuples used for generating a tree.
@@ -634,8 +639,8 @@ class TreeSentence(Sentence):
     Args:
         transform (Tree):
             A Tree object.
-        tree (`nltk.Tree`):
-            A `nltk.Tree` object.
+        tree (nltk.Tree):
+            A nltk.Tree object.
     """
 
     def __init__(self, transform, tree):

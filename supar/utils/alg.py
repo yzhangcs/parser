@@ -15,14 +15,14 @@ def kmeans(x, k, max_it=32):
             Number of clusters.
             This is an approximate value. The final number of clusters can be less or equal to k.
         max_it (int):
-            Maxumum number of iterations.
+            Maximum number of iterations.
             If centroids does not converge after several iterations, the algorithm will be early stopped.
 
     Returns:
         centroids (List[float]):
             Average lengths in each cluster.
         clusters (List[List[int]]):
-            List of clusters, which hold indices of data points.
+            List of clusters that hold indices of data points.
 
     Examples::
         >>> x = torch.randint(10,20,(10,)).tolist()  # [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]

@@ -73,6 +73,13 @@ class Dataset(torch.utils.data.Dataset):
         else:
             self.__dict__[name] = value
 
+    def __getstate__(self):
+        # only pickles the Transform object and sentences
+        return {'transform': self.transform, 'sentences': self.sentences}
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def collate_fn(self, batch):
         return {f: d for f, d in zip(self.fields.keys(), zip(*batch))}
 
@@ -105,19 +112,19 @@ class DataLoader(torch.utils.data.DataLoader):
 
 class Sampler(torch.utils.data.Sampler):
     """
-    Sampler supporting for bucketization and token-level batchification.
+    Sampler supporting for bucketizing and token-level batchification.
 
     Args:
         buckets (Dict):
             The dict that maps each centroid to the indices of the clustering sentences.
-            The centroid corresponds to the average length of all sentences in the bucket.
+            The centroid corresponds to the average length of all sentences in the bucket (required).
         batch_size (int):
-            Token-level batch size. The resulting batch contains roughly the same number of tokens as batch_size.
+            Token-level batch size. The resulting batch contains roughly the same number of tokens as batch_size (required).
         shuffle (bool, default: False):
-            If True, the sampler will shuffle both the buckets and samples in each bucket.
+            If True, the sampler will shuffle both the buckets and samples in each bucket (optional).
         distributed (bool, default: False):
             If True, the sample will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
-            that restricts data loading to a subset of the dataset.
+            that restricts data loading to a subset of the dataset (optional).
     """
 
     def __init__(self, buckets, batch_size, shuffle=False, distributed=False):
@@ -138,8 +145,7 @@ class Sampler(torch.utils.data.Sampler):
         g.manual_seed(self.epoch)
         range_fn = torch.arange
         # if shuffle, shuffle both the buckets and samples in each bucket
-        # for distributed training, make sure each process generte the same
-        # random sequence at each epoch
+        # for distributed training, make sure each process generte the same random sequence at each epoch
         if self.shuffle:
             def range_fn(x):
                 return torch.randperm(x, generator=g)

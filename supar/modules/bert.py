@@ -7,16 +7,36 @@ from transformers import AutoConfig, AutoModel
 
 
 class BertEmbedding(nn.Module):
+    """
+    A module used for outputting BERT representations.
+    This module directly utilizes the pretrained models like `bert-base-cased` in `transformers`
+    to produce the representations.
+
+    While mainly tailored to provide input preparation and post-processing for the BERT model,
+    this module is not only limited to BERT, but also compatiable with other pretrained language models
+    like XLNet, RoBERTa and ELECTRA, etc.
+
+    Args:
+        model (str):
+            Path or name of the pretrained model.
+        n_layers (int):
+            Number of layers from the model to use.
+            If 0, use all layers.
+        n_out (int):
+            The requested size of the embeddings.
+            If 0, use the size of the pretrained embedding model.
+        pad_index (int, default: 0):
+            The index of the padding token in the BERT vocabulary.
+        dropout (float, default: 0):
+            Dropout ratio of BERT layers.
+            This value will be passed into the ScalarMix layer.
+        requires_grad (bool, default: False):
+            If True, the parameters of the pretrained model won't be freezed,
+            and will be updated together with the downstream task.
+    """
 
     def __init__(self, model, n_layers, n_out, pad_index=0, dropout=0,
                  requires_grad=False):
-        """
-        :param model: path or name of the pretrained model.
-        :param n_layers: number of layers from the model to use.
-        If 0, use all layers.
-        :param n_out: the requested size of the embeddings.
-        If 0, use the size of the pretrained embedding model
-        """
         super().__init__()
 
         config = AutoConfig.from_pretrained(model, output_hidden_states=True)
@@ -43,6 +63,15 @@ class BertEmbedding(nn.Module):
         return s
 
     def forward(self, subwords):
+        """
+        Args:
+            subwords (Tensor): [batch_size, seq_len, fix_len]
+                The tensor of subwords.
+
+        Returns:
+            embed (Tensor): [batch_size, seq_len, n_out]
+                The BERT representations.
+        """
         batch_size, seq_len, fix_len = subwords.shape
         mask = subwords.ne(self.pad_index)
         lens = mask.sum((1, 2))
