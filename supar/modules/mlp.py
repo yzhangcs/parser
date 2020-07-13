@@ -5,6 +5,19 @@ from supar.modules.dropout import SharedDropout
 
 
 class MLP(nn.Module):
+    """
+    Applies a linear transformation together with LeakyReLU activation to the incoming tensor.
+    `y = LeakyReLU(x A^T + b)`
+
+
+    Args:
+        n_in (Tensor):
+            The size of each input feature.
+        n_out (Tensor):
+            The size of output feature.
+        dropout (float, default: 0):
+            If non-zero, introduce a `SharedDropout` layer on the output with this dropout ratio.
+    """
 
     def __init__(self, n_in, n_out, dropout=0):
         super().__init__()
@@ -31,6 +44,15 @@ class MLP(nn.Module):
         nn.init.zeros_(self.linear.bias)
 
     def forward(self, x):
+        """
+        Args:
+            x (Tensor):
+                The size of each input feature is n_in.
+
+        Returns:
+            A tensor with the size of each output feature n_out.
+        """
+
         x = self.linear(x)
         x = self.activation(x)
         x = self.dropout(x)
