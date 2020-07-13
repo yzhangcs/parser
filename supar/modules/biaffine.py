@@ -9,7 +9,7 @@ class Biaffine(nn.Module):
     Biaffine layer for first-order scoring.
 
     This function has a tensor of weights `W` and bias terms if needed.
-    The score `s(x, y)` of the vector pair `(x, y, z)` is computed as `x^T W y`,
+    The score `s(x, y)` of the vector pair `(x, y)` is computed as `x^T W y`,
     in which `x` and `y` can be concatenated with bias terms.
 
     References:
