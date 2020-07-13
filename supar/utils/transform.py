@@ -523,7 +523,7 @@ class Tree(Transform):
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
             equal_labels (Dict[str], default: None):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
-                The default set defined in EVALB is: {'ADVP': 'PRT'}
+                The default dict defined in EVALB is: {'ADVP': 'PRT'}
 
         Returns:
             The sequence of factorized tree.
