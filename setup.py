@@ -22,7 +22,7 @@ setup(
     setup_requires=[
         'setuptools>=18.0',
     ],
-    install_requires=["torch", "transformers"],
+    install_requires=["torch>=1.4.0", "transformers"],
     entry_points={
         'console_scripts': [
             'biaffine-parser=supar.cmds.biaffine_parser:main',

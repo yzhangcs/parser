@@ -8,6 +8,10 @@ class Triaffine(nn.Module):
     """
     Triaffine layer for second-order scoring.
 
+    This function has a tensor of weights `W` and bias terms if needed.
+    The score `s(x, y, z)` of the vector triple `(x, y, z)` is computed as `x^T z^T W y`.
+    Usually, `x` and `y` can be concatenated with bias terms.
+
     References:
     - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
       Efficient Second-Order TreeCRF for Neural Dependency Parsing
@@ -18,7 +22,7 @@ class Triaffine(nn.Module):
 
     Args:
         n_in (int):
-            The dimension of input feature.
+            The dimension of the input feature.
         bias_x (bool, default: False):
             If True, add a bias term for tensor x.
         bias_y (bool, default: False):
@@ -50,21 +54,15 @@ class Triaffine(nn.Module):
 
     def forward(self, x, y, z):
         """
-        Perform the following calculation to get scores:
-            s = x @ z @ weight @ y
-
         Args:
             x (Tensor): [batch_size, seq_len, n_in]
-                Tensor x.
             y (Tensor): [batch_size, seq_len, n_in]
-                Tensor y.
             z (Tensor): [batch_size, seq_len, n_in]
-                Tensor z.
 
         Returns:
             s (Tensor): [batch_size, seq_len, seq_len, seq_len]
-                the attention score of each vector in x, y and z.
         """
+
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:

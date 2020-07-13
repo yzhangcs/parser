@@ -67,11 +67,9 @@ class BertEmbedding(nn.Module):
         """
         Args:
             subwords (Tensor): [batch_size, seq_len, fix_len]
-                The tensor of subwords.
 
         Returns:
             embed (Tensor): [batch_size, seq_len, n_out]
-                The BERT representations.
         """
         batch_size, seq_len, fix_len = subwords.shape
         mask = subwords.ne(self.pad_index)
