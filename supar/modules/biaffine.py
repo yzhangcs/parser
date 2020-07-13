@@ -28,7 +28,7 @@ class Biaffine(nn.Module):
             If True, add a bias term for tensor y.
     """
 
-   def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
+    def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
         super().__init__()
 
         self.n_in = n_in
