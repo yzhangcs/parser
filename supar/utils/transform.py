@@ -12,7 +12,7 @@ class Transform(object):
 
     Attributes:
         training (bool, default: True):
-            Sets the object in training mode.
+            Set the object in training mode.
             If False, some data fields not required for predictions won't be returned.
     """
 
@@ -521,8 +521,8 @@ class Tree(Transform):
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
                 In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
-            equal_labels (Set[str], default: None):
-                Labels in the set are considered equivalent. This is used for evaluation.
+            equal_labels (Dict[str], default: None):
+                The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default set defined in EVALB is: {'ADVP': 'PRT'}
 
         Returns:
