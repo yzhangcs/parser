@@ -40,6 +40,7 @@ class BertEmbedding(nn.Module):
         super().__init__()
 
         config = AutoConfig.from_pretrained(model, output_hidden_states=True)
+        self.model = model
         self.bert = AutoModel.from_pretrained(model, config=config)
         self.bert = self.bert.requires_grad_(requires_grad)
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
@@ -53,7 +54,7 @@ class BertEmbedding(nn.Module):
             self.projection = nn.Linear(self.hidden_size, self.n_out, False)
 
     def __repr__(self):
-        s = self.__class__.__name__ + '('
+        s = self.__class__.__name__ + f"({self.model}, "
         s += f"n_layers={self.n_layers}, n_out={self.n_out}, "
         s += f"pad_index={self.pad_index}"
         if self.requires_grad:
@@ -76,7 +77,7 @@ class BertEmbedding(nn.Module):
         mask = subwords.ne(self.pad_index)
         lens = mask.sum((1, 2))
 
-        self.bert.train(self.requires_grad)
+        self.bert.train(self.requires_grad and self.training)
         # [batch_size, n_subwords]
         subwords = pad_sequence(subwords[mask].split(lens.tolist()), True)
         bert_mask = pad_sequence(mask[mask].split(lens.tolist()), True)

@@ -6,14 +6,13 @@ from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
                            Triaffine)
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency, MatrixTree
+from supar.utils import Config
 from supar.utils.alg import eisner, mst
-from supar.utils.config import Config
 from supar.utils.transform import CoNLL
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class BiaffineDependencyModel(nn.Module):
-
     """
     The implementation of Biaffine Dependency Parser.
 
@@ -199,7 +198,6 @@ class BiaffineDependencyModel(nn.Module):
 
 
 class MSTDependencyModel(BiaffineDependencyModel):
-
     """
     The implementation of MST Dependency Parser.
 
@@ -228,7 +226,6 @@ class MSTDependencyModel(BiaffineDependencyModel):
 
 
 class CRFDependencyModel(BiaffineDependencyModel):
-
     """
     The implementation of first-order CRF Dependency Parser.
 
@@ -257,7 +254,6 @@ class CRFDependencyModel(BiaffineDependencyModel):
 
 
 class CRF2oDependencyModel(BiaffineDependencyModel):
-
     """
     The implementation of second-order CRF Dependency Parser.
 

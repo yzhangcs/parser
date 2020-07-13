@@ -148,3 +148,40 @@ class BracketMetric(Metric):
     @property
     def lf(self):
         return 2 * self.ltp / (self.pred + self.gold + self.eps)
+
+
+class SpanMetric(Metric):
+
+    def __init__(self, eps=1e-5):
+        super(SpanMetric, self).__init__()
+
+        self.tp = 0.0
+        self.pred = 0.0
+        self.gold = 0.0
+        self.eps = eps
+
+    def __call__(self, preds, golds):
+        for pred, gold in zip(preds, golds):
+            pred, gold = set(pred), set(gold)
+            self.tp += len(pred & gold)
+            self.pred += len(pred)
+            self.gold += len(gold)
+
+    def __repr__(self):
+        return f"P: {self.p:6.2%} R: {self.r:6.2%} F: {self.f:6.2%}"
+
+    @property
+    def score(self):
+        return self.f
+
+    @property
+    def p(self):
+        return self.tp / (self.pred + self.eps)
+
+    @property
+    def r(self):
+        return self.tp / (self.gold + self.eps)
+
+    @property
+    def f(self):
+        return 2 * self.p * self.r / (self.p + self.r + self.eps)

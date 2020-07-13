@@ -74,7 +74,7 @@ class Dataset(torch.utils.data.Dataset):
             self.__dict__[name] = value
 
     def __getstate__(self):
-        # only pickles the Transform object and sentences
+        # only pickle the Transform object and sentences
         return {'transform': self.transform, 'sentences': self.sentences}
 
     def __setstate__(self, state):
@@ -121,9 +121,9 @@ class Sampler(torch.utils.data.Sampler):
         batch_size (int):
             Token-level batch size. The resulting batch contains roughly the same number of tokens as batch_size.
         shuffle (bool, default: False):
-            If True, the sampler will shuffle both the buckets and samples in each bucket.
+            If True, the sampler will shuffle both buckets and samples in each bucket.
         distributed (bool, default: False):
-            If True, the sample will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
+            If True, the sampler will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
             that restricts data loading to a subset of the dataset.
     """
 

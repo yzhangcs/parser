@@ -521,7 +521,7 @@ class Tree(Transform):
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
                 In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
-            equal_labels (Dict[str], default: None):
+            equal_labels (Dict[str, str], default: None):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default dict defined in EVALB is: {'ADVP': 'PRT'}
 

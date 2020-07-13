@@ -5,13 +5,12 @@ import torch.nn as nn
 from supar.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRFConstituency
+from supar.utils import Config
 from supar.utils.alg import cky
-from supar.utils.config import Config
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class CRFConstituencyModel(nn.Module):
-
     """
     The implementation of CRF Constituency Parser.
     This parser is also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) Parser.

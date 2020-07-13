@@ -40,7 +40,7 @@ class MSTDependencyParser(BiaffineDependencyParser):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - "
                                 f"loss: {loss:.4f} - "
                                 f"{metric}")
 
