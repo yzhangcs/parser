@@ -18,6 +18,7 @@ class CRFConstituencyModel(nn.Module):
     References:
     - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
       Fast and Accurate Neural CRF Constituency Parsing
+      https://www.ijcai.org/Proceedings/2020/560/
     """
 
     def __init__(self,

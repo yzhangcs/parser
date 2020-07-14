@@ -291,6 +291,7 @@ def cky(scores, mask):
     References:
     - Yu Zhang, Houquan Zhou and Zhenghua Li (IJCAI'20)
       Fast and Accurate Neural CRF Constituency Parsing
+      https://www.ijcai.org/Proceedings/2020/560/
 
     Args:
         scores (Tensor): [batch_size seq_len, seq_len]
