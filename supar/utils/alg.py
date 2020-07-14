@@ -25,7 +25,9 @@ def kmeans(x, k, max_it=32):
             List of clusters that hold indices of data points.
 
     Examples::
-        >>> x = torch.randint(10,20,(10,)).tolist()  # [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
+        >>> x = torch.randint(10,20,(10,)).tolist()
+        >>> x
+        [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
         >>> centroids, clusters = kmeans(x, 3)
         >>> centroids
         [10.5, 14.0, 17.799999237060547]
@@ -403,6 +405,7 @@ def chuliu_edmonds(s):
     ChuLiu/Edmods algorithm for non-projective decoding.
     NOTE: the algorithm does not guarantee to parse a single-root tree.
     Some code is borrowed from tdozat's implementation (https://github.com/tdozat/Parser-v3).
+    Descriptions of notations and formulas can be found in the following paper.
 
     References:
     - Ryan McDonald, Fernando Pereira, Kiril Ribarov and Jan Hajic (EMNLP'05)
