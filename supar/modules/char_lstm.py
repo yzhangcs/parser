@@ -6,6 +6,20 @@ from torch.nn.utils.rnn import pack_padded_sequence
 
 
 class CharLSTM(nn.Module):
+    """
+    CharLSTM aims to generate character-level embeddings for tokens.
+    It summerizes the information of characters in each token to an embedding using a LSTM layer.
+
+    Args:
+        n_char (int):
+            Number of characters.
+        n_embed (int):
+            The size of each embedding vector as input to LSTM.
+        n_out (int):
+            The size of each output.
+        pad_index (int, default:0):
+            The index of the padding token in the vocabulary.
+    """
 
     def __init__(self, n_chars, n_embed, n_out, pad_index=0):
         super().__init__()
@@ -34,6 +48,16 @@ class CharLSTM(nn.Module):
         return s
 
     def forward(self, x):
+        """
+        Args:
+            x (Tensor): [batch_size, seq_len, fix_len]
+                Characters of all tokens.
+                Each token holds no more than fix_len characters, and the excess is cut off directly.
+        Returns:
+            embed (Tensor): [batch_size, seq_len, n_out]
+                The embeddings (each with size n_out) derived from the characters.
+        """
+
         # [batch_size, seq_len, fix_len]
         mask = x.ne(self.pad_index)
         # [batch_size, seq_len]

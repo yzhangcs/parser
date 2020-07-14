@@ -8,6 +8,31 @@ from torch.nn.utils.rnn import PackedSequence
 
 
 class BiLSTM(nn.Module):
+    """
+    The BiLSTM module is an variant of the vanilla bidirectional LSTM adopted by Biaffine Parser.
+    The difference between them is the dropout strategy.
+    This module drops nodes in the LSTM layers (input and recurrent connections)
+    and applies the same dropout mask at every recurrent timesteps.
+
+    APIs are roughly the same as nn.LSTM except that we remove the `bidirectional` option
+    and only allows PackedSequence as input.
+
+    References:
+    - Timothy Dozat and Christopher D. Manning (ICLR'17)
+      Deep Biaffine Attention for Neural Dependency Parsing
+      https://openreview.net/pdf?id=Hk95PK9le/
+
+    Args:
+        input_size (int):
+            The number of expected features in the input.
+        hidden_size (int):
+            The number of features in the hidden state h.
+        num_layers (int, default: 1):
+            Number of recurrent layers.
+        dropout (float, default: 0):
+            If non-zero, introduces a SharedDropout layer on the outputs of each LSTM layer
+            except the last layer, with dropout probability equal to `dropout`.
+    """
 
     def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
         super().__init__()
@@ -86,6 +111,25 @@ class BiLSTM(nn.Module):
         return output, hx_n
 
     def forward(self, sequence, hx=None):
+        """
+        Args:
+            sequence (PackedSequence):
+                A packed variable length sequence.
+            hx=(h, x) (Tuple[Tensor, Tensor], default: None):
+                h ([num_layers * 2, batch_size, hidden_size]) contains the initial hidden state
+                for each element in the batch.
+                c ([num_layers * 2, batch_size, hidden_size]) contains the initial cell state
+                for each element in the batch.
+                If (h, x) is not provided, both h and c default to zero.
+        Returns:
+            x (PackedSequence):
+                A packed variable length sequence.
+            hx=(h, x) (Tuple[Tensor, Tensor]):
+                h ([num_layers * 2, batch_size, hidden_size]) contains the hidden state for `t = seq_len`.
+                Like output, the layers can be separated using h.view(num_layers, 2, batch_size, hidden_size)
+                and similarly for c.
+                c ([num_layers * 2, batch_size, hidden_size]) contains the cell state for `t = seq_len`.
+        """
         x, batch_sizes = sequence.data, sequence.batch_sizes.tolist()
         batch_size = batch_sizes[0]
         h_n, c_n = [], []
