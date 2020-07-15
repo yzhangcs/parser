@@ -7,12 +7,39 @@ from supar.utils.fn import stripe
 
 
 class MatrixTree(nn.Module):
+    """
+    MatrixTree for calculating partition functions and marginals in O(N^3) for directed spanning trees
+    (a.k.a. non-projective trees) by an adaptation of Kirchhoff's MatrixTree Theorem.
+    This module differs from the original paper in that marginals are computed via back-propagation
+    rather than matrix inversion.
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    References:
+    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
+      Structured Prediction Models via the Matrix-Tree Theorem
+      https://www.aclweb.org/anthology/D07-1015/
+    """
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False):
+        """
+        Args:
+            scores (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible dependent-head pairs.
+            mask (BoolTensor): [batch_size, seq_len]
+                Mask to avoid aggregation on padding tokens.
+                The first column with pseudo words as roots should be set to False.
+            target (Tensor, default: None): [batch_size, seq_len]
+                Tensor of gold-standard dependent-head pairs.
+            mbr (bool, default: False):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+
+        Returns:
+            loss (Tensor): scalar
+                Loss averaged by number of tokens. This won't be returned if target is None.
+            probs (Tensor): [batch_size, seq_len, ]
+                Marginals if performs mbr decoding, original scores otherwise.
+        """
+
         training = scores.requires_grad
         # double precision to prevent overflows
         scores = scores.double()
@@ -57,12 +84,42 @@ class MatrixTree(nn.Module):
 
 
 class CRFDependency(nn.Module):
+    """
+    First-order TreeCRF for calculating partition functions and marginals in O(N^3) for projective dependency trees.
+    For efficient calculation The module provides a bathcified implementation
+    and relpace the outside pass with back-propagation totally.
 
-    def __init__(self):
-        super().__init__()
+    References:
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    """
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False, partial=False):
+        """
+        Args:
+            scores (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible dependent-head pairs.
+            mask (BoolTensor): [batch_size, seq_len]
+                Mask to avoid aggregation on padding tokens.
+                The first column with pseudo words as roots should be set to False.
+            target (Tensor, default: None): [batch_size, seq_len]
+                Tensor of gold-standard dependent-head pairs.
+                This should be provided for loss calculation.
+                If partially annotated, the unannotated positions should be filled with -1.
+            mbr (bool, default: False):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+            partial (bool, default: False):
+                True indicates that the trees are partially annotated.
+
+        Returns:
+            loss (Tensor): scalar
+                Loss averaged by number of tokens. This won't be returned if target is None.
+            probs (Tensor): [batch_size, seq_len, seq_len]
+                Marginals if performs mbr decoding, original scores otherwise.
+        """
+
         training = scores.requires_grad
         batch_size, seq_len, _ = scores.shape
         # always enable the gradient computation of scores
@@ -85,7 +142,7 @@ class CRFDependency(nn.Module):
 
         return loss, probs
 
-    def inside(self, scores, mask, cands=None, mbr=True, partial=False):
+    def inside(self, scores, mask, cands=None):
         # the end position of each sentence in a batch
         lens = mask.sum(1)
         batch_size, seq_len, _ = scores.shape
@@ -139,12 +196,47 @@ class CRFDependency(nn.Module):
 
 
 class CRF2oDependency(nn.Module):
+    """
+    Second-order TreeCRF for calculating partition functions and marginals in O(N^3) for projective dependency trees.
+    For efficient calculation The module provides a bathcified implementation
+    and relpace the outside pass with back-propagation totally.
+
+
+    References:
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    """
 
     def __init__(self):
         super().__init__()
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=True, partial=False):
+        """
+        Args:
+            scores (Tuple[Tensor, Tensor]):
+                Tuple of two tensors s_arc and s_sib.
+                s_arc ([batch_size, seq_len, seq_len]) holds The scores of all possible dependent-head pairs.
+                s_sib ([batch_size, seq_len, seq_len, seq_len]) holds the scores of head-sibling-dependent triples.
+            mask (BoolTensor): [batch_size, seq_len]
+                Mask to avoid aggregation on padding tokens.
+                The first column with pseudo words as roots should be set to False.
+            target (Tensor, default: None): [batch_size, seq_len]
+                Tensors of gold-standard dependent-head pairs and head-sibling-dependent triples.
+                If partially annotated, the unannotated positions should be filled with -1.
+            mbr (bool, default: False):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+            partial (bool, default: False):
+                True indicates that the trees are partially annotated.
+
+        Returns:
+            loss (Tensor): scalar
+                Loss averaged by number of tokens. This won't be returned if target is None.
+            probs (Tensor): [batch_size, seq_len, seq_len]
+                Marginals if performs mbr decoding, original scores otherwise.
+        """
+
         s_arc, s_sib = scores
         training = s_arc.requires_grad
         batch_size, seq_len, _ = s_arc.shape
@@ -257,12 +349,38 @@ class CRF2oDependency(nn.Module):
 
 
 class CRFConstituency(nn.Module):
+    """
+    TreeCRF for calculating partition functions and marginals in O(N^3) for constituency trees.
+    For efficient calculation The module provides a bathcified implementation
+    and relpace the outside pass with back-propagation totally.
 
-    def __init__(self):
-        super().__init__()
+    References:
+    - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
+      Fast and Accurate Neural CRF Constituency Parsing
+      https://www.ijcai.org/Proceedings/2020/560/
+    """
 
     @torch.enable_grad()
     def forward(self, scores, mask, target=None, mbr=False):
+        """
+        Args:
+            scores (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible constituents.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask to avoid parsing over padding tokens.
+                For each square matrix in a batch, the positions except upper triangular part should be masked out.
+            target (BoolTensor, default: None): [batch_size, seq_len, seq_len]
+                Tensor of gold-standard constituents. True if a constituent exists.
+            mbr (bool, default: False):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+
+        Returns:
+            loss (Tensor): scalar
+                Loss averaged by number of tokens. This won't be returned if target is None.
+            probs (Tensor): [batch_size, seq_len, seq_len]
+                Marginals if performs mbr decoding, original scores otherwise.
+        """
+
         training = scores.requires_grad
         # always enable the gradient computation of scores
         # in order for the computation of marginal probs

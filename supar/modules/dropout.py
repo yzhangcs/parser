@@ -60,10 +60,7 @@ class SharedDropout(nn.Module):
 
     @staticmethod
     def get_mask(x, p):
-        mask = x.new_empty(x.shape).bernoulli_(1 - p)
-        mask = mask / (1 - p)
-
-        return mask
+        return x.new_empty(x.shape).bernoulli_(1 - p) / (1 - p)
 
 
 class IndependentDropout(nn.Module):
@@ -101,7 +98,7 @@ class IndependentDropout(nn.Module):
         """
         Args:
             items (List[Tensor]):
-                A list of tensors that have the same shape except for the last dimension.
+                A list of tensors that have the same shape except the last dimension.
         Returns:
             The returned tensors are of the same shape as inputs.
         """
