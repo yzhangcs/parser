@@ -20,6 +20,53 @@ class BiaffineDependencyModel(nn.Module):
     - Timothy Dozat and Christopher D. Manning (ICLR'17)
       Deep Biaffine Attention for Neural Dependency Parsing
       https://openreview.net/pdf?id=Hk95PK9le/
+
+    Args:
+        n_words (int):
+            Size of the word vocabulary.
+        n_feats (int):
+            Size of the feat vocabulary.
+        n_rels (int):
+            Number of labels in the treebank.
+        feat (str, default: 'char'):
+            Specifies which type of additional feature to use: 'char' | 'bert' | 'tag'.
+            'char': Character-level representations extracted by CharLSTM.
+            'bert': BERT representations, other pretrained langugae models like `XLNet` are also feasible.
+            'tag': POS tag embeddings.
+        n_embed (int, default: 100):
+            Size of word embeddings.
+        n_feat_embed (int, default: 100):
+            Size of feature representations.
+        n_char_embed (int, default: 50):
+            Size of character embeddings serving as inputs of CharLSTM, required if feat='char'.
+        bert (str, default: None):
+            Specify which kind of language model to use, e.g., 'bert-base-cased' and 'xlnet-base-cased'.
+            This is required if feat='bert'. The full list can be found in `transformers`.
+        n_bert_layers (int, default: 4):
+            Specify how many last layers to use. Required if feat='bert'.
+            The final outputs would be the weight sum of the hidden states of these layers.
+        mix_dropout (float, default: .0):
+            Dropout ratio of BERT layers. Required if feat='bert'.
+        embed_dropout (float, default: .33):
+            Dropout ratio of input embeddings.
+        n_lstm_hidden (int, default: 400):
+            Dimension of LSTM hidden states.
+        n_lstm_layers (int, default: 3):
+            Number of LSTM layers.
+        lstm_dropout (float, default: .33):
+            Dropout ratio of LSTM.
+        n_mlp_arc (int, default: 500):
+            Arc MLP size.
+        n_mlp_rel  (int, default: 100):
+            Label MLP size.
+        mlp_dropout (float, default: .33):
+            Dropout ratio of MLP layers.
+        feat_pad_index (int, default: 0):
+            The index of the padding token in the feat vocabulary.
+        pad_index (int, default: 0):
+            The index of the padding token in the word vocabulary.
+        unk_index (int, default: 1):
+            The index of the unknown token in the word vocabulary.
     """
 
     def __init__(self,
@@ -62,9 +109,11 @@ class BiaffineDependencyModel(nn.Module):
                                             pad_index=feat_pad_index,
                                             dropout=mix_dropout)
             self.n_feat_embed = self.feat_embed.n_out
-        else:
+        elif feat == 'tag':
             self.feat_embed = nn.Embedding(num_embeddings=n_feats,
                                            embedding_dim=n_feat_embed)
+        else:
+            raise RuntimeError("The feat type should be in ['char', 'bert', 'tag'].")
         self.embed_dropout = IndependentDropout(p=embed_dropout)
 
         # the lstm layer
@@ -108,30 +157,19 @@ class BiaffineDependencyModel(nn.Module):
 
     def forward(self, words, feats):
         """
-        Computes the arc and tag loss for a sequence given gold heads and tags.
-        Parameters
-        ----------
-        s_arc : ``torch.Tensor``, required.
-            A tensor of shape (batch_size, sequence_length, tags_count),
-            which will be used to generate predictions for the dependency tags
-            for the given arcs.
-        s_rel : ``torch.Tensor``, required
-            A tensor of shape (batch_size, sequence_length, tags_count),
-            which will be used to generate predictions for the dependency tags
-            for the given arcs.
-        arcs : ``torch.Tensor``, required.
-            A tensor of shape (batch_size, sequence_length).
-            The indices of the heads for each word.
-        rels : ``torch.Tensor``, required.
-            A tensor of shape (batch_size, sequence_length).
-            The dependency labels of the heads for each word.
-        mask : ``torch.Tensor``, required.
-            A mask of shape (batch_size, sequence_length), denoting unpadded
-            elements in the sequence.
-        Returns
-        -------
-        loss : ``torch.Tensor``.
-            The sum of the cross-entropy losses from the arcs and rels predictions.
+        Args:
+            words (LongTensor) [batch_size, seq_len]:
+                The word indices.
+            feats (LongTensor):
+                The feat indices.
+                If feat is 'char' or 'bert', the size of feats should be [batch_size, seq_len, fix_len]
+                If 'tag', then the size is [batch_size, seq_len].
+
+        Returns:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
         """
 
         batch_size, seq_len = words.shape
@@ -173,6 +211,24 @@ class BiaffineDependencyModel(nn.Module):
         return s_arc, s_rel
 
     def loss(self, s_arc, s_rel, arcs, rels, mask):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            arcs (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard arcs.
+            rels (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard labels.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+
+        Returns:
+            loss (Tensor): scalar
+                The training loss.
+        """
+
         s_arc, arcs = s_arc[mask], arcs[mask]
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(arcs)), arcs]
@@ -182,6 +238,26 @@ class BiaffineDependencyModel(nn.Module):
         return arc_loss + rel_loss
 
     def decode(self, s_arc, s_rel, mask, tree=False, proj=False):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+
+        Returns:
+            arc_preds (Tensor): [batch_size, seq_len]
+                The predicted arcs.
+            rel_preds (Tensor): [batch_size, seq_len]
+                The predicted labels.
+        """
+
         lens = mask.sum(1)
         # prevent self-loops
         s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
