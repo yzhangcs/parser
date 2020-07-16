@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 import supar
 import torch
 import torch.distributed as dist
-from supar.utils import Dataset
-from supar.utils.config import Config
+from supar.utils import Config, Dataset
 from supar.utils.field import Field
 from supar.utils.logging import init_logger, logger
 from supar.utils.metric import Metric
@@ -43,6 +42,7 @@ class Parser(object):
               **kwargs):
         args = self.args.update(locals())
 
+        self.transform.train()
         if dist.is_initialized():
             args.batch_size = args.batch_size // dist.get_world_size()
         train = Dataset(self.transform, args.train, **args)
@@ -65,8 +65,7 @@ class Parser(object):
                               args.lr,
                               (args.mu, args.nu),
                               args.epsilon)
-        self.scheduler = ExponentialLR(self.optimizer,
-                                       args.decay**(1/args.decay_steps))
+        self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
 
         elapsed = timedelta()
         best_e, best_metric = 1, Metric()
@@ -100,9 +99,10 @@ class Parser(object):
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
-    def evaluate(self, data, buckets=8, **kwargs):
+    def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):
         args = self.args.update(locals())
 
+        self.transform.train()
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
         logger.info(f"Load the dataset\n{dataset}")
@@ -117,7 +117,7 @@ class Parser(object):
 
         return loss, metric
 
-    def predict(self, data, pred=None, buckets=8, prob=True, **kwargs):
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, **kwargs):
         args = self.args.update(locals())
 
         self.transform.eval()
