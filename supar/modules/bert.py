@@ -50,6 +50,7 @@ class BertEmbedding(nn.Module):
         self.requires_grad = requires_grad
 
         self.scalar_mix = ScalarMix(self.n_layers, dropout)
+        self.projection = nn.Identity()
         if self.hidden_size != n_out:
             self.projection = nn.Linear(self.hidden_size, self.n_out, False)
 
@@ -75,7 +76,6 @@ class BertEmbedding(nn.Module):
         mask = subwords.ne(self.pad_index)
         lens = mask.sum((1, 2))
 
-        self.bert.train(self.requires_grad and self.training)
         # [batch_size, n_subwords]
         subwords = pad_sequence(subwords[mask].split(lens.tolist()), True)
         bert_mask = pad_sequence(mask[mask].split(lens.tolist()), True)
@@ -93,7 +93,6 @@ class BertEmbedding(nn.Module):
         embed = embed.masked_scatter_(mask.unsqueeze(-1), bert[bert_mask])
         # [batch_size, seq_len, hidden_size]
         embed = embed.sum(2) / bert_lens.unsqueeze(-1)
-        if hasattr(self, 'projection'):
-            embed = self.projection(embed)
+        embed = self.projection(embed)
 
         return embed

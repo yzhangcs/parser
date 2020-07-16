@@ -18,10 +18,10 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFConstituencyParser]}
 
 PRETRAINED = {
-    'biff-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.biaffine.dependency.char.zip',
-    'biff-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.biaffine.dependency.char.zip',
-    'mst-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.mst.dependency.char.zip',
-    'mst-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.mst.dependency.char.zip',
+    'loc-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.biaffine.dependency.char.zip',
+    'loc-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.biaffine.dependency.char.zip',
+    'mtree-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.mst.dependency.char.zip',
+    'mtree-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.mst.dependency.char.zip',
     'crf-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf.dependency.char.zip',
     'crf-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.dependency.char.zip',
     'crf2o-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf2o.dependency.char.zip',
