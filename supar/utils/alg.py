@@ -172,7 +172,7 @@ def eisner2o(scores, mask):
         scores (Tuple[Tensor, Tensor]):
             A tuple of two tensors representing the first-order and second-order scores repectively.
             The first ([batch_size, seq_len, seq_len]) holds scores of dependent-head pairs.
-            The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the head-sibling-dependent triples.
+            The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the dependent-head-sibling triples.
         mask (BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
             The first column with pseudo words as roots should be set to False.

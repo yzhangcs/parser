@@ -231,7 +231,7 @@ class CRFConstituencyModel(nn.Module):
             loss (Tensor): scalar
                 The training loss.
             span_probs (Tensor): [batch_size, seq_len, seq_len]
-                Scores of all spans if mbr is False, marginals otherwise.
+                Orginal span scores if mbr is False, marginals otherwise.
         """
 
         span_mask = spans & mask
@@ -254,6 +254,7 @@ class CRFConstituencyModel(nn.Module):
         Returns:
             A sequence of factorized labeled tree traversed in pre-order.
         """
+
         span_preds = cky(s_span, mask)
         label_preds = s_label.argmax(-1).tolist()
         return [[(i, j, labels[i][j]) for i, j in spans]

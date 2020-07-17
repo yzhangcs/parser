@@ -292,6 +292,28 @@ class MSTDependencyModel(BiaffineDependencyModel):
         self.matrix_tree = MatrixTree()
 
     def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            arcs (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard arcs.
+            rels (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard labels.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+
+        Returns:
+            loss (Tensor): scalar
+                The training loss.
+            arc_probs (Tensor): [batch_size, seq_len, seq_len]
+                Orginal arc scores if mbr is False, marginals otherwise.
+        """
+
         batch_size, seq_len = mask.shape
         arc_loss, arc_probs = self.matrix_tree(s_arc, mask, arcs, mbr)
         s_rel, rels = s_rel[mask], rels[mask]
@@ -317,6 +339,30 @@ class CRFDependencyModel(BiaffineDependencyModel):
         self.crf = CRFDependency()
 
     def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True, partial=False):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            arcs (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard arcs.
+            rels (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard labels.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            partial (bool, default: False):
+                True denotes the trees are partially annotated.
+
+        Returns:
+            loss (Tensor): scalar
+                The training loss.
+            arc_probs (Tensor): [batch_size, seq_len, seq_len]
+                Orginal arc scores if mbr is False, marginals otherwise.
+        """
+
         batch_size, seq_len = mask.shape
         arc_loss, arc_probs = self.crf(s_arc, mask, arcs, mbr, partial)
         # -1 denotes un-annotated arcs
@@ -337,6 +383,17 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
       Efficient Second-Order TreeCRF for Neural Dependency Parsing
       https://www.aclweb.org/anthology/2020.acl-main.302/
+
+    Args:
+        Remainings required arguments are listed in BiaffineDependencyModel.
+        n_lstm_hidden (int, default: 400):
+            Dimension of LSTM hidden states.
+        lstm_dropout (float, default: .33):
+            Dropout ratio of LSTM.
+        n_mlp_sib (int, default: 500):
+            Sibling MLP size.
+        mlp_dropout (float, default: .33):
+            Dropout ratio of MLP layers.
     """
 
     def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):
@@ -358,6 +415,24 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         self.crf = CRF2oDependency()
 
     def forward(self, words, feats):
+        """
+        Args:
+            words (LongTensor) [batch_size, seq_len]:
+                The word indices.
+            feats (LongTensor):
+                The feat indices.
+                If feat is 'char' or 'bert', the size of feats should be [batch_size, seq_len, fix_len]
+                If 'tag', then the size is [batch_size, seq_len].
+
+        Returns:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_sib (Tensor): [batch_size, seq_len, seq_len, seq_len]
+                The scores of all possible dependent-head-sibling triples.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+        """
+
         batch_size, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
@@ -402,6 +477,34 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         return s_arc, s_sib, s_rel
 
     def loss(self, s_arc, s_sib, s_rel, arcs, sibs, rels, mask, mbr=True, partial=False):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_sib (Tensor): [batch_size, seq_len, seq_len, seq_len]
+                The scores of all possible dependent-head-sibling triples.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            arcs (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard arcs.
+            sibs (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard siblings.
+            rels (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard labels.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            partial (bool, default: False):
+                True denotes the trees are partially annotated.
+
+        Returns:
+            loss (Tensor): scalar
+                The training loss.
+            arc_probs (Tensor): [batch_size, seq_len, seq_len]
+                Orginal arc scores if mbr is False, marginals otherwise.
+        """
+
         batch_size, seq_len = mask.shape
         scores, target = (s_arc, s_sib), (arcs, sibs)
         arc_loss, arc_probs = self.crf(scores, mask, target, mbr, partial)

@@ -218,12 +218,12 @@ class CRF2oDependency(nn.Module):
             scores (Tuple[Tensor, Tensor]):
                 Tuple of two tensors s_arc and s_sib.
                 s_arc ([batch_size, seq_len, seq_len]) holds The scores of all possible dependent-head pairs.
-                s_sib ([batch_size, seq_len, seq_len, seq_len]) holds the scores of head-sibling-dependent triples.
+                s_sib ([batch_size, seq_len, seq_len, seq_len]) holds the scores of dependent-head-sibling triples.
             mask (BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
             target (Tensor, default: None): [batch_size, seq_len]
-                Tensors of gold-standard dependent-head pairs and head-sibling-dependent triples.
+                Tensors of gold-standard dependent-head pairs and dependent-head-sibling triples.
                 If partially annotated, the unannotated positions should be filled with -1.
             mbr (bool, default: False):
                 If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
