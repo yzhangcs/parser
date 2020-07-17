@@ -17,7 +17,6 @@ from supar.utils.transform import Tree
 class CRFConstituencyParser(Parser):
     """
     The implementation of CRF Constituency Parser.
-    This parser is also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) Parser.
 
     References:
     - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
@@ -42,53 +41,49 @@ class CRFConstituencyParser(Parser):
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
               **kwargs):
-        r"""the function of training
-
+        """
         Args:
             train, dev, test (List[List] or str):
-                the train\dev\test data, input as a filename 'str' or a list of filenames (required).
+                the train/dev/test data, both list of instances and filename are allowed.
             buckets (int, default: 32):
-                The dict that maps each centroid to the indices of the clustering sentences.
-                The centroid corresponds to the average length of all sentences in the bucket (optional).
-            batch_size (int, default: 5000): batch size in training (optional).
-            mbr (bool, default: True): using Minimum Bayes Risk decoding (optional).
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            mbr (bool, default: True):
+                If True, performs mbr decoding.
             delete (Set[str], default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}):
-                a set of labels need to delete from evaluation, those labels may be predict but evaluate.
-                the delete set corresponds to the wildly used PTB dataset (optional).
+                A set of labels that will not be taken into consideration during evaluation.
             equal (Dict[str, str], default: {'ADVP': 'PRT'}):
-                labels that should be treat as same label.
-                the delete equal map corresponds to the wildly used PTB dataset (optional).
-            kwargs: other args (optional).
-
-        Examples:
-            >>> parser.train(train_filename, dev_filename, test_filename)
+                The pairs in the dict are considered equivalent during evaluation.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
         """
+
         return super().train(**Config().update(locals()))
 
     def evaluate(self, data, buckets=8, batch_size=5000, mbr=True,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
                  **kwargs):
-        r"""the function of evaluating
-
+        """
         Args:
-            data (List[List] or str):
-                the data you want to evaluate, input as a filename 'str' or a list of filenames (required).
+            data (str):
+                The data to be evaluated.
             buckets (int, default: 32):
-                The dict that maps each centroid to the indices of the clustering sentences.
-                The centroid corresponds to the average length of all sentences in the bucket (optional).
-            batch_size (int, default: 5000): batch size in training (optional).
-            mbr (bool, default: True): using Minimum Bayes Risk decoding (optional).
-            delete (Set, default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}):
-                a set of labels need to delete from evaluation, those labels may be predict but evaluate.
-                the delete set corresponds to the wildly used PTB dataset (optional).
-            equal (Dict, default: {'ADVP': 'PRT'}):
-                labels that should be treat as same label.
-                the delete equal map corresponds to the wildly used PTB dataset (optional).
-            kwargs: other args (optional).
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            mbr (bool, default: True):
+                If True, performs mbr decoding.
+            delete (Set[str], default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}):
+                A set of labels that will not be taken into consideration during evaluation.
+            equal (Dict[str, str], default: {'ADVP': 'PRT'}):
+                The pairs in the dict are considered equivalent during evaluation.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
 
-        Examples:
-            >>> parser.evaluate(data_filename)
+        Returns:
+            The loss scalar and evaluation results.
         """
         return super().evaluate(**Config().update(locals()))
 
@@ -97,20 +92,24 @@ class CRFConstituencyParser(Parser):
 
         Args:
             data (List[List] or str):
-                the data you want to predict, input as a filename 'str' or a list of filenames (required).
+                The data to be predicted, both a list of instances and filename are allowed.
             pred (str, default: None):
-                the output file name that you want to save the predict results (optional).
+                If specified, the predicted results will be saved to the file.
             buckets (int, default: 32):
-                The dict that maps each centroid to the indices of the clustering sentences.
-                The centroid corresponds to the average length of all sentences in the bucket (optional).
-            batch_size (int, default: 5000): batch size in training (optional).
-            prob (bool, default: False): whether output the probability or not (optional).
-            mbr (bool, default: True): using Minimum Bayes Risk decoding (optional).
-            kwargs: other args (optional).
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            prob (bool, default: False):
+                If True, outputs the probabilities.
+            mbr (bool, default: True):
+                If True, performs mbr decoding.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
 
-        Examples:
-            >>> parser.predict(data_filename, pred=output_filename)
+        Returns:
+            A Dataset object that stores the predicted results.
         """
+
         return super().predict(**Config().update(locals()))
 
     def _train(self, loader):
@@ -132,8 +131,7 @@ class CRFConstituencyParser(Parser):
             self.optimizer.step()
             self.scheduler.step()
 
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - "
-                                f"loss: {loss:.4f}")
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -190,21 +188,21 @@ class CRFConstituencyParser(Parser):
 
         Args:
             path (str):
-                the path you want to save your model (required).
+                The path of the model to be saved.
             min_freq (str, default: 2):
-                the minimum freqency of words.
-                words appear less than it will be ignored (optional).
+                The minimum frequency needed to include a token in the vocabulary.
             fix_len (int, default: 20):
-                A fixed length that all subword pieces will be padded to.
-                This is used for truncating the subword pieces that exceed the length.
-                To save the memory, the final length will be the smaller value
-                between the max length of subword pieces in a batch and fix_len (optional).
-            verbose (bool, default: True): if you don't want the verbose logging, set it to False (optional).
-            kwargs: other args (optional).
+                The max length of all subword pieces. The excess part of each piece will be truncated.
+                Required if using CharLSTM/BERT.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
 
-        Examples:
-            >>> parser.build(model_path)
+        Returns:
+            The created parser.
         """
+
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
