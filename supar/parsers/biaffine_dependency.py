@@ -32,25 +32,14 @@ class BiaffineDependencyParser(Parser):
                                     for s, i in self.WORD.vocab.stoi.items()
                                     if ispunct(s)]).to(self.args.device)
 
-    def train(self, train, dev, test, buckets=32, punct=False, tree=False, proj=False, **kwargs):
-        super().train(train, dev, test, buckets,
-                      punct=punct,
-                      tree=tree,
-                      proj=proj,
-                      **kwargs)
+    def train(self, train, dev, test, buckets=32, batch_size=5000, punct=False, tree=False, proj=False, **kwargs):
+        return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, punct=False, tree=True, proj=False, **kwargs):
-        return super().evaluate(data, buckets,
-                                punct=punct,
-                                tree=tree,
-                                proj=proj,
-                                **kwargs)
+    def evaluate(self, data, buckets=8, batch_size=5000, punct=False, tree=True, proj=False, **kwargs):
+        return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, prob=False, tree=True, proj=False, **kwargs):
-        return super().predict(data, pred, buckets, prob,
-                               tree=tree,
-                               proj=proj,
-                               **kwargs)
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, tree=True, proj=False, **kwargs):
+        return super().predict(**Config().update(locals()))
 
     def _train(self, loader):
         self.model.train()
@@ -75,7 +64,7 @@ class BiaffineDependencyParser(Parser):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - "
                                 f"loss: {loss:.4f} - "
                                 f"{metric}")
 
@@ -167,10 +156,7 @@ class BiaffineDependencyParser(Parser):
             transform = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=ARC, DEPREL=REL)
 
         train = Dataset(transform, args.train)
-        embed = None
-        if args.embed:
-            embed = Embedding.load(args.embed, args.unk)
-        WORD.build(train, args.min_freq, embed)
+        WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
         FEAT.build(train)
         REL.build(train)
         args.update({

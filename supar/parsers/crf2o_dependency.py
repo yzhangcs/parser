@@ -23,33 +23,17 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, punct=False,
+    def train(self, train, dev, test, buckets=32, batch_size=5000, punct=False,
               mbr=True, tree=False, proj=False, partial=False, **kwargs):
-        super().train(train, dev, test, buckets,
-                      punct=punct,
-                      mbr=mbr,
-                      tree=tree,
-                      proj=proj,
-                      partial=partial,
-                      **kwargs)
+        return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, punct=False,
-                 mbr=True, tree=False, proj=False, partial=False, **kwargs):
-        return super().evaluate(data, buckets,
-                                punct=punct,
-                                mbr=mbr,
-                                tree=tree,
-                                proj=proj,
-                                partial=partial,
-                                **kwargs)
+    def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
+                 mbr=True, tree=True, proj=False, partial=False, **kwargs):
+        return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, prob=False,
-                mbr=True, tree=False, proj=False, **kwargs):
-        return super().predict(data, pred, buckets, prob,
-                               mbr=mbr,
-                               tree=tree,
-                               proj=proj,
-                               **kwargs)
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
+                mbr=True, tree=True, proj=False, **kwargs):
+        return super().predict(**Config().update(locals()))
 
     def _train(self, loader):
         self.model.train()
@@ -71,14 +55,14 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             self.optimizer.step()
             self.scheduler.step()
 
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - "
                                 f"loss: {loss:.4f} - "
                                 f"{metric}")
 
@@ -96,8 +80,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
                                           self.args.mbr,
                                           self.args.partial)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
                                                      self.args.tree,
+                                                     self.args.mbr,
                                                      self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
@@ -123,9 +108,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             lens = mask.sum(1).tolist()
             s_arc, s_sib, s_rel = self.model(words, feats)
             if self.args.mbr:
-                s_arc = self.model.crf((s_arc, s_rel), mask, mbr=True)
+                s_arc = self.model.crf((s_arc, s_sib), mask, mbr=True)
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
                                                      self.args.tree,
+                                                     self.args.mbr,
                                                      self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
@@ -177,11 +163,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             transform = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=(ARC, SIB), DEPREL=REL)
 
         train = Dataset(transform, args.train)
-        embed = None
-        embed = None
-        if args.embed:
-            embed = Embedding.load(args.embed, args.unk)
-        WORD.build(train, args.min_freq, embed)
+        WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
         FEAT.build(train)
         REL.build(train)
         args.update({

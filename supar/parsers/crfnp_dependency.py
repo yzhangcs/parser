@@ -3,16 +3,16 @@
 
 import torch
 import torch.nn as nn
-from supar.models import MSTDependencyModel
+from supar.models import CRFNPDependencyModel
 from supar.parsers.biaffine_dependency import BiaffineDependencyParser
 from supar.utils.logging import progress_bar
 from supar.utils.metric import AttachmentMetric
 
 
-class MSTDependencyParser(BiaffineDependencyParser):
+class CRFNPDependencyParser(BiaffineDependencyParser):
 
-    NAME = 'mst-dependency'
-    MODEL = MSTDependencyModel
+    NAME = 'crfnp-dependency'
+    MODEL = CRFNPDependencyModel
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

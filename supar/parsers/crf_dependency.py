@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from supar.models import CRFDependencyModel
 from supar.parsers.biaffine_dependency import BiaffineDependencyParser
+from supar.utils import Config
 from supar.utils.logging import progress_bar
 from supar.utils.metric import AttachmentMetric
 
@@ -16,33 +17,17 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, punct=False,
+    def train(self, train, dev, test, buckets=32, batch_size=5000, punct=False,
               mbr=True, tree=False, proj=False, partial=False, **kwargs):
-        super().train(train, dev, test, buckets,
-                      punct=punct,
-                      mbr=mbr,
-                      tree=tree,
-                      proj=proj,
-                      partial=partial,
-                      **kwargs)
+        return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, punct=False,
-                 mbr=True, tree=False, proj=False, partial=False, **kwargs):
-        return super().evaluate(data, buckets,
-                                punct=punct,
-                                mbr=mbr,
-                                tree=tree,
-                                proj=proj,
-                                partial=partial,
-                                **kwargs)
+    def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
+                 mbr=True, tree=True, proj=False, partial=False, **kwargs):
+        return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, prob=False,
-                mbr=True, tree=False, proj=False, **kwargs):
-        return super().predict(data, pred, buckets, prob,
-                               mbr=mbr,
-                               tree=tree,
-                               proj=proj,
-                               **kwargs)
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
+                mbr=True, tree=True, proj=False, **kwargs):
+        return super().predict(**Config().update(locals()))
 
     def _train(self, loader):
         self.model.train()
@@ -71,7 +56,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - "
                                 f"loss: {loss:.4f} - "
                                 f"{metric}")
 

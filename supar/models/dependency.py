@@ -7,7 +7,7 @@ from supar.modules import (MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM,
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRF2oDependency, CRFDependency, MatrixTree
 from supar.utils import Config
-from supar.utils.alg import eisner, mst
+from supar.utils.alg import eisner, eisner2o, mst
 from supar.utils.transform import CoNLL
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -265,62 +265,11 @@ class BiaffineDependencyModel(nn.Module):
         bad = [not CoNLL.istree(seq[:i+1], proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
-            alg = mst if proj else eisner
+            alg = eisner if proj else mst
             arc_preds[bad] = alg(s_arc[bad], mask[bad])
-        rel_preds = s_rel.argmax(-1)
-        rel_preds = rel_preds.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
+        rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds
-
-
-class MSTDependencyModel(BiaffineDependencyModel):
-    """
-    The implementation of MST Dependency Parser.
-
-    References:
-    - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
-      Neural Probabilistic Model for Non-projective MST Parsing
-      https://www.aclweb.org/anthology/I17-1007/
-    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
-      Structured Prediction Models via the Matrix-Tree Theorem
-      https://www.aclweb.org/anthology/D07-1015/
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self.matrix_tree = MatrixTree()
-
-    def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True):
-        """
-        Args:
-            s_arc (Tensor): [batch_size, seq_len, seq_len]
-                The scores of all possible arcs.
-            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
-                The scores of all possible labels on each arc.
-            arcs (LongTensor): [batch_size, seq_len]
-                Tensor of gold-standard arcs.
-            rels (LongTensor): [batch_size, seq_len]
-                Tensor of gold-standard labels.
-            mask (BoolTensor): [batch_size, seq_len, seq_len]
-                Mask for covering the unpadded tokens.
-            mbr (bool, default: True):
-                If True, returns marginals for MBR decoding.
-
-        Returns:
-            loss (Tensor): scalar
-                The training loss.
-            arc_probs (Tensor): [batch_size, seq_len, seq_len]
-                Orginal arc scores if mbr is False, marginals otherwise.
-        """
-
-        batch_size, seq_len = mask.shape
-        arc_loss, arc_probs = self.matrix_tree(s_arc, mask, arcs, mbr)
-        s_rel, rels = s_rel[mask], rels[mask]
-        s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
-        rel_loss = self.criterion(s_rel, rels)
-        loss = arc_loss + rel_loss
-        return loss, arc_probs
 
 
 class CRFDependencyModel(BiaffineDependencyModel):
@@ -511,6 +460,97 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         # -1 denotes un-annotated arcs
         if partial:
             mask = mask & arcs.ge(0)
+        s_rel, rels = s_rel[mask], rels[mask]
+        s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
+        rel_loss = self.criterion(s_rel, rels)
+        loss = arc_loss + rel_loss
+        return loss, arc_probs
+
+    def decode(self, s_arc, s_sib, s_rel, mask, tree=False, mbr=True, proj=False):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_sib (Tensor): [batch_size, seq_len, seq_len, seq_len]
+                The scores of all possible dependent-head-sibling triples.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            mbr (bool, default: True):
+                If True, performs MBR decoding.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+
+        Returns:
+            arc_preds (Tensor): [batch_size, seq_len]
+                The predicted arcs.
+            rel_preds (Tensor): [batch_size, seq_len]
+                The predicted labels.
+        """
+
+        lens = mask.sum(1)
+        # prevent self-loops
+        s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
+        arc_preds = s_arc.argmax(-1)
+        bad = [not CoNLL.istree(seq[:i+1], proj)
+               for i, seq in zip(lens.tolist(), arc_preds.tolist())]
+        if tree and any(bad):
+            if proj and not mbr:
+                arc_preds = eisner2o((s_arc, s_sib), mask)
+            else:
+                alg = eisner if proj else mst
+                arc_preds[bad] = alg(s_arc[bad], mask[bad])
+        rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
+
+        return arc_preds, rel_preds
+
+
+class CRFNPDependencyModel(BiaffineDependencyModel):
+    """
+    The implementation of non-projective CRF Dependency Parser.
+
+    References:
+    - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
+      Neural Probabilistic Model for Non-projective MST Parsing
+      https://www.aclweb.org/anthology/I17-1007/
+    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
+      Structured Prediction Models via the Matrix-Tree Theorem
+      https://www.aclweb.org/anthology/D07-1015/
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.matrix_tree = MatrixTree()
+
+    def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True):
+        """
+        Args:
+            s_arc (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible arcs.
+            s_rel (Tensor): [batch_size, seq_len, seq_len, n_labels]
+                The scores of all possible labels on each arc.
+            arcs (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard arcs.
+            rels (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard labels.
+            mask (BoolTensor): [batch_size, seq_len, seq_len]
+                Mask for covering the unpadded tokens.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+
+        Returns:
+            loss (Tensor): scalar
+                The training loss.
+            arc_probs (Tensor): [batch_size, seq_len, seq_len]
+                Orginal arc scores if mbr is False, marginals otherwise.
+        """
+
+        batch_size, seq_len = mask.shape
+        arc_loss, arc_probs = self.matrix_tree(s_arc, mask, arcs, mbr)
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
         rel_loss = self.criterion(s_rel, rels)

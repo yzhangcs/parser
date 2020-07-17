@@ -2,13 +2,13 @@
 
 import argparse
 
-from supar import MSTDependencyParser
+from supar import CRFNPDependencyParser
 from supar.cmds.cmd import parse
 
 
 def main():
     parser = argparse.ArgumentParser(description='Create MST Dependency Parser.')
-    parser.set_defaults(Parser=MSTDependencyParser)
+    parser.set_defaults(Parser=CRFNPDependencyParser)
     parser.add_argument('--mbr', action='store_true', help='whether to use mbr decoding')
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser('train', help='Train a parser.')
