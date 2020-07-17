@@ -303,8 +303,8 @@ def cky(scores, mask):
             For each square matrix in a batch, the positions except upper triangular part should be masked out.
 
     Returns:
-        trees (List[List[int]]):
-            The factorized sequences of predicted trees traversed in pre-order.
+        trees (List[List[Tuple]]):
+            The sequences of factorized predicted bracketed trees traversed in pre-order.
     """
 
     lens = mask[:, 0].sum(-1)
