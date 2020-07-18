@@ -278,4 +278,4 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         })
         model = cls.MODEL(**args)
         model = model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform, verbose)
+        return cls(args, model, transform)
