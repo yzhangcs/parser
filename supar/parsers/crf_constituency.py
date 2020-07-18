@@ -40,6 +40,7 @@ class CRFConstituencyParser(Parser):
     def train(self, train, dev, test, buckets=32, batch_size=5000, mbr=True,
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
+              verbose=True,
               **kwargs):
         """
         Args:
@@ -55,6 +56,8 @@ class CRFConstituencyParser(Parser):
                 A set of labels that will not be taken into consideration during evaluation.
             equal (Dict[str, str], default: {'ADVP': 'PRT'}):
                 The pairs in the dict are considered equivalent during evaluation.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
@@ -64,6 +67,7 @@ class CRFConstituencyParser(Parser):
     def evaluate(self, data, buckets=8, batch_size=5000, mbr=True,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
+                 verbose=True,
                  **kwargs):
         """
         Args:
@@ -79,17 +83,19 @@ class CRFConstituencyParser(Parser):
                 A set of labels that will not be taken into consideration during evaluation.
             equal (Dict[str, str], default: {'ADVP': 'PRT'}):
                 The pairs in the dict are considered equivalent during evaluation.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 
         Returns:
             The loss scalar and evaluation results.
         """
+
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, mbr=True, **kwargs):
-        r"""the function of predicting
-
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, mbr=True, verbose=True, **kwargs):
+        """
         Args:
             data (List[List] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
@@ -103,6 +109,8 @@ class CRFConstituencyParser(Parser):
                 If True, outputs the probabilities.
             mbr (bool, default: True):
                 If True, performs mbr decoding.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 
@@ -183,7 +191,7 @@ class CRFConstituencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, verbose=True, **kwargs):
+    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
         r"""The first choice to build a brand-new Parser
 
         Args:
@@ -194,8 +202,6 @@ class CRFConstituencyParser(Parser):
             fix_len (int, default: 20):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 

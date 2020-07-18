@@ -10,6 +10,14 @@ from supar.utils.metric import AttachmentMetric
 
 
 class CRFDependencyParser(BiaffineDependencyParser):
+    """
+    The implementation of first-order CRF Dependency Parser.
+
+    References:
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    """
 
     NAME = 'crf-dependency'
     MODEL = CRFDependencyModel
@@ -18,15 +26,93 @@ class CRFDependencyParser(BiaffineDependencyParser):
         super().__init__(*args, **kwargs)
 
     def train(self, train, dev, test, buckets=32, batch_size=5000, punct=False,
-              mbr=True, tree=False, proj=False, partial=False, **kwargs):
+              mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
+        """
+        Args:
+            train, dev, test (List[List] or str):
+                the train/dev/test data, both list of instances and filename are allowed.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            punct (bool, default: False):
+                If False, ignores the punctuations during evaluation.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            partial (bool, default: False):
+                True denotes the trees are partially annotated.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+        """
+
         return super().train(**Config().update(locals()))
 
     def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
-                 mbr=True, tree=True, proj=False, partial=False, **kwargs):
+                 mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
+        """
+        Args:
+            data (str):
+                The data to be evaluated.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            punct (bool, default: False):
+                If False, ignores the punctuations during evaluation.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            partial (bool, default: False):
+                True denotes the trees are partially annotated.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The loss scalar and evaluation results.
+        """
+
         return super().evaluate(**Config().update(locals()))
 
     def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
-                mbr=True, tree=True, proj=False, **kwargs):
+                mbr=True, tree=True, proj=True, verbose=True, **kwargs):
+        """
+        Args:
+            data (List[List] or str):
+                The data to be predicted, both a list of instances and filename are allowed.
+            pred (str, default: None):
+                If specified, the predicted results will be saved to the file.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            prob (bool, default: False):
+                If True, outputs the probabilities.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            A Dataset object that stores the predicted results.
+        """
+
         return super().predict(**Config().update(locals()))
 
     def _train(self, loader):

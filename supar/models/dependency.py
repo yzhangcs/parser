@@ -262,7 +262,7 @@ class BiaffineDependencyModel(nn.Module):
         # prevent self-loops
         s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
         arc_preds = s_arc.argmax(-1)
-        bad = [not CoNLL.istree(seq[:i+1], proj)
+        bad = [not CoNLL.istree(seq[1:i+1], proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
             alg = eisner if proj else mst
@@ -495,7 +495,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         # prevent self-loops
         s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
         arc_preds = s_arc.argmax(-1)
-        bad = [not CoNLL.istree(seq[:i+1], proj)
+        bad = [not CoNLL.istree(seq[1:i+1], proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
             if proj and not mbr:

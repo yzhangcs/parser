@@ -21,11 +21,10 @@ class Parser(object):
     NAME = None
     MODEL = None
 
-    def __init__(self, args, model, transform, verbose=True):
+    def __init__(self, args, model, transform):
         self.args = args
         self.model = model
         self.transform = transform
-        init_logger(logger, verbose=verbose)
 
     def train(self, train, dev, test,
               buckets=32,
@@ -39,8 +38,10 @@ class Parser(object):
               decay_steps=5000,
               epochs=5000,
               patience=100,
+              verbose=True,
               **kwargs):
         args = self.args.update(locals())
+        init_logger(logger, verbose=args.verbose)
 
         self.transform.train()
         if dist.is_initialized():
@@ -101,6 +102,7 @@ class Parser(object):
 
     def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):
         args = self.args.update(locals())
+        init_logger(logger, verbose=args.verbose)
 
         self.transform.train()
         dataset = Dataset(self.transform, data)
@@ -119,6 +121,7 @@ class Parser(object):
 
     def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, **kwargs):
         args = self.args.update(locals())
+        init_logger(logger, verbose=args.verbose)
 
         self.transform.eval()
         if args.prob:
@@ -155,11 +158,11 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def build(cls, path, verbose=True, **kwargs):
+    def build(cls, path, **kwargs):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, verbose=True, **kwargs):
+    def load(cls, path, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -175,7 +178,7 @@ class Parser(object):
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
         transform = state['transform']
-        return cls(args, model, transform, verbose)
+        return cls(args, model, transform)
 
     def save(self, path):
         model = self.model

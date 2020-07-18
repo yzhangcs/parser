@@ -238,21 +238,21 @@ class CoNLL(Transform):
 
         Args:
             sequence (List[int]):
-                A list of head indices. The first index is a placeholder for the root.
+                A list of head indices.
 
         Returns:
             True if the tree is projective, False otherwise.
 
         Examples::
-            >>> CoNLL.isprojective([0, 2, -1, 1])  # -1 denotes un-annotated cases
+            >>> CoNLL.isprojective([2, -1, 1])  # -1 denotes un-annotated cases
             False
-            >>> CoNLL.isprojective([0, 3, -1, 2])
+            >>> CoNLL.isprojective([3, -1, 2])
             False
         """
 
-        arcs = [(h, d) for d, h in enumerate(sequence[1:], 1) if h >= 0]
-        for i, (hi, di) in enumerate(arcs):
-            for hj, dj in arcs[i+1:]:
+        pairs = [(h, d) for d, h in enumerate(sequence, 1) if h >= 0]
+        for i, (hi, di) in enumerate(pairs):
+            for hj, dj in pairs[i+1:]:
                 (li, ri), (lj, rj) = sorted([hi, di]), sorted([hj, dj])
                 if li <= hj <= ri and hi == dj:
                     return False
@@ -269,7 +269,7 @@ class CoNLL(Transform):
 
         Args:
             sequence (List[int]):
-                A list of head indices. The first index is a placeholder for the root.
+                A list of head indices.
             proj (bool, default: False):
                 If True, requires the tree to be projective.
             multiroot (bool, default: True):
@@ -279,16 +279,16 @@ class CoNLL(Transform):
             True if the arcs form an valid tree, False otherwise.
 
         Examples::
-            >>> CoNLL.istree([0, 3, 0, 0, 3], multiroot=True)
+            >>> CoNLL.istree([3, 0, 0, 3], multiroot=True)
             True
-            >>> CoNLL.istree([0, 3, 0, 0, 3], proj=True)
+            >>> CoNLL.istree([3, 0, 0, 3], proj=True)
             False
         """
 
         from supar.utils.alg import tarjan
         if proj and not cls.isprojective(sequence):
             return False
-        n_roots = sum(head == 0 for head in sequence[1:])
+        n_roots = sum(head == 0 for head in sequence)
         if n_roots == 0:
             return False
         if not multiroot and n_roots > 1:
@@ -324,8 +324,7 @@ class CoNLL(Transform):
                 sentences.append(CoNLLSentence(self, lines[start:i]))
                 start = i + 1
         if proj:
-            sentences = [i for i in sentences
-                         if self.isprojective([0] + list(map(int, i.arcs)))]
+            sentences = [i for i in sentences if self.isprojective(list(map(int, i.arcs)))]
         if max_len is not None:
             sentences = [i for i in sentences if len(i) < max_len]
 

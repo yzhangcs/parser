@@ -7,7 +7,7 @@ from supar.cmds.cmd import parse
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Create MST Dependency Parser.')
+    parser = argparse.ArgumentParser(description='Create Non-projective CRF Dependency Parser.')
     parser.set_defaults(Parser=CRFNPDependencyParser)
     parser.add_argument('--mbr', action='store_true', help='whether to use mbr decoding')
     subparsers = parser.add_subparsers(title='Commands', dest='mode')

@@ -16,6 +16,14 @@ from supar.utils.transform import CoNLL
 
 
 class BiaffineDependencyParser(Parser):
+    """
+    The implementation of Biaffine Dependency Parser.
+
+    References:
+    - Timothy Dozat and Christopher D. Manning (ICLR'17)
+      Deep Biaffine Attention for Neural Dependency Parsing
+      https://openreview.net/pdf?id=Hk95PK9le/
+    """
 
     NAME = 'biaffine-dependency'
     MODEL = BiaffineDependencyModel
@@ -32,13 +40,84 @@ class BiaffineDependencyParser(Parser):
                                     for s, i in self.WORD.vocab.stoi.items()
                                     if ispunct(s)]).to(self.args.device)
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, punct=False, tree=False, proj=False, **kwargs):
+    def train(self, train, dev, test, buckets=32, batch_size=5000,
+              punct=False, tree=False, proj=False, verbose=True, **kwargs):
+        """
+        Args:
+            train, dev, test (List[List] or str):
+                the train/dev/test data, both list of instances and filename are allowed.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            punct (bool, default: False):
+                If False, ignores the punctuations during evaluation.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+        """
+
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, punct=False, tree=True, proj=False, **kwargs):
+    def evaluate(self, data, buckets=8, batch_size=5000,
+                 punct=False, tree=True, proj=False, verbose=True, **kwargs):
+        """
+        Args:
+            data (str):
+                The data to be evaluated.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            punct (bool, default: False):
+                If False, ignores the punctuations during evaluation.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The loss scalar and evaluation results.
+        """
+
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, tree=True, proj=False, **kwargs):
+    def predict(self, data, pred=None, buckets=8, batch_size=5000,
+                prob=False, tree=True, proj=False, verbose=True, **kwargs):
+        """
+        Args:
+            data (List[List] or str):
+                The data to be predicted, both a list of instances and filename are allowed.
+            pred (str, default: None):
+                If specified, the predicted results will be saved to the file.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            prob (bool, default: False):
+                If True, outputs the probabilities.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            A Dataset object that stores the predicted results.
+        """
+
         return super().predict(**Config().update(locals()))
 
     def _train(self, loader):
@@ -108,8 +187,7 @@ class BiaffineDependencyParser(Parser):
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
-                s_arc = s_arc.softmax(-1)
-                arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
+                arc_probs = s_arc.softmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
                 probs.extend(arc_probs[mask].split(lens))
         arcs = [seq.tolist() for seq in arcs]
         rels = [self.REL.vocab[seq.tolist()] for seq in rels]
@@ -120,7 +198,24 @@ class BiaffineDependencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, verbose=True, **kwargs):
+    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+        r"""The first choice to build a brand-new Parser
+
+        Args:
+            path (str):
+                The path of the model to be saved.
+            min_freq (str, default: 2):
+                The minimum frequency needed to include a token in the vocabulary.
+            fix_len (int, default: 20):
+                The max length of all subword pieces. The excess part of each piece will be truncated.
+                Required if using CharLSTM/BERT.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The created parser.
+        """
+
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)

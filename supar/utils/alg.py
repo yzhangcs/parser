@@ -350,17 +350,17 @@ def tarjan(sequence):
 
     Args:
         sequence (List):
-            List of head indices. The first element is a placeholder for the root.
+            List of head indices.
 
     Returns:
         A generator that yields SCCs (cycles) lazily. All self-loops are ignored.
 
     Examples::
-        >>> next(tarjan([0, 2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
+        >>> next(tarjan([2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
         [2, 5, 1]
     """
 
-    sequence[0] = -1
+    sequence = [-1] + sequence
     # record the search order, i.e., the timestep
     dfn = [-1] * len(sequence)
     # record the the smallest timestep in a SCC
@@ -423,7 +423,7 @@ def chuliu_edmonds(s):
 
     tree = s.argmax(-1)
     # return the cycle finded by tarjan algorithm lazily
-    cycle = next(tarjan(tree.tolist()), None)
+    cycle = next(tarjan(tree.tolist()[1:]), None)
     # if the tree has no cycles, then it is a MST
     if not cycle:
         return tree
