@@ -6,83 +6,6 @@ import torch.nn as nn
 from supar.utils.fn import stripe
 
 
-class MatrixTree(nn.Module):
-    """
-    MatrixTree for calculating partition functions and marginals in O(N^3) for directed spanning trees
-    (a.k.a. non-projective trees) by an adaptation of Kirchhoff's MatrixTree Theorem.
-    This module differs from the original paper in that marginals are computed via back-propagation
-    rather than matrix inversion.
-
-    References:
-    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
-      Structured Prediction Models via the Matrix-Tree Theorem
-      https://www.aclweb.org/anthology/D07-1015/
-    """
-
-    @torch.enable_grad()
-    def forward(self, scores, mask, target=None, mbr=False):
-        """
-        Args:
-            scores (Tensor): [batch_size, seq_len, seq_len]
-                The scores of all possible dependent-head pairs.
-            mask (BoolTensor): [batch_size, seq_len]
-                Mask to avoid aggregation on padding tokens.
-                The first column with pseudo words as roots should be set to False.
-            target (Tensor, default: None): [batch_size, seq_len]
-                Tensor of gold-standard dependent-head pairs.
-            mbr (bool, default: False):
-                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
-
-        Returns:
-            loss (Tensor): scalar
-                Loss averaged by number of tokens. This won't be returned if target is None.
-            probs (Tensor): [batch_size, seq_len, ]
-                Marginals if performs mbr decoding, original scores otherwise.
-        """
-
-        training = scores.requires_grad
-        # double precision to prevent overflows
-        scores = scores.double()
-        logZ = self.matrix_tree(scores.requires_grad_(), mask)
-        probs = scores
-        # calculate the marginals
-        if mbr:
-            probs, = autograd.grad(logZ, probs, retain_graph=training)
-        probs = probs.float()
-        if target is None:
-            return probs
-
-        score = scores.gather(-1, target.unsqueeze(-1)).squeeze(-1)[mask].sum()
-        loss = (logZ - score).float() / mask.sum()
-        return loss, probs
-
-    def matrix_tree(self, scores, mask):
-        lens = mask.sum(-1)
-        batch_size, seq_len, _ = scores.shape
-        mask = mask.index_fill(1, mask.new_tensor(0).long(), 1)
-        scores = scores.masked_fill(~(mask.unsqueeze(-1) & mask.unsqueeze(-2)), float('-inf'))
-
-        # the numerical stability trick is borrowed from timvieira (https://github.com/timvieira/spanning_tree)
-        # log(det(exp(M))) = log(det(exp(M - m) * exp(m)))
-        #                  = log(det(exp(M - m)) * exp(m)^n)
-        #                  = log(det(exp(M - m))) + m*n
-        m = scores.view(batch_size, -1).max(-1)[0]
-        A = torch.exp(scores - m.view(-1, 1, 1))
-        # D is the weighted degree matrix
-        # D(i, j) = sum_j(A(i, j)), if h == m
-        #           0,              otherwise
-        D = torch.zeros_like(A)
-        D.diagonal(0, 1, 2).copy_(A.sum(-1))
-        # Laplacian matrix
-        L = nn.init.eye_(torch.empty_like(A[0])).repeat(batch_size, 1, 1)
-        L[mask] = (D - A)[mask]
-        # calculate the partition (a.k.a normalization) term
-        # Z = L^(0, 0), which is the minor of L w.r.t row 0 and column 0
-        logZ = (L[:, 1:, 1:].slogdet()[1] + m*lens).sum()
-
-        return logZ
-
-
 class CRFDependency(nn.Module):
     """
     First-order TreeCRF for calculating partition functions and marginals in O(N^3) for projective dependency trees.
@@ -117,7 +40,7 @@ class CRFDependency(nn.Module):
             loss (Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
             probs (Tensor): [batch_size, seq_len, seq_len]
-                Marginals if performs mbr decoding, original scores otherwise.
+                Marginals if performing mbr decoding, original scores otherwise.
         """
 
         training = scores.requires_grad
@@ -234,7 +157,7 @@ class CRF2oDependency(nn.Module):
             loss (Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
             probs (Tensor): [batch_size, seq_len, seq_len]
-                Marginals if performs mbr decoding, original scores otherwise.
+                Marginals if performing mbr decoding, original scores otherwise.
         """
 
         s_arc, s_sib = scores
@@ -348,6 +271,83 @@ class CRF2oDependency(nn.Module):
         return s_c[0].gather(0, lens.unsqueeze(0)).sum()
 
 
+class MatrixTree(nn.Module):
+    """
+    MatrixTree for calculating partition functions and marginals in O(N^3) for directed spanning trees
+    (a.k.a. non-projective trees) by an adaptation of Kirchhoff's MatrixTree Theorem.
+    This module differs from the original paper in that marginals are computed via back-propagation
+    rather than matrix inversion.
+
+    References:
+    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
+      Structured Prediction Models via the Matrix-Tree Theorem
+      https://www.aclweb.org/anthology/D07-1015/
+    """
+
+    @torch.enable_grad()
+    def forward(self, scores, mask, target=None, mbr=False):
+        """
+        Args:
+            scores (Tensor): [batch_size, seq_len, seq_len]
+                The scores of all possible dependent-head pairs.
+            mask (BoolTensor): [batch_size, seq_len]
+                Mask to avoid aggregation on padding tokens.
+                The first column with pseudo words as roots should be set to False.
+            target (Tensor, default: None): [batch_size, seq_len]
+                Tensor of gold-standard dependent-head pairs.
+            mbr (bool, default: False):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+
+        Returns:
+            loss (Tensor): scalar
+                Loss averaged by number of tokens. This won't be returned if target is None.
+            probs (Tensor): [batch_size, seq_len, ]
+                Marginals if performing mbr decoding, original scores otherwise.
+        """
+
+        training = scores.requires_grad
+        # double precision to prevent overflows
+        scores = scores.double()
+        logZ = self.matrix_tree(scores.requires_grad_(), mask)
+        probs = scores
+        # calculate the marginals
+        if mbr:
+            probs, = autograd.grad(logZ, probs, retain_graph=training)
+        probs = probs.float()
+        if target is None:
+            return probs
+
+        score = scores.gather(-1, target.unsqueeze(-1)).squeeze(-1)[mask].sum()
+        loss = (logZ - score).float() / mask.sum()
+        return loss, probs
+
+    def matrix_tree(self, scores, mask):
+        lens = mask.sum(-1)
+        batch_size, seq_len, _ = scores.shape
+        mask = mask.index_fill(1, mask.new_tensor(0).long(), 1)
+        scores = scores.masked_fill(~(mask.unsqueeze(-1) & mask.unsqueeze(-2)), float('-inf'))
+
+        # the numerical stability trick is borrowed from timvieira (https://github.com/timvieira/spanning_tree)
+        # log(det(exp(M))) = log(det(exp(M - m) * exp(m)))
+        #                  = log(det(exp(M - m)) * exp(m)^n)
+        #                  = log(det(exp(M - m))) + m*n
+        m = scores.view(batch_size, -1).max(-1)[0]
+        A = torch.exp(scores - m.view(-1, 1, 1))
+        # D is the weighted degree matrix
+        # D(i, j) = sum_j(A(i, j)), if h == m
+        #           0,              otherwise
+        D = torch.zeros_like(A)
+        D.diagonal(0, 1, 2).copy_(A.sum(-1))
+        # Laplacian matrix
+        L = nn.init.eye_(torch.empty_like(A[0])).repeat(batch_size, 1, 1)
+        L[mask] = (D - A)[mask]
+        # calculate the partition (a.k.a normalization) term
+        # Z = L^(0, 0), which is the minor of L w.r.t row 0 and column 0
+        logZ = (L[:, 1:, 1:].slogdet()[1] + m*lens).sum()
+
+        return logZ
+
+
 class CRFConstituency(nn.Module):
     """
     TreeCRF for calculating partition functions and marginals in O(N^3) for constituency trees.
@@ -378,7 +378,7 @@ class CRFConstituency(nn.Module):
             loss (Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
             probs (Tensor): [batch_size, seq_len, seq_len]
-                Marginals if performs mbr decoding, original scores otherwise.
+                Marginals if performing mbr decoding, original scores otherwise.
         """
 
         training = scores.requires_grad

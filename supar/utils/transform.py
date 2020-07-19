@@ -293,6 +293,8 @@ class CoNLL(Transform):
             return False
         if not multiroot and n_roots > 1:
             return False
+        if any(i == head for i, head in enumerate(sequence, 1)):
+            return False
         return next(tarjan(sequence), None) is None
 
     def load(self, data, proj=False, max_len=None, **kwargs):
