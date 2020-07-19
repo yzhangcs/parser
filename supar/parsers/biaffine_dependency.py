@@ -10,9 +10,11 @@ from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import bos, pad, unk
 from supar.utils.field import Field, SubwordField
 from supar.utils.fn import ispunct
-from supar.utils.logging import logger, progress_bar
+from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
+
+logger = get_logger(__name__)
 
 
 class BiaffineDependencyParser(Parser):

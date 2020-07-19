@@ -9,9 +9,11 @@ from supar.parsers.parser import Parser
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import bos, eos, pad, unk
 from supar.utils.field import ChartField, Field, RawField, SubwordField
-from supar.utils.logging import logger, progress_bar
+from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import BracketMetric
 from supar.utils.transform import Tree
+
+logger = get_logger(__name__)
 
 
 class CRFConstituencyParser(Parser):

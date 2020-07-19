@@ -5,8 +5,10 @@ import torch.nn as nn
 from supar.models import CRFDependencyModel
 from supar.parsers.biaffine_dependency import BiaffineDependencyParser
 from supar.utils import Config
-from supar.utils.logging import progress_bar
+from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
+
+logger = get_logger(__name__)
 
 
 class CRFDependencyParser(BiaffineDependencyParser):

@@ -6,7 +6,9 @@ import os
 from supar.utils.parallel import is_master
 from tqdm import tqdm
 
-logger = logging.getLogger('supar')
+
+def get_logger(name):
+    return logging.getLogger(name)
 
 
 def init_logger(logger,
@@ -37,3 +39,6 @@ def progress_bar(iterator,
                 bar_format=bar_format,
                 ascii=True,
                 disable=(not is_master()))
+
+
+logger = get_logger('supar')
