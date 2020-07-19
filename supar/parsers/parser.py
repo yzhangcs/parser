@@ -163,6 +163,21 @@ class Parser(object):
 
     @classmethod
     def load(cls, path, **kwargs):
+        r"""
+        Load data fields and model parameters from a pretrained parser.
+
+        Args:
+            path (str):
+                - a string with the shortcut name of a pre-trained parser defined in supar.PRETRAINED
+                  to load from cache or download, e.g., `crf-dep-en`.
+                - a path to a directory containing a pre-trained parser, e.g., `./<path>/model`.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The loaded parser.
+        """
+
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

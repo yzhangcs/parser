@@ -199,7 +199,8 @@ class BiaffineDependencyParser(Parser):
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
-        r"""The first choice to build a brand-new Parser
+        """
+        Build a brand-new Parser, including initialization of all data fields and model parameters.
 
         Args:
             path (str):
