@@ -24,8 +24,8 @@ PRETRAINED = {
     'crf-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.dependency.char.zip',
     'crf2o-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf2o.dependency.char.zip',
     'crf2o-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf2o.dependency.char.zip',
-    'crfnp-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.mst.dependency.char.zip',
-    'crfnp-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.mst.dependency.char.zip',
+    'crfnp-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crfnp.dependency.char.zip',
+    'crfnp-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crfnp.dependency.char.zip',
     'crf-con-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf.constituency.char.zip',
     'crf-con-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.constituency.char.zip'
 }

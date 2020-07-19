@@ -14,8 +14,10 @@ before_install:
 # Install packages
 install:
   - conda install --quiet pytorch=1.4.0 -c pytorch
-  - conda install --quiet flake8
+  - pip install flake8
+  - pip install pytest
   - python setup.py install
 
 script:
   - flake8 .
+  - pytest
