@@ -49,7 +49,7 @@ For all datasets, we follow the conventional data splits.
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
-      <td>-</td><td>-</td><td align="right">-</td>
+      <td>96.00</td><td>94.33</td><td align="right">2254.35</td>
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
@@ -76,7 +76,7 @@ For all datasets, we follow the conventional data splits.
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
-      <td>-</td><td>-</td><td align="right">-</td>
+      <td>89.35</td><td>86.25</td><td align="right">217.09</td>
     </tr>
   </tbody>
 </table>
