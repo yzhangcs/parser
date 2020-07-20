@@ -80,7 +80,6 @@ class MatrixTree(nn.Module):
         # calculate the partition (a.k.a normalization) term
         # Z = L^(0, 0), which is the minor of L w.r.t row 0 and column 0
         logZ = (L[:, 1:, 1:].slogdet()[1] + m*lens).sum()
-        autograd.grad(logZ, scores, retain_graph=scores.requires_grad)
 
         return logZ
 
