@@ -5,6 +5,25 @@ from collections.abc import Iterable
 
 
 class Vocab(object):
+    """
+    Defines a vocabulary object that will be used to numericalize a field.
+
+    Args:
+        counter (Counter):
+            Counter object holding the frequencies of each value found in the data.
+        min_freq (int, default: 1):
+            The minimum frequency needed to include a token in the vocabulary.
+        specials (List[str], default: []):
+            The list of special tokens (e.g., pad, unk, bos and eos) that will be prepended to the vocabulary.
+        unk_index (int, default: 0):
+            The index of unk token.
+
+    Attributes:
+        itos:
+            A list of token strings indexed by their numerical identifiers.
+        stoi:
+            A defaultdict instance mapping token strings to numerical identifiers.
+    """
 
     def __init__(self, counter, min_freq=1, specials=[], unk_index=0):
         self.itos = list(specials)

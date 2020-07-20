@@ -5,14 +5,15 @@ from configparser import ConfigParser
 
 class Config(object):
 
-    def __init__(self, path=[]):
+    def __init__(self, conf=None, **kwargs):
         super(Config, self).__init__()
 
         config = ConfigParser()
-        config.read(path)
-        self.update(dict((name, literal_eval(value))
-                         for section in config.sections()
-                         for name, value in config.items(section)))
+        config.read(conf or [])
+        self.update({**dict((name, literal_eval(value))
+                            for section in config.sections()
+                            for name, value in config.items(section)),
+                     **kwargs})
 
     def __repr__(self):
         s = line = "-" * 15 + "-+-" + "-" * 25 + "\n"
@@ -35,6 +36,9 @@ class Config(object):
     def keys(self):
         return vars(self).keys()
 
+    def items(self):
+        return vars(self).items()
+
     def update(self, kwargs):
         for key in ('self', 'cls', '__class__'):
             kwargs.pop(key, None)
@@ -44,5 +48,5 @@ class Config(object):
 
         return self
 
-    def pop(self, key):
-        return self.__dict__.pop(key)
+    def pop(self, key, val=None):
+        return self.__dict__.pop(key, val)

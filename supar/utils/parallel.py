@@ -11,7 +11,7 @@ import torch.nn as nn
 class DistributedDataParallel(nn.parallel.DistributedDataParallel):
 
     def __init__(self, module, **kwargs):
-        super(DistributedDataParallel, self).__init__(module, **kwargs)
+        super().__init__(module, **kwargs)
 
     def __getattr__(self, name):
         wrapped = super().__getattr__('module')
@@ -23,10 +23,8 @@ class DistributedDataParallel(nn.parallel.DistributedDataParallel):
 def init_device(device, backend='nccl', host=None, port=None):
     os.environ['CUDA_VISIBLE_DEVICES'] = device
     if torch.cuda.device_count() > 1:
-        host = host or os.environ.get('MASTER_ADDR',
-                                      'localhost')
-        port = port or os.environ.get('MASTER_PORT',
-                                      str(Random(0).randint(10000, 20000)))
+        host = host or os.environ.get('MASTER_ADDR', 'localhost')
+        port = port or os.environ.get('MASTER_PORT', str(Random(0).randint(10000, 20000)))
         os.environ['MASTER_ADDR'] = host
         os.environ['MASTER_PORT'] = port
         dist.init_process_group(backend)

@@ -2,28 +2,30 @@
 
 from .parsers import (BiaffineDependencyParser, CRF2oDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser,
-                      MSTDependencyParser, Parser)
+                      CRFNPDependencyParser, Parser)
 
 __all__ = ['Parser',
            'BiaffineDependencyParser',
-           'MSTDependencyParser',
+           'CRFNPDependencyParser',
            'CRFDependencyParser',
            'CRF2oDependencyParser',
            'CRFConstituencyParser']
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
-                                             MSTDependencyParser,
+                                             CRFNPDependencyParser,
                                              CRFDependencyParser,
                                              CRF2oDependencyParser,
                                              CRFConstituencyParser]}
 
 PRETRAINED = {
-    'biff-dep-en': 'https://github.com/yzhangcs/supar/release/downloads/ptb.biaffine.dependency.zip',
-    'biff-dep-zh': 'https://github.com/yzhangcs/supar/release/downloads/ctb7.biaffine.dependency.zip',
-    'crf-dep-en': 'https://github.com/yzhangcs/parser/release/downloads/ptb.crf.dependency.zip',
-    'crf-dep-zh': 'https://github.com/yzhangcs/parser/release/downloads/ctb7.crf.dependency.zip',
-    'crf2o-dep-en': 'https://github.com/yzhangcs/parser/release/downloads/ptb.crf2o.dependency.zip',
-    'crf2o-dep-zh': 'https://github.com/yzhangcs/parser/release/downloads/ctb7.crf2o.dependency.zip',
-    'crf-con-en': 'https://github.com/yzhangcs/parser/release/downloads/ptb.crf.constituency.zip',
-    'crf-con-zh': 'https://github.com/yzhangcs/parser/release/downloads/ctb7.crf.constituency.zip'
+    'biaffine-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.biaffine.dependency.char.zip',
+    'biaffine-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.biaffine.dependency.char.zip',
+    'crfnp-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crfnp.dependency.char.zip',
+    'crfnp-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crfnp.dependency.char.zip',
+    'crf-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf.dependency.char.zip',
+    'crf-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.dependency.char.zip',
+    'crf2o-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf2o.dependency.char.zip',
+    'crf2o-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf2o.dependency.char.zip',
+    'crf-con-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf.constituency.char.zip',
+    'crf-con-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.constituency.char.zip'
 }

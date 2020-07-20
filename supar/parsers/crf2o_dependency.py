@@ -10,50 +10,147 @@ from supar.parsers.biaffine_dependency import BiaffineDependencyParser
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import bos, pad, unk
 from supar.utils.field import Field, SubwordField
-from supar.utils.logging import logger, progress_bar
+from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
 
+logger = get_logger(__name__)
+
 
 class CRF2oDependencyParser(BiaffineDependencyParser):
+    """
+    The implementation of second-order CRF Dependency Parser.
+
+    References:
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    """
 
     NAME = 'crf2o-dependency'
     MODEL = CRF2oDependencyModel
 
     def __init__(self, *args, **kwargs):
-        super(CRF2oDependencyParser, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+
+    def train(self, train, dev, test, buckets=32, batch_size=5000, punct=False,
+              mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
+        """
+        Args:
+            train, dev, test (List[List] or str):
+                the train/dev/test data, both list of instances and filename are allowed.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            punct (bool, default: False):
+                If False, ignores the punctuations during evaluation.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            partial (bool, default: False):
+                True denotes the trees are partially annotated.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+        """
+
+        return super().train(**Config().update(locals()))
+
+    def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
+                 mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
+        """
+        Args:
+            data (str):
+                The data to be evaluated.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            punct (bool, default: False):
+                If False, ignores the punctuations during evaluation.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            partial (bool, default: False):
+                True denotes the trees are partially annotated.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The loss scalar and evaluation results.
+        """
+
+        return super().evaluate(**Config().update(locals()))
+
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
+                mbr=True, tree=True, proj=True, verbose=True, **kwargs):
+        """
+        Args:
+            data (List[List] or str):
+                The data to be predicted, both a list of instances and filename are allowed.
+            pred (str, default: None):
+                If specified, the predicted results will be saved to the file.
+            buckets (int, default: 32):
+                Number of buckets that sentences are assigned to.
+            batch_size (int, default: 5000):
+                Number of tokens in each batch.
+            prob (bool, default: False):
+                If True, outputs the probabilities.
+            mbr (bool, default: True):
+                If True, returns marginals for MBR decoding.
+            tree (bool, default: False):
+                If True, ensures to output well-formed trees.
+            proj (bool, default: False):
+                If True, ensures to output projective trees.
+            verbose (bool, default: True):
+                If True, increases the output verbosity.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            A Dataset object that stores the predicted results.
+        """
+
+        return super().predict(**Config().update(locals()))
 
     def _train(self, loader):
         self.model.train()
 
-        metric = AttachmentMetric()
-        progress = progress_bar(loader)
+        bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for words, feats, arcs, sibs, rels in progress:
+        for words, feats, arcs, sibs, rels in bar:
             self.optimizer.zero_grad()
 
             mask = words.ne(self.WORD.pad_index)
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel,
-                                          arcs, sibs, rels, mask)
+            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                          self.args.mbr,
+                                          self.args.partial)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(),
-                                     self.args.clip)
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
             metric(arc_preds, rel_preds, arcs, rels, mask)
-            progress.set_postfix_str(f"lr: {self.scheduler.get_lr()[0]:.4e} - "
-                                     f"loss: {loss:.4f} - "
-                                     f"{metric}")
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
 
     @torch.no_grad()
     def _evaluate(self, loader):
@@ -66,9 +163,13 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel,
-                                          arcs, sibs, rels, mask)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                          self.args.mbr,
+                                          self.args.partial)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
+                                                     self.args.tree,
+                                                     self.args.mbr,
+                                                     self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
@@ -93,14 +194,17 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             lens = mask.sum(1).tolist()
             s_arc, s_sib, s_rel = self.model(words, feats)
             if self.args.mbr:
-                s_arc = self.model.crf((s_arc, s_rel), mask, mbr=True)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
+                s_arc = self.model.crf((s_arc, s_sib), mask, mbr=True)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
+                                                     self.args.tree,
+                                                     self.args.mbr,
+                                                     self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
                 s_arc = s_arc if self.args.mbr else s_arc.softmax(-1)
-                arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1))
-                probs.extend(arc_probs.squeeze(-1)[mask].split(lens))
+                arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
+                probs.extend(arc_probs[mask].split(lens))
         arcs = [seq.tolist() for seq in arcs]
         rels = [self.REL.vocab[seq.tolist()] for seq in rels]
         preds = {'arcs': arcs, 'rels': rels}
@@ -110,33 +214,45 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         return preds
 
     @classmethod
-    def build(cls, path, **kwargs):
-        args = Config().update(locals())
+    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+        """
+        Build a brand-new Parser, including initialization of all data fields and model parameters.
+
+        Args:
+            path (str):
+                The path of the model to be saved.
+            min_freq (str, default: 2):
+                The minimum frequency needed to include a token in the vocabulary.
+            fix_len (int, default: 20):
+                The max length of all subword pieces. The excess part of each piece will be truncated.
+                Required if using CharLSTM/BERT.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The created parser.
+        """
+
+        args = Config(**locals())
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
-            parser.model = cls.MODEL(parser.args)
+            parser.model = cls.MODEL(**parser.args)
             parser.model.load_pretrained(parser.WORD.embed).to(args.device)
             return parser
 
         logger.info("Build the fields")
         WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
         if args.feat == 'char':
-            FEAT = SubwordField('chars',
-                                pad=pad,
-                                unk=unk,
-                                bos=bos,
-                                fix_len=args.fix_len)
+            FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
         elif args.feat == 'bert':
             from transformers import AutoTokenizer
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
-            if args.bert.startswith('bert'):
-                tokenizer.bos_token = tokenizer.cls_token
-                tokenizer.eos_token = tokenizer.sep_token
             FEAT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,
-                                bos=tokenizer.bos_token,
+                                bos=tokenizer.bos_token or tokenizer.cls_token,
                                 fix_len=args.fix_len,
                                 tokenize=tokenizer.tokenize)
             FEAT.vocab = tokenizer.get_vocab()
@@ -146,18 +262,12 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         SIB = Field('sibs', bos=bos, use_vocab=False, fn=CoNLL.get_sibs)
         REL = Field('rels', bos=bos)
         if args.feat in ('char', 'bert'):
-            transform = CoNLL(FORM=(WORD, FEAT),
-                              HEAD=(ARC, SIB), DEPREL=REL)
+            transform = CoNLL(FORM=(WORD, FEAT), HEAD=(ARC, SIB), DEPREL=REL)
         else:
-            transform = CoNLL(FORM=WORD, CPOS=FEAT,
-                              HEAD=(ARC, SIB), DEPREL=REL)
+            transform = CoNLL(FORM=WORD, CPOS=FEAT, HEAD=(ARC, SIB), DEPREL=REL)
 
         train = Dataset(transform, args.train)
-        embed = None
-        embed = None
-        if args.embed:
-            embed = Embedding.load(args.embed, args.unk)
-        WORD.build(train, args.min_freq, embed)
+        WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
         FEAT.build(train)
         REL.build(train)
         args.update({
@@ -169,6 +279,6 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index
         })
-        model = cls.MODEL(args)
+        model = cls.MODEL(**args)
         model = model.load_pretrained(WORD.embed).to(args.device)
         return cls(args, model, transform)

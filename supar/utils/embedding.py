@@ -6,8 +6,6 @@ import torch
 class Embedding(object):
 
     def __init__(self, tokens, vectors, unk=None):
-        super(Embedding, self).__init__()
-
         self.tokens = tokens
         self.vectors = torch.tensor(vectors)
         self.pretrained = {w: v for w, v in zip(tokens, vectors)}

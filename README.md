@@ -1,4 +1,4 @@
-# Biaffine Parser
+# SuPar
 
 [![Travis](https://img.shields.io/travis/yzhangcs/parser.svg)](https://travis-ci.org/yzhangcs/parser)
 [![LICENSE](https://img.shields.io/github/license/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
@@ -24,19 +24,15 @@ e.g., character-level embeddings (CHAR) and BERT.
 
 The model is evaluated on the Stanford Dependency conversion ([v3.3.0](https://nlp.stanford.edu/software/stanford-parser-full-2013-11-12.zip)) of the English Penn Treebank with POS tags predicted by [Stanford POS tagger](https://nlp.stanford.edu/software/stanford-postagger-full-2018-10-16.zip).
 
-For all datasets, we follow the conventional data splits:
-
-* Train: 02-21 (39,832 sentences)
-* Dev: 22 (1,700 sentences)
-* Test: 23 (2,416 sentences)
+For all datasets, we follow the conventional data splits.
 
 ## Performance
 
 <table>
   <thead>
     <tr>
-      <th rowspan=2>Model</th>
-      <th rowspan=2>FEAT</th>
+      <th rowspan=2>Dataset</th>
+      <th rowspan=2>Parser</th>
       <th colspan=2 align="center">Performance</th>
       <th rowspan=2 align="right">Speed (Sents/s)</th>
     </tr>
@@ -47,17 +43,40 @@ For all datasets, we follow the conventional data splits:
   </thead>
   <tbody>
     <tr>
-      <td rowspan=3>Biaffine Parser</td>
-      <td>TAG</td>
-      <td>95.83</td><td>94.14</td><td align="right">1340.87</td>
+      <td rowspan=4>PTB</td>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/biaffine_dependency.py">Biaffine</a></code></td>
+      <td>96.03</td><td>94.37</td><td align="right">1826.77</td>
     </tr>
     <tr>
-      <td>CHAR</td>
-      <td>96.06</td><td>94.46</td><td align="right">1073.13</td>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
+      <td>-</td><td>-</td><td align="right">-</td>
     </tr>
     <tr>
-      <td>BERT</td>
-      <td>96.60</td><td>95.09</td><td align="right">446.78</td>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
+      <td>96.12</td><td>94.50</td><td align="right">652.41</td>
+    </tr>
+    <tr>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
+      <td>96.14</td><td>94.55</td><td align="right">465.64</td>
+    </tr>
+  </tbody>
+  <tbody>
+    <tr>
+      <td rowspan=4>CTB7</td>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/biaffine_dependency.py">Biaffine</a></code></td>
+      <td>88.77</td><td>85.63</td><td align="right">1155.50</td>
+    </tr>
+    <tr>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
+      <td>88.78</td><td>85.64</td><td align="right">1323.75</td>
+    </tr>
+    <tr>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
+      <td>88.98</td><td>85.84</td><td align="right">354.65</td>
+    </tr>
+    <tr>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
+      <td>-</td><td>-</td><td align="right">-</td>
     </tr>
   </tbody>
 </table>
@@ -142,7 +161,7 @@ All the optional arguments of the subcommands are as follows:
 
 ```sh
 $ python run.py train -h
-usage: run.py train [-h] [--path PATH] [--conf CONF] [--device DEVICE]
+usage: run.py train [-h] [--path PATH] [--device DEVICE]
                     [--seed SEED] [--threads THREADS]
                     [--batch-size BATCH_SIZE] [--buckets BUCKETS] [--partial]
                     [--mbr] [--tree] [--proj] [--feat {tag,char,bert}]
@@ -153,7 +172,6 @@ usage: run.py train [-h] [--path PATH] [--conf CONF] [--device DEVICE]
 optional arguments:
   -h, --help            show this help message and exit
   --path PATH, -p PATH  path to model file
-  --conf CONF, -c CONF  path to config file
   --device DEVICE, -d DEVICE
                         ID of GPU to use
   --seed SEED, -s SEED  seed for generating random numbers
@@ -181,7 +199,7 @@ optional arguments:
 
 $ python run.py evaluate -h
 usage: run.py evaluate [-h] [--batch-size BATCH_SIZE] [--buckets BUCKETS]
-                       [--punct] [--fdata FDATA] [--conf CONF] [--file FILE]
+                       [--punct] [--fdata FDATA] [--file FILE]
                        [--preprocess] [--device DEVICE] [--seed SEED]
                        [--threads THREADS] [--tree] [--feat {tag,char,bert}]
 
@@ -192,7 +210,6 @@ optional arguments:
   --buckets BUCKETS     max num of buckets to use
   --punct               whether to include punctuation
   --fdata FDATA         path to dataset
-  --conf CONF, -c CONF  path to config file
   --file FILE, -f FILE  path to saved files
   --preprocess, -p      whether to preprocess the data first
   --device DEVICE, -d DEVICE
@@ -205,7 +222,7 @@ optional arguments:
                         choices of additional features
 
 $ python run.py predict -h
-usage: run.py predict [-h] [--path PATH] [--conf CONF] [--device DEVICE]
+usage: run.py predict [-h] [--path PATH] [--device DEVICE]
                       [--seed SEED] [--threads THREADS]
                       [--batch-size BATCH_SIZE] [--buckets BUCKETS]
                       [--partial] [--mbr] [--tree] [--proj] [--prob]
@@ -214,7 +231,6 @@ usage: run.py predict [-h] [--path PATH] [--conf CONF] [--device DEVICE]
 optional arguments:
   -h, --help            show this help message and exit
   --path PATH, -p PATH  path to model file
-  --conf CONF, -c CONF  path to config file
   --device DEVICE, -d DEVICE
                         ID of GPU to use
   --seed SEED, -s SEED  seed for generating random numbers

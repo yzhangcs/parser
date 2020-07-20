@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 import supar
 import torch
 import torch.distributed as dist
-from supar.utils import Dataset
+from supar.utils import Config, Dataset
 from supar.utils.field import Field
-from supar.utils.logging import logger
+from supar.utils.logging import init_logger, logger
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import is_master
@@ -22,15 +22,28 @@ class Parser(object):
     MODEL = None
 
     def __init__(self, args, model, transform):
-        super(Parser, self).__init__()
-
         self.args = args
         self.model = model
         self.transform = transform
 
-    def train(self, train, dev, test, **kwargs):
+    def train(self, train, dev, test,
+              buckets=32,
+              batch_size=5000,
+              lr=2e-3,
+              mu=.9,
+              nu=.9,
+              epsilon=1e-12,
+              clip=5.0,
+              decay=.75,
+              decay_steps=5000,
+              epochs=5000,
+              patience=100,
+              verbose=True,
+              **kwargs):
         args = self.args.update(locals())
+        init_logger(logger, verbose=args.verbose)
 
+        self.transform.train()
         if dist.is_initialized():
             args.batch_size = args.batch_size // dist.get_world_size()
         train = Dataset(self.transform, args.train, **args)
@@ -46,7 +59,6 @@ class Parser(object):
 
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
-            self.model = self.model.to(args.device)
             self.model = DDP(self.model,
                              device_ids=[dist.get_rank()],
                              find_unused_parameters=True)
@@ -54,8 +66,7 @@ class Parser(object):
                               args.lr,
                               (args.mu, args.nu),
                               args.epsilon)
-        self.scheduler = ExponentialLR(self.optimizer,
-                                       args.decay**(1/args.decay_steps))
+        self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
 
         elapsed = timedelta()
         best_e, best_metric = 1, Metric()
@@ -72,9 +83,10 @@ class Parser(object):
 
             t = datetime.now() - start
             # save the model if it is the best so far
-            if dev_metric > best_metric and is_master():
+            if dev_metric > best_metric:
                 best_e, best_metric = epoch, dev_metric
-                self.save(args.path)
+                if is_master():
+                    self.save(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
                 logger.info(f"{t}s elapsed\n")
@@ -88,9 +100,11 @@ class Parser(object):
         logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
-    def evaluate(self, data, **kwargs):
+    def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):
         args = self.args.update(locals())
+        init_logger(logger, verbose=args.verbose)
 
+        self.transform.train()
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
         logger.info(f"Load the dataset\n{dataset}")
@@ -103,8 +117,11 @@ class Parser(object):
         logger.info(f"{elapsed}s elapsed, "
                     f"{len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
-    def predict(self, data, pred=None, prob=True, **kwargs):
+        return loss, metric
+
+    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False, **kwargs):
         args = self.args.update(locals())
+        init_logger(logger, verbose=args.verbose)
 
         self.transform.eval()
         if args.prob:
@@ -146,16 +163,32 @@ class Parser(object):
 
     @classmethod
     def load(cls, path, **kwargs):
+        r"""
+        Load data fields and model parameters from a pretrained parser.
+
+        Args:
+            path (str):
+                - a string with the shortcut name of a pre-trained parser defined in supar.PRETRAINED
+                  to load from cache or download, e.g., `crf-dep-en`.
+                - a path to a directory containing a pre-trained parser, e.g., `./<path>/model`.
+            kwargs (Dict):
+                A dict holding the unconsumed arguments.
+
+        Returns:
+            The loaded parser.
+        """
+
+        args = Config(**locals())
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
         if os.path.exists(path):
             state = torch.load(path)
         else:
             path = supar.PRETRAINED[path] if path in supar.PRETRAINED else path
             state = torch.hub.load_state_dict_from_url(path)
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
-        args = state['args']
-        args.update({'path': path, **kwargs})
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = cls.MODEL(args)
+        args = state['args'].update(args)
+        model = cls.MODEL(**args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)

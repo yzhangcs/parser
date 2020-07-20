@@ -5,9 +5,32 @@ import torch.nn as nn
 
 
 class Triaffine(nn.Module):
+    """
+    Triaffine layer for second-order scoring.
+
+    This function has a tensor of weights `W` and bias terms if needed.
+    The score `s(x, y, z)` of the vector triple `(x, y, z)` is computed as `x^T z^T W y`.
+    Usually, `x` and `y` can be concatenated with bias terms.
+
+    References:
+    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+      Efficient Second-Order TreeCRF for Neural Dependency Parsing
+      https://www.aclweb.org/anthology/2020.acl-main.302/
+    - Xinyu Wang, Jingxian Huang, and Kewei Tu (ACL'19)
+      Second-Order Semantic Dependency Parsing with End-to-End Neural Networks
+      https://www.aclweb.org/anthology/P19-1454/
+
+    Args:
+        n_in (int):
+            The dimension of the input feature.
+        bias_x (bool, default: False):
+            If True, add a bias term for tensor x.
+        bias_y (bool, default: False):
+            If True, add a bias term for tensor y.
+    """
 
     def __init__(self, n_in, bias_x=False, bias_y=False):
-        super(Triaffine, self).__init__()
+        super().__init__()
 
         self.n_in = n_in
         self.bias_x = bias_x
@@ -30,6 +53,16 @@ class Triaffine(nn.Module):
         nn.init.zeros_(self.weight)
 
     def forward(self, x, y, z):
+        """
+        Args:
+            x (Tensor): [batch_size, seq_len, n_in]
+            y (Tensor): [batch_size, seq_len, n_in]
+            z (Tensor): [batch_size, seq_len, n_in]
+
+        Returns:
+            s (Tensor): [batch_size, seq_len, seq_len, seq_len]
+        """
+
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:

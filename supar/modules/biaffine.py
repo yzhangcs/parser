@@ -5,9 +5,31 @@ import torch.nn as nn
 
 
 class Biaffine(nn.Module):
+    """
+    Biaffine layer for first-order scoring.
+
+    This function has a tensor of weights `W` and bias terms if needed.
+    The score `s(x, y)` of the vector pair `(x, y)` is computed as `x^T W y`,
+    in which `x` and `y` can be concatenated with bias terms.
+
+    References:
+    - Timothy Dozat and Christopher D. Manning (ICLR'17)
+      Deep Biaffine Attention for Neural Dependency Parsing
+      https://openreview.net/pdf?id=Hk95PK9le/
+
+    Args:
+        n_in (int):
+            The dimension of the input feature.
+        n_out (int):
+            The number of output channels.
+        bias_x (bool, default: False):
+            If True, add a bias term for tensor x.
+        bias_y (bool, default: False):
+            If True, add a bias term for tensor y.
+    """
 
     def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
-        super(Biaffine, self).__init__()
+        super().__init__()
 
         self.n_in = n_in
         self.n_out = n_out
@@ -31,6 +53,16 @@ class Biaffine(nn.Module):
         nn.init.zeros_(self.weight)
 
     def forward(self, x, y):
+        """
+        Args:
+            x (Tensor): [batch_size, seq_len, n_in]
+            y (Tensor): [batch_size, seq_len, n_in]
+
+        Returns:
+            s (Tensor): [batch_size, n_out, seq_len, seq_len]
+                If n_out is 1, the dimension of n_out will be squeezed automatically.
+        """
+
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:

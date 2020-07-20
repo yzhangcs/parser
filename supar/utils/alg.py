@@ -5,17 +5,48 @@ from supar.utils.fn import pad, stripe
 
 
 def kmeans(x, k, max_it=32):
+    """
+    KMeans algorithm for clustering the sentences by length.
+
+    Args:
+        x (List[int]):
+            Lengths of sentences.
+        k (int):
+            Number of clusters.
+            This is an approximate value. The final number of clusters can be less or equal to k.
+        max_it (int):
+            Maximum number of iterations.
+            If centroids does not converge after several iterations, the algorithm will be early stopped.
+
+    Returns:
+        centroids (List[float]):
+            Average lengths in each cluster.
+        clusters (List[List[int]]):
+            List of clusters that hold indices of data points.
+
+    Examples::
+        >>> x = torch.randint(10,20,(10,)).tolist()
+        >>> x
+        [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
+        >>> centroids, clusters = kmeans(x, 3)
+        >>> centroids
+        [10.5, 14.0, 17.799999237060547]
+        >>> clusters
+        [[1, 3], [0, 5, 9], [2, 4, 6, 7, 8]]
+    """
+
     # the number of clusters must not be greater than the number of datapoints
     x, k = torch.tensor(x, dtype=torch.float), min(len(x), k)
+    # collect unique datapoints
+    d = x.unique()
     # initialize k centroids randomly
-    c = x[torch.randperm(len(x))[:k]]
+    c = d[torch.randperm(len(d))[:k]]
     # assign each datapoint to the cluster with the closest centroid
     dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
 
     for _ in range(max_it):
         # if an empty cluster is encountered,
-        # choose the farthest datapoint from the biggest cluster
-        # and move that the empty one
+        # choose the farthest datapoint from the biggest cluster and move that the empty one
         mask = torch.arange(k).unsqueeze(-1).eq(y)
         none = torch.where(~mask.any(-1))[0].tolist()
         while len(none) > 0:
@@ -48,6 +79,26 @@ def kmeans(x, k, max_it=32):
 
 
 def eisner(scores, mask):
+    """
+    First-order Eisner algorithm for projective decoding.
+
+    References:
+    - Ryan McDonald, Koby Crammer and Fernando Pereira (ACL'05)
+      Online Large-Margin Training of Dependency Parsers
+      https://www.aclweb.org/anthology/P05-1012/
+
+    Args:
+        scores (Tensor): [batch_size, seq_len, seq_len]
+            The scores of dependent-head pairs.
+        mask (BoolTensor): [batch_size, seq_len]
+            Mask to avoid parsing over padding tokens.
+            The first column with pseudo words as roots should be set to False.
+
+    Returns:
+        Tensor: [batch_size, seq_len]
+            Projective parse trees.
+    """
+
     lens = mask.sum(1)
     batch_size, seq_len, _ = scores.shape
     scores = scores.permute(2, 1, 0)
@@ -110,6 +161,29 @@ def eisner(scores, mask):
 
 
 def eisner2o(scores, mask):
+    """
+    Second-order Eisner algorithm for projective decoding.
+    This is an extension of the first-order one and further incorporates sibling scores into tree scoring.
+
+    References:
+    - Ryan McDonald and Fernando Pereira (EACL'06)
+      Online Learning of Approximate Dependency Parsing Algorithms
+      https://www.aclweb.org/anthology/E06-1011/
+
+    Args:
+        scores (Tuple[Tensor, Tensor]):
+            A tuple of two tensors representing the first-order and second-order scores repectively.
+            The first ([batch_size, seq_len, seq_len]) holds scores of dependent-head pairs.
+            The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the dependent-head-sibling triples.
+        mask (BoolTensor): [batch_size, seq_len]
+            Mask to avoid parsing over padding tokens.
+            The first column with pseudo words as roots should be set to False.
+
+    Returns:
+        Tensor: [batch_size, seq_len]
+            Projective parse trees.
+    """
+
     # the end position of each sentence in a batch
     lens = mask.sum(1)
     s_arc, s_sib = scores
@@ -139,8 +213,7 @@ def eisner2o(scores, mask):
         il += stripe(s_sib[range(w, n+w), range(n)], n, w, (0, 1))
         # [n, 1, batch_size]
         il0 = stripe(s_c, n, 1, (w, w)) + stripe(s_c, n, 1, (0, w - 1))
-        # il0[0] are set to zeros since the scores of the complete spans
-        # starting from 0 are always -inf
+        # il0[0] are set to zeros since the scores of the complete spans starting from 0 are always -inf
         il[:, -1] = il0.index_fill_(0, lens.new_tensor(0), 0).squeeze(1)
         il_span, il_path = il.permute(2, 0, 1).max(-1)
         s_i.diagonal(-w).copy_(il_span + s_arc.diagonal(-w))
@@ -216,6 +289,26 @@ def eisner2o(scores, mask):
 
 
 def cky(scores, mask):
+    """
+    The implementation of Cocke-Kasami-Younger (CKY) algorithm to parse constituency trees.
+
+    References:
+    - Yu Zhang, Houquan Zhou and Zhenghua Li (IJCAI'20)
+      Fast and Accurate Neural CRF Constituency Parsing
+      https://www.ijcai.org/Proceedings/2020/560/
+
+    Args:
+        scores (Tensor): [batch_size seq_len, seq_len]
+            The scores of all candidate constituents.
+        mask (BoolTensor): [batch_size, seq_len, seq_len]
+            Mask to avoid parsing over padding tokens.
+            For each square matrix in a batch, the positions except upper triangular part should be masked out.
+
+    Returns:
+        trees (List[List[Tuple]]):
+            The sequences of factorized predicted bracketed trees traversed in pre-order.
+    """
+
     lens = mask[:, 0].sum(-1)
     scores = scores.permute(1, 2, 0)
     seq_len, seq_len, batch_size = scores.shape
@@ -254,7 +347,22 @@ def cky(scores, mask):
 
 
 def tarjan(sequence):
-    sequence[0] = -1
+    """
+    Tarjan algorithm for finding Strongly Connected Components (SCCs) of a graph.
+
+    Args:
+        sequence (List):
+            List of head indices.
+
+    Returns:
+        A generator that yields SCCs (cycles) lazily. All self-loops are ignored.
+
+    Examples::
+        >>> next(tarjan([2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
+        [2, 5, 1]
+    """
+
+    sequence = [-1] + sequence
     # record the search order, i.e., the timestep
     dfn = [-1] * len(sequence)
     # record the the smallest timestep in a SCC
@@ -295,10 +403,30 @@ def tarjan(sequence):
 
 
 def chuliu_edmonds(s):
+    """
+    ChuLiu/Edmods algorithm for non-projective decoding.
+    NOTE: the algorithm does not guarantee to parse a single-root tree.
+    Some code is borrowed from tdozat's implementation (https://github.com/tdozat/Parser-v3).
+    Descriptions of notations and formulas can be found in the following paper.
+
+    References:
+    - Ryan McDonald, Fernando Pereira, Kiril Ribarov and Jan Hajic (EMNLP'05)
+      Non-projective Dependency Parsing using Spanning Tree Algorithms
+      https://www.aclweb.org/anthology/H05-1066/
+
+    Args:
+        s (Tensor): [seq_len, seq_len]
+            The scores of dependent-head pairs.
+
+    Returns:
+        tree (Tensor): [seq_len]
+            A non-projective parse tree.
+    """
+
     tree = s.argmax(-1)
     # return the cycle finded by tarjan algorithm lazily
-    cycle = next(tarjan(tree.tolist()), None)
-    # if `tree` has no cycles, then it is a MST
+    cycle = next(tarjan(tree.tolist()[1:]), None)
+    # if the tree has no cycles, then it is a MST
     if not cycle:
         return tree
     # indices of cycle in the original tree
@@ -319,10 +447,9 @@ def chuliu_edmonds(s):
         # find the best cycle head for each noncycle dependent
         deps = s_dep.argmax(1)
         # calculate the scores of cycle's potential heads
-        # s(x->c) = max(s(x'->x) - s(a(x')->x') + s(cycle)),
-        #           x in noncycle and x' in cycle
-        #           a(v) is the predecessor of v in cycle
-        #           s(cycle) = sum(s(a(v)->v))
+        # s(x->c) = max(s(x'->x) - s(a(x')->x') + s(cycle)), x in noncycle and x' in cycle
+        #                                                    a(v) is the predecessor of v in cycle
+        #                                                    s(cycle) = sum(s(a(v)->v))
         s_head = s[cycle][:, noncycle] - s_cycle.view(-1, 1) + s_cycle.sum()
         # find the best noncycle head for each cycle dependent
         heads = s_head.argmax(0)
@@ -337,8 +464,7 @@ def chuliu_edmonds(s):
 
         return s, heads, deps
 
-    # keep track of the endpoints of the edges into and out of cycle
-    # for reconstruction later
+    # keep track of the endpoints of the edges into and out of cycle for reconstruction later
     s, heads, deps = contract(s)
 
     # y is the contracted tree
@@ -364,10 +490,29 @@ def chuliu_edmonds(s):
 
 
 def mst(scores, mask, multiroot=False):
-    r'''
-    Please note that the ChuLiu/Edmod algorithm does not guarantee
-    to parse a tree with single root.
-    '''
+    """
+    MST algorithm for decoding non-pojective trees.
+    This is a wrapper for ChuLiu/Edmonds algorithm.
+
+    The algorithm first runs ChuLiu/Edmonds to parse a tree and then have a check of multi-roots,
+    If multiroot is set to True and there indeed exist multi-roots, the algorithm seeks to find
+    best single-root trees by iterating all possible single-root trees parsed by ChuLiu/Edmonds.
+    Otherwise the resulting trees are directly taken as the final outputs.
+
+    Args:
+        scores (Tensor): [batch_size, seq_len, seq_len]
+            The scores of dependent-head pairs.
+        mask (BoolTensor): [batch_size, seq_len]
+            Mask to avoid parsing over padding tokens.
+            The first column with pseudo words as roots should be set to False.
+        muliroot (bool):
+            Ensures to parse a single-root tree if set to False.
+
+    Returns:
+        Tensor: [batch_size, seq_len]
+            Non-projective parse trees.
+    """
+
     batch_size, seq_len, _ = scores.shape
     scores = scores.cpu().unbind()
 

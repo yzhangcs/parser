@@ -8,10 +8,20 @@ from supar.utils.vocab import Vocab
 
 
 class RawField(object):
+    """
+    Defines a general datatype.
+
+    A RawField instance does not assume any property of the datatype and
+    it holds parameters relating to how a datatype should be processed.
+
+    Args:
+        name (str):
+            The name of the field.
+        fn (function, default: None):
+            The function used for preprocessing the examples.
+    """
 
     def __init__(self, name, fn=None):
-        super(RawField, self).__init__()
-
         self.name = name
         self.fn = fn
 
@@ -19,9 +29,7 @@ class RawField(object):
         return f"({self.name}): {self.__class__.__name__}()"
 
     def preprocess(self, sequence):
-        if self.fn is not None:
-            sequence = self.fn(sequence)
-        return sequence
+        return self.fn(sequence) if self.fn is not None else sequence
 
     def transform(self, sequences):
         return [self.preprocess(seq) for seq in sequences]
@@ -31,6 +39,37 @@ class RawField(object):
 
 
 class Field(RawField):
+    """
+    Defines a datatype together with instructions for converting to Tensor.
+    Field class models common text processing datatypes that can be represented by tensors.
+    It holds a Vocab object that defines the set of possible values
+    for elements of the field and their corresponding numerical representations.
+    The Field object also holds other parameters relating to how a datatype
+    should be numericalized, such as a tokenization method.
+
+    Args:
+        name (str):
+            The name of the field.
+        pad_token (str, default: None):
+            The string token used as padding.
+        unk_token (str, default: None):
+            The string token used to represent OOV words.
+        bos_token (str, default: None):
+            A token that will be prepended to every example using this
+            field, or None for no bos_token.
+        eos_token (str, default: None):
+            A token that will be appended to every example using this
+            field, or None for no eos_token.
+        lower (bool, default: False):
+            Whether to lowercase the text in this field.
+        use_vocab (bool, default: True):
+            Whether to use a Vocab object.
+            If False, the data in this field should already be numerical.
+        tokenize (function, default: None):
+            The function used to tokenize strings using this field into sequential examples.
+        fn (function, default: None):
+            The function used for preprocessing the examples.
+    """
 
     def __init__(self, name, pad=None, unk=None, bos=None, eos=None,
                  lower=False, use_vocab=True, tokenize=None, fn=None):
@@ -99,6 +138,20 @@ class Field(RawField):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def preprocess(self, sequence):
+        """
+        Load a single example using this field, tokenizing if necessary.
+        The sequence will be first passed to `self.fn` if available.
+        If `self.tokenize` is not None, the input will be tokenized.
+        Then the input will be optionally lowercased.
+
+        Args (List):
+            The sequence to be preprocessed.
+
+        Returns:
+            sequence (List):
+                the preprocessed sequence.
+        """
+
         if self.fn is not None:
             sequence = self.fn(sequence)
         if self.tokenize is not None:
@@ -109,6 +162,19 @@ class Field(RawField):
         return sequence
 
     def build(self, dataset, min_freq=1, embed=None):
+        """
+        Construct the Vocab object for this field from the dataset.
+        If the Vocab has already existed, this function will have no effect.
+
+        Args:
+            dataset (Dataset):
+                A Dataset instance. One of the attributes should be named after the name of this field.
+            min_freq (int, default: 1):
+                The minimum frequency needed to include a token in the vocabulary.
+            embed (Embedding, default: None):
+                An Embedding instance, words in which will be extended to the vocabulary.
+        """
+
         if hasattr(self, 'vocab'):
             return
         sequences = getattr(dataset, self.name)
@@ -132,6 +198,20 @@ class Field(RawField):
             self.embed /= torch.std(self.embed)
 
     def transform(self, sequences):
+        """
+        Turns a list of sequences that use this field into tensors.
+
+        Each sequence is first preprocessed and then numericalized if needed.
+
+        Args:
+            sequences (List[List[str]]):
+                A List of sequences.
+
+        Returns:
+            sequences (List[Tensor]):
+                A list of tensors transformed from the input sequences.
+        """
+
         sequences = [self.preprocess(seq) for seq in sequences]
         if self.use_vocab:
             sequences = [self.vocab[seq] for seq in sequences]
@@ -144,14 +224,57 @@ class Field(RawField):
         return sequences
 
     def compose(self, sequences):
+        """
+        Compose a batch of sequences into a padded tensor.
+
+        Args:
+            sequences (List[Tensor]):
+                A List of tensors.
+
+        Returns:
+            A padded tensor converted to proper device.
+        """
+
         return pad(sequences, self.pad_index).to(self.device)
 
 
 class SubwordField(Field):
+    """
+    A field that conducts tokenization and numericalization over each token rather the sequence.
+
+    This is customized for models requiring character/subword-level inputs, e.g., CharLSTM and BERT.
+
+    Args:
+        fix_len (int):
+            A fixed length that all subword pieces will be padded to.
+            This is used for truncating the subword pieces that exceed the length.
+            To save the memory, the final length will be the smaller value
+            between the max length of subword pieces in a batch and fix_len.
+
+    Examples::
+        >>> from transformers import AutoTokenizer
+        >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
+        >>> field = SubwordField('bert',
+                                 pad=tokenizer.pad_token,
+                                 unk=tokenizer.unk_token,
+                                 bos=tokenizer.cls_token,
+                                 eos=tokenizer.sep_token,
+                                 fix_len=20,
+                                 tokenize=tokenizer.tokenize)
+        >>> field.vocab = tokenizer.get_vocab()  # no need to re-build the vocab
+        >>> field.transform([['This', 'field', 'performs', 'token-level', 'tokenization']])[0]
+        tensor([[  101,     0,     0],
+                [ 1188,     0,     0],
+                [ 1768,     0,     0],
+                [10383,     0,     0],
+                [22559,   118,  1634],
+                [22559,  2734,     0],
+                [  102,     0,     0]])
+    """
 
     def __init__(self, *args, **kwargs):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
-        super(SubwordField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def build(self, dataset, min_freq=1, embed=None):
         if hasattr(self, 'vocab'):
@@ -180,25 +303,47 @@ class SubwordField(Field):
         sequences = [[self.preprocess(token) for token in seq]
                      for seq in sequences]
         if self.fix_len <= 0:
-            self.fix_len = max(len(token)
-                               for seq in sequences
-                               for token in seq)
+            self.fix_len = max(len(token) for seq in sequences for token in seq)
         if self.use_vocab:
-            sequences = [[[self.vocab[i] for i in token] for token in seq]
+            sequences = [[[self.vocab[i] for i in token] if token else [self.unk] for token in seq]
                          for seq in sequences]
         if self.bos:
             sequences = [[[self.bos_index]] + seq for seq in sequences]
         if self.eos:
             sequences = [seq + [[self.eos_index]] for seq in sequences]
-        sequences = [pad([torch.tensor(ids[:self.fix_len]) for ids in seq],
-                         self.pad_index,
-                         self.fix_len)
-                     for seq in sequences]
+        lens = [min(self.fix_len, max(len(ids) for ids in seq)) for seq in sequences]
+        sequences = [pad([torch.tensor(ids[:i]) for ids in seq], self.pad_index, i)
+                     for i, seq in zip(lens, sequences)]
 
         return sequences
 
 
 class ChartField(Field):
+    """
+    Field dealing with constituency trees.
+
+    This field receives sequences of binarized trees factorized in pre-order,
+    and returns two tensors representing the bracketing trees and labels on each constituent respectively.
+
+    Examples::
+        >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'),
+                        (2, 5, 'VP'), (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
+        >>> spans, labels = field.transform([sequence])[0]  # this example field is built from ptb
+        >>> spans
+        tensor([[False,  True,  True, False, False,  True],
+                [False, False,  True, False, False, False],
+                [False, False, False,  True, False,  True],
+                [False, False, False, False,  True,  True],
+                [False, False, False, False, False,  True],
+                [False, False, False, False, False, False]])
+        >>> labels
+        tensor([[  0,  37, 107,   0,   0,  79],
+                [  0,   0,   6,   0,   0,   0],
+                [  0,   0,   0, 120,   0, 112],
+                [  0,   0,   0,   0,  52,  37],
+                [  0,   0,   0,   0,   0,  52],
+                [  0,   0,   0,   0,   0,   0]])
+    """
 
     def build(self, dataset, min_freq=1):
         counter = Counter(label
