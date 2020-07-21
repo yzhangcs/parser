@@ -45,19 +45,19 @@ For all datasets, we follow the conventional data splits.
     <tr>
       <td rowspan=4>PTB</td>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/biaffine_dependency.py">Biaffine</a></code></td>
-      <td>96.03</td><td>94.37</td><td align="right">1826.77</td>
+      <td align="center">96.03</td><td align="center">94.37</td><td align="right">1826.77</td>
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
-      <td>96.01</td><td>94.42</td><td align="right">2197.15</td>
+      <td align="center">96.01</td><td align="center">94.42</td><td align="right">2197.15</td>
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
-      <td>96.12</td><td>94.50</td><td align="right">652.41</td>
+      <td align="center">96.12</td><td align="center">94.50</td><td align="right">652.41</td>
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
-      <td>96.14</td><td>94.55</td><td align="right">465.64</td>
+      <td align="center">96.14</td><td align="center">94.55</td><td align="right">465.64</td>
     </tr>
   </tbody>
   <tbody>
@@ -98,14 +98,16 @@ For all datasets, we follow the conventional data splits.
     <tr>
       <td rowspan=4>PTB</td>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_constituency.py">CRF</a></code></td>
-      <td>94.18</td><td align="right">923.74</td>
+      <td align="center">94.18</td>
+      <td align="right">923.74</td>
     </tr>
   </tbody>
   <tbody>
     <tr>
       <td rowspan=4>CTB7</td>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_constituency.py">CRF</a></code></td>
-      <td>88.67</td><td align="right">639.27</td>
+      <td align="center">88.67</td>
+      <td align="right">639.27</td>
     </tr>
     </tr>
   </tbody>
