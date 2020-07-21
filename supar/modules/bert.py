@@ -36,10 +36,12 @@ class BertEmbedding(nn.Module):
     """
 
     def __init__(self, model, n_layers, n_out, pad_index=0, dropout=0,
-                 requires_grad=False):
+                 requires_grad=False,
+                 use_hidden_states=True, output_attentions=False, attention_layer=8):
         super().__init__()
 
-        config = AutoConfig.from_pretrained(model, output_hidden_states=True)
+        config = AutoConfig.from_pretrained(model, output_hidden_states=True,
+                                            output_attentions=output_attentions)
         self.model = model
         self.bert = AutoModel.from_pretrained(model, config=config)
         self.bert = self.bert.requires_grad_(requires_grad)
@@ -48,9 +50,12 @@ class BertEmbedding(nn.Module):
         self.n_out = n_out or self.hidden_size
         self.pad_index = pad_index
         self.requires_grad = requires_grad
+        self.output_attentions = output_attentions
+        self.attention_layer = attention_layer
+        self.head = 0
 
         self.scalar_mix = ScalarMix(self.n_layers, dropout)
-        #self.projection = nn.Identity()
+        self.projection = None
         if self.hidden_size != self.n_out:
             self.projection = nn.Linear(self.hidden_size, self.n_out, False)
 
@@ -80,7 +85,8 @@ class BertEmbedding(nn.Module):
         subwords = pad_sequence(subwords[mask].split(lens.tolist()), True)
         bert_mask = pad_sequence(mask[mask].split(lens.tolist()), True)
         # return the hidden states of all layers
-        bert = self.bert(subwords, attention_mask=bert_mask.float())[-1]
+        outputs = self.bert(subwords, attention_mask=bert_mask.float())
+        bert = outputs[-2] if self.output_attentions else outputs[-1]
         # [n_layers, batch_size, n_subwords, hidden_size]
         bert = bert[-self.n_layers:]
         # [batch_size, n_subwords, hidden_size]
@@ -92,7 +98,29 @@ class BertEmbedding(nn.Module):
         embed = bert.new_zeros(*mask.shape, self.hidden_size)
         embed = embed.masked_scatter_(mask.unsqueeze(-1), bert[bert_mask])
         # [batch_size, seq_len, hidden_size]
-        embed = embed.sum(2) / bert_lens.unsqueeze(-1)
-        embed = self.projection(embed)
+        embed = embed.sum(2) / bert_lens.unsqueeze(-1) # sum wordpieces
+        seq_attn = None
+        if self.output_attentions:
+            # (a list of layers) = [ [batch, num_heads, sent_len, sent_len] ]
+            attns = outputs[-1]
+            # [batch, n_subwords, n_subwords]
+            attn = attns[self.attention_layer][:,self.head,:,:] # layer 9 represents syntax
+            # squeeze out multiword tokens
+            mask2 = ~mask
+            mask2[:,:,0] = True # keep first column
+            sub_masks = pad_sequence(mask2[mask].split(lens.tolist()), True)
+            seq_mask = torch.einsum('bi,bj->bij', sub_masks, sub_masks) # outer product
+            seq_lens = seq_mask.sum((1,2))
+            # [batch_size, seq_len, seq_len]
+            sub_attn = attn[seq_mask].split(seq_lens.tolist())
+            # fill a tensor [batch_size, seq_len, seq_len]
+            seq_attn = attn.new_zeros(batch_size, seq_len, seq_len)
+            for i, attn_i in enumerate(sub_attn):
+                size = sub_masks[i].sum(0)
+                attn_i = attn_i.view(size, size)
+                size = min(size, self.output_attentions)
+                seq_attn[i,:size,:size] = attn_i
+        if self.projection:
+            embed = self.projection(embed)
 
-        return embed
+        return embed, seq_attn

@@ -48,14 +48,17 @@ class Parser(object):
             args.batch_size = args.batch_size // dist.get_world_size()
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
-        test = Dataset(self.transform, args.test)
         train.build(args.batch_size, args.buckets, True, dist.is_initialized())
         dev.build(args.batch_size, args.buckets)
-        test.build(args.batch_size, args.buckets)
         logger.info(f"Load the datasets\n"
                     f"{'train:':6} {train}\n"
-                    f"{'dev:':6} {dev}\n"
-                    f"{'test:':6} {test}\n")
+                    f"{'dev:':6} {dev}\n")
+        if args.test:
+            test = Dataset(self.transform, args.test)
+            test.build(args.batch_size, args.buckets)
+            logger.info(f"{'test:':6} {test}\n")
+        else:
+            test = None
 
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
@@ -75,11 +78,13 @@ class Parser(object):
             start = datetime.now()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
-            self._train(train.loader)
+            loss, train_metric = self._train(train.loader)
+            logger.info(f"{'train:':6} loss: {loss:.4f} {train_metric}")
             loss, dev_metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':6} - loss: {loss:.4f} - {dev_metric}")
-            loss, test_metric = self._evaluate(test.loader)
-            logger.info(f"{'test:':6} - loss: {loss:.4f} - {test_metric}")
+            logger.info(f"{'dev:':6} loss: {loss:.4f} {dev_metric}")
+            if test:
+                loss, test_metric = self._evaluate(test.loader)
+                logger.info(f"{'test:':6} loss: {loss:.4f} {test_metric}")
 
             t = datetime.now() - start
             # save the model if it is the best so far
@@ -93,11 +98,12 @@ class Parser(object):
             elapsed += t
             if epoch - best_e >= args.patience:
                 break
-        loss, metric = self.load(args.path)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
         logger.info(f"{'dev:':6} - {best_metric}")
-        logger.info(f"{'test:':6} - {metric}")
+        if test:
+            loss, metric = self.load(args.path)._evaluate(test.loader)
+            logger.info(f"{'test:':6} - {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
     def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):

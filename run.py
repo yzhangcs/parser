@@ -3,14 +3,13 @@
 import argparse
 
 from supar import Config
-from supar.parsers import (biaffine_parser, crf2o_dependency, crf_constituency,
-                           crf_dependency, mst_dependency)
+from supar.parsers import (biaffine_dependency, crf2o_dependency, crf_constituency,
+                           crf_dependency)
 
-PARSERS = {'biaffine-parser': biaffine_parser,
+PARSERS = {'biaffine-parser': biaffine_dependency,
            'crf2o-dependency': crf2o_dependency,
            'crf-constituency': crf_constituency,
-           'crf-dependency': crf_dependency,
-           'mst-dependency': mst_dependency}
+           'crf-dependency': crf_dependency}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

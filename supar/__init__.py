@@ -4,6 +4,8 @@ from .parsers import (BiaffineDependencyParser, CRF2oDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser,
                       CRFNPDependencyParser, Parser)
 
+from .utils import Config
+
 __all__ = ['Parser',
            'BiaffineDependencyParser',
            'CRFNPDependencyParser',

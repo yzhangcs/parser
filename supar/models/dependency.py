@@ -108,7 +108,7 @@ class BiaffineDependencyModel(nn.Module):
                                             n_out=n_feat_embed,
                                             pad_index=feat_pad_index,
                                             dropout=mix_dropout)
-            self.n_feat_embed = self.feat_embed.n_out
+            n_feat_embed = self.feat_embed.n_out
         elif feat == 'tag':
             self.feat_embed = nn.Embedding(num_embeddings=n_feats,
                                            embedding_dim=n_feat_embed)
@@ -145,9 +145,19 @@ class BiaffineDependencyModel(nn.Module):
                                  n_out=n_rels,
                                  bias_x=True,
                                  bias_y=True)
+        # transformer attention
+        if self.args.output_attentions:
+            self.attn_mix = nn.Parameter(torch.randn(1))
+
         self.criterion = nn.CrossEntropyLoss()
         self.pad_index = pad_index
         self.unk_index = unk_index
+
+    def extra_repr(self):
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return f"Total parameters: {total_params}\n" \
+            f"Trainable parameters: {trainable_params}"
 
     def load_pretrained(self, embed=None):
         if embed is not None:
@@ -185,7 +195,7 @@ class BiaffineDependencyModel(nn.Module):
         word_embed = self.word_embed(ext_words)
         if hasattr(self, 'pretrained'):
             word_embed += self.pretrained(words)
-        feat_embed = self.feat_embed(feats)
+        feat_embed, attn = self.feat_embed(feats)
         word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
         # concatenate the word and feat representations
         embed = torch.cat((word_embed, feat_embed), -1)
@@ -205,8 +215,14 @@ class BiaffineDependencyModel(nn.Module):
         s_arc = self.arc_attn(arc_d, arc_h)
         # [batch_size, seq_len, seq_len, n_rels]
         s_rel = self.rel_attn(rel_d, rel_h).permute(0, 2, 3, 1)
+
+        # mix bert attentions
+        if attn is not None:
+            s_arc += self.attn_mix * attn
         # set the scores that exceed the length of each sentence to -inf
         s_arc.masked_fill_(~mask.unsqueeze(1), float('-inf'))
+        # Lower the diagonal, because the head of a word can't be itself.
+        s_arc += torch.diag(s_arc.new(seq_len).fill_(float('-inf')))
 
         return s_arc, s_rel
 
@@ -261,12 +277,14 @@ class BiaffineDependencyModel(nn.Module):
         lens = mask.sum(1)
         # prevent self-loops
         s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
+        # select the most likely arcs
         arc_preds = s_arc.argmax(-1)
         bad = [not CoNLL.istree(seq[1:i+1], proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
             alg = eisner if proj else mst
             arc_preds[bad] = alg(s_arc[bad], mask[bad])
+        # select the most likely rels, then choose those corresponding to the predicted arcs
         rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds

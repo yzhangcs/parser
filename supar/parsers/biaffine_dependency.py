@@ -237,6 +237,7 @@ class BiaffineDependencyParser(Parser):
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
             tokenizer.bos_token = tokenizer.bos_token or tokenizer.cls_token
             tokenizer.eos_token = tokenizer.eos_token or tokenizer.sep_token
+
             FEAT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,
