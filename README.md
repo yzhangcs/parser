@@ -49,7 +49,7 @@ For all datasets, we follow the conventional data splits.
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
-      <td>96.00</td><td>94.33</td><td align="right">2254.35</td>
+      <td>96.01</td><td>94.42</td><td align="right">2197.15</td>
     </tr>
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
@@ -77,6 +77,36 @@ For all datasets, we follow the conventional data splits.
     <tr>
       <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
       <td>89.35</td><td>86.25</td><td align="right">217.09</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<table>
+  <thead>
+    <tr>
+      <th rowspan=2>Dataset</th>
+      <th rowspan=2>Parser</th>
+      <th align="center">Performance</th>
+      <th rowspan=2 align="right">Speed (Sents/s)</th>
+    </tr>
+    <tr>
+      <th align="center">F<sub>1</sub></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan=4>PTB</td>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_constituency.py">CRF</a></code></td>
+      <td>94.18</td><td align="right">923.74</td>
+    </tr>
+  </tbody>
+  <tbody>
+    <tr>
+      <td rowspan=4>CTB7</td>
+      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_constituency.py">CRF</a></code></td>
+      <td>88.67</td><td align="right">639.27</td>
+    </tr>
     </tr>
   </tbody>
 </table>
