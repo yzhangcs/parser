@@ -5,31 +5,20 @@
 [![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
 [![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
 
-SuPar provides a collection of state-of-the-art syntactic parsing models (both dependency parsing and constituency parsing) based on Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)):
+SuPar provides a collection of state-of-the-art syntactic parsing models (including dependency parsing and constituency parsing) with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
 * Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
-* CRFNP Dependency Parser ([[Koo et al., 2007](#koo-2007-structured); [Ma and Hovy, 2017](#ma-2017-neural))
+* CRFNP Dependency Parser ([Koo et al., 2007](#koo-2007-structured); [Ma and Hovy, 2017](#ma-2017-neural))
 * CRF Dependency Parser ([Zhang et al., 2020a](#zhang-2020-efficient))
 * CRF2o Dependency Parser ([Zhang et al, 2020a](#zhang-2020-efficient))
 * CRF Constituency Parser ([Zhang et al, 2020b](#zhang-2020-fast))
 
-Details and [hyperparameter choices](#Hyperparameters) are almost identical to those described in the paper, 
-except that we provide the Eisner rather than MST algorithm to ensure well-formedness. 
-Practically, projective decoding like Eisner is the best choice since PTB contains mostly (99.9%) projective trees.
-
-Besides the basic implementations, we also provide other features to replace the POS tags (TAG), 
-e.g., character-level embeddings (CHAR) and BERT.
+This package also integrates implementations of several popular and well-known algorithms, including MST (ChuLiu/Edmods), Eisner, TreeCRF, MatrixTree, CKY, etc.
 
 ## Requirements
 
-* `python`: 3.7.0
-* [`pytorch`](https://github.com/pytorch/pytorch): 1.4.0
-* [`transformers`](https://github.com/huggingface/transformers): 3.0.0
-
-## Datasets
-
-The model is evaluated on the Stanford Dependency conversion ([v3.3.0](https://nlp.stanford.edu/software/stanford-parser-full-2013-11-12.zip)) of the English Penn Treebank with POS tags predicted by [Stanford POS tagger](https://nlp.stanford.edu/software/stanford-postagger-full-2018-10-16.zip).
-
-For all datasets, we follow the conventional data splits.
+* `python`: 3.7
+* [`pytorch`](https://github.com/pytorch/pytorch): 1.4
+* [`transformers`](https://github.com/huggingface/transformers): 3.0
 
 ## Performance
 
