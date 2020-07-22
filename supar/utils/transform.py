@@ -3,6 +3,9 @@
 from collections.abc import Iterable
 
 import nltk
+from supar.utils.logging import get_logger, progress_bar
+
+logger = get_logger(__name__)
 
 
 class Transform(object):
@@ -314,17 +317,19 @@ class CoNLL(Transform):
             A list of CoNLLSentence instances.
         """
 
-        start, sentences = 0, []
         if isinstance(data, str):
             with open(data, 'r') as f:
                 lines = [line.strip() for line in f]
         else:
             data = [data] if isinstance(data[0], str) else data
             lines = '\n'.join([self.toconll(i) for i in data]).split('\n')
-        for i, line in enumerate(lines):
+
+        i, start, sentences = 0, 0, []
+        for line in progress_bar(lines):
             if not line:
                 sentences.append(CoNLLSentence(self, lines[start:i]))
                 start = i + 1
+            i += 1
         if proj:
             sentences = [i for i in sentences if self.isprojective(list(map(int, i.arcs)))]
         if max_len is not None:
@@ -626,9 +631,13 @@ class Tree(Transform):
         else:
             data = [data] if isinstance(data[0], str) else data
             trees = [self.totree(i, self.root) for i in data]
-        sentences = [TreeSentence(self, tree) for tree in trees
-                     if not len(tree) == 1
-                     or isinstance(tree[0][0], nltk.Tree)]
+
+        i, sentences = 0, []
+        for tree in progress_bar(trees):
+            if len(tree) == 1 and isinstance(tree[0][0], nltk.Tree):
+                continue
+            sentences.append(TreeSentence(self, tree))
+            i += 1
         if max_len is not None:
             sentences = [i for i in sentences if len(i) < max_len]
 

@@ -46,16 +46,14 @@ class Parser(object):
         self.transform.train()
         if dist.is_initialized():
             args.batch_size = args.batch_size // dist.get_world_size()
+        logger.info(f"Load the data")
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
         test = Dataset(self.transform, args.test)
         train.build(args.batch_size, args.buckets, True, dist.is_initialized())
         dev.build(args.batch_size, args.buckets)
         test.build(args.batch_size, args.buckets)
-        logger.info(f"Load the datasets\n"
-                    f"{'train:':6} {train}\n"
-                    f"{'dev:':6} {dev}\n"
-                    f"{'test:':6} {test}\n")
+        logger.info(f"{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
 
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
@@ -105,9 +103,10 @@ class Parser(object):
         init_logger(logger, verbose=args.verbose)
 
         self.transform.train()
+        logger.info(f"Load the data")
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
-        logger.info(f"Load the dataset\n{dataset}")
+        logger.info(f"{dataset}")
 
         logger.info("Evaluate the dataset")
         start = datetime.now()
@@ -127,9 +126,10 @@ class Parser(object):
         if args.prob:
             self.transform.append(Field('probs'))
 
+        logger.info(f"Load the data")
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
-        logger.info(f"Load the dataset\n{dataset}")
+        logger.info(f"{dataset}")
 
         logger.info("Make predictions on the dataset")
         start = datetime.now()
