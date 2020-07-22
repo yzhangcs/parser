@@ -24,8 +24,7 @@ jobs:
       with:
         # This path is specific to Ubuntu
         path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-pydeps-${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-
           ${{ runner.os }}-

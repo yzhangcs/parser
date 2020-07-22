@@ -5,7 +5,12 @@
 [![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
 [![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
 
-An implementation of "Deep Biaffine Attention for Neural Dependency Parsing".
+SuPar provides a collection of state-of-the-art syntactic parsing models (both dependency parsing and constituency parsing) based on Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)):
+* Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
+* CRFNP Dependency Parser ([[Koo et al., 2007](#koo-2007-structured); [Ma and Hovy, 2017](#ma-2017-neural))
+* CRF Dependency Parser ([Zhang et al., 2020a](#zhang-2020-efficient))
+* CRF2o Dependency Parser ([Zhang et al, 2020a](#zhang-2020-efficient))
+* CRF Constituency Parser ([Zhang et al, 2020b](#zhang-2020-fast))
 
 Details and [hyperparameter choices](#Hyperparameters) are almost identical to those described in the paper, 
 except that we provide the Eisner rather than MST algorithm to ensure well-formedness. 
@@ -182,97 +187,6 @@ $ cat naive.conllx
 
 ```
 
-All the optional arguments of the subcommands are as follows:
-
-```sh
-$ python run.py train -h
-usage: run.py train [-h] [--path PATH] [--device DEVICE]
-                    [--seed SEED] [--threads THREADS]
-                    [--batch-size BATCH_SIZE] [--buckets BUCKETS] [--partial]
-                    [--mbr] [--tree] [--proj] [--feat {tag,char,bert}]
-                    [--build] [--punct] [--max-len MAX_LEN] [--train TRAIN]
-                    [--dev DEV] [--test TEST] [--embed EMBED] [--unk UNK]
-                    [--bert BERT_MODEL]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --path PATH, -p PATH  path to model file
-  --device DEVICE, -d DEVICE
-                        ID of GPU to use
-  --seed SEED, -s SEED  seed for generating random numbers
-  --threads THREADS, -t THREADS
-                        max num of threads
-  --batch-size BATCH_SIZE
-                        batch size
-  --buckets BUCKETS     max num of buckets to use
-  --partial             whether partial annotation is included
-  --mbr                 whether to use mbr decoding
-  --tree                whether to ensure well-formedness
-  --proj                whether to projectivise the data
-  --feat {tag,char,bert}, -f {tag,char,bert}
-                        choices of additional features
-  --build, -b           whether to build the model first
-  --punct               whether to include punctuation
-  --max-len MAX_LEN     max length of the sentences
-  --train TRAIN         path to train file
-  --dev DEV             path to dev file
-  --test TEST           path to test file
-  --embed EMBED         path to pretrained embeddings
-  --unk UNK             unk token in pretrained embeddings
-  --bert BERT_MODEL
-                        which bert model to use
-
-$ python run.py evaluate -h
-usage: run.py evaluate [-h] [--batch-size BATCH_SIZE] [--buckets BUCKETS]
-                       [--punct] [--fdata FDATA] [--file FILE]
-                       [--preprocess] [--device DEVICE] [--seed SEED]
-                       [--threads THREADS] [--tree] [--feat {tag,char,bert}]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --batch-size BATCH_SIZE
-                        batch size
-  --buckets BUCKETS     max num of buckets to use
-  --punct               whether to include punctuation
-  --fdata FDATA         path to dataset
-  --file FILE, -f FILE  path to saved files
-  --preprocess, -p      whether to preprocess the data first
-  --device DEVICE, -d DEVICE
-                        ID of GPU to use
-  --seed SEED, -s SEED  seed for generating random numbers
-  --threads THREADS, -t THREADS
-                        max num of threads
-  --tree                whether to ensure well-formedness
-  --feat {tag,char,bert}
-                        choices of additional features
-
-$ python run.py predict -h
-usage: run.py predict [-h] [--path PATH] [--device DEVICE]
-                      [--seed SEED] [--threads THREADS]
-                      [--batch-size BATCH_SIZE] [--buckets BUCKETS]
-                      [--partial] [--mbr] [--tree] [--proj] [--prob]
-                      [--data DATA] [--pred PRED]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --path PATH, -p PATH  path to model file
-  --device DEVICE, -d DEVICE
-                        ID of GPU to use
-  --seed SEED, -s SEED  seed for generating random numbers
-  --threads THREADS, -t THREADS
-                        max num of threads
-  --batch-size BATCH_SIZE
-                        batch size
-  --buckets BUCKETS     max num of buckets to use
-  --partial             whether partial annotation is included
-  --mbr                 whether to use mbr decoding
-  --tree                whether to ensure well-formedness
-  --proj                whether to projectivise the data
-  --prob                whether to output probs
-  --data DATA           path to dataset
-  --pred PRED           path to predicted result
-```
-
 ## Hyperparameters
 
 | Param         | Description                                                  |                                 Value                                  |
@@ -299,5 +213,16 @@ optional arguments:
 
 ## References
 
-* [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/pdf?id=Hk95PK9le)
+* <a id="dozat-2017-biaffine"></a> 
+Timothy Dozat and Christopher D. Manning. 2017. [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/pdf?id=Hk95PK9le).
+* <a id="koo-2007-structured"></a> 
+Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007. [Structured Prediction Models via the Matrix-Tree Theorem](https://www.aclweb.org/anthology/D07-1015/).
+* <a id="ma-2017-neural"></a> 
+Xuezhe Ma and Eduard Hovy. 2017. [Neural Probabilistic Model for Non-projective MST Parsing](https://www.aclweb.org/anthology/I17-1007/).
+* <a id="zhang-2020-efficient"></a> 
+Yu Zhang, Zhenghua Li and Min Zhang. 2020.
+[Efficient Second-Order TreeCRF for Neural Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.302/).
+* <a id="zhang-2020-fast"></a> 
+Yu Zhang, Houquan Zhou and Zhenghua Li. 2020.
+[Fast and Accurate Neural CRF Constituency Parsing](https://www.ijcai.org/Proceedings/2020/560/).
 <!-- * [Stack-Pointer Networks for Dependency Parsing](https://www.aclweb.org/anthology/P18-1130.pdf) -->
