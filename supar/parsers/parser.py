@@ -53,7 +53,7 @@ class Parser(object):
         train.build(args.batch_size, args.buckets, True, dist.is_initialized())
         dev.build(args.batch_size, args.buckets)
         test.build(args.batch_size, args.buckets)
-        logger.info(f"{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
+        logger.info(f"\n{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
 
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
@@ -106,15 +106,14 @@ class Parser(object):
         logger.info(f"Load the data")
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
-        logger.info(f"{dataset}")
+        logger.info(f"\n{dataset}")
 
         logger.info("Evaluate the dataset")
         start = datetime.now()
         loss, metric = self._evaluate(dataset.loader)
         elapsed = datetime.now() - start
         logger.info(f"loss: {loss:.4f} - {metric}")
-        logger.info(f"{elapsed}s elapsed, "
-                    f"{len(dataset)/elapsed.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, {len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
         return loss, metric
 
@@ -129,7 +128,7 @@ class Parser(object):
         logger.info(f"Load the data")
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
-        logger.info(f"{dataset}")
+        logger.info(f"\n{dataset}")
 
         logger.info("Make predictions on the dataset")
         start = datetime.now()
@@ -141,8 +140,7 @@ class Parser(object):
         if pred is not None:
             logger.info(f"Save predicted results to {pred}")
             self.transform.save(pred, dataset.sentences)
-        logger.info(f"{elapsed}s elapsed, "
-                    f"{len(dataset) / elapsed.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, {len(dataset) / elapsed.total_seconds():.2f} Sents/s")
 
         return dataset
 

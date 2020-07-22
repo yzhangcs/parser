@@ -32,13 +32,14 @@ def init_logger(logger,
 
 def progress_bar(iterator,
                  ncols=None,
-                 bar_format='{l_bar}{bar:36}| {n_fmt}/{total_fmt} '
-                 '{elapsed}<{remaining}, {rate_fmt}{postfix}'):
+                 bar_format='{l_bar}{bar:36}| {n_fmt}/{total_fmt} {elapsed}<{remaining}, {rate_fmt}{postfix}',
+                 leave=True):
     return tqdm(iterator,
                 ncols=ncols,
                 bar_format=bar_format,
                 ascii=True,
-                disable=(not is_master()))
+                disable=(not is_master()),
+                leave=leave)
 
 
 logger = get_logger('supar')

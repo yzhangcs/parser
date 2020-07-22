@@ -325,7 +325,7 @@ class CoNLL(Transform):
             lines = '\n'.join([self.toconll(i) for i in data]).split('\n')
 
         i, start, sentences = 0, 0, []
-        for line in progress_bar(lines):
+        for line in progress_bar(lines, leave=False):
             if not line:
                 sentences.append(CoNLLSentence(self, lines[start:i]))
                 start = i + 1
@@ -633,8 +633,8 @@ class Tree(Transform):
             trees = [self.totree(i, self.root) for i in data]
 
         i, sentences = 0, []
-        for tree in progress_bar(trees):
-            if len(tree) == 1 and isinstance(tree[0][0], nltk.Tree):
+        for tree in progress_bar(trees, leave=False):
+            if len(tree) == 1 and not isinstance(tree[0][0], nltk.Tree):
                 continue
             sentences.append(TreeSentence(self, tree))
             i += 1
