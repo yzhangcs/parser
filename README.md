@@ -5,12 +5,14 @@
 [![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
 [![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
 
-`SuPar` provides a collection of state-of-the-art syntactic parsing models (including dependency parsing and constituency parsing) with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
+`SuPar` provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
 * Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
 * CRFNP Dependency Parser ([Koo et al., 2007](#koo-2007-structured); [Ma and Hovy, 2017](#ma-2017-neural))
 * CRF Dependency Parser ([Zhang et al., 2020a](#zhang-2020-efficient))
 * CRF2o Dependency Parser ([Zhang et al, 2020a](#zhang-2020-efficient))
 * CRF Constituency Parser ([Zhang et al, 2020b](#zhang-2020-fast))
+
+You can load released pretrained models for the above parsers and obtain dependency/constituency parsing trees very conveniently, as detailed in [Usage](#Usage).
 
 The implementations of several popular and well-known algorithms, like MST (ChuLiu/Edmods), Eisner, CKY, MatrixTree, TreeCRF, are also integrated in this package.
 
