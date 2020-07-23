@@ -17,7 +17,7 @@ You can load released pretrained models for the above parsers and obtain depende
 The implementations of several popular and well-known algorithms, like MST (ChuLiu/Edmods), Eisner, CKY, MatrixTree, TreeCRF, are also integrated in this package.
 
 Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inputs to the encoder, optionally, `SuPar` also allows to utilize CharLSTM/BERT layers to produce character/subword-level features.
-The BERT module in `SuPar` extracts BERT representations coming from the pretrained model in `transformers`. 
+The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers). 
 It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
 
 ## Requirements
