@@ -5,14 +5,18 @@
 [![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
 [![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
 
-SuPar provides a collection of state-of-the-art syntactic parsing models (including dependency parsing and constituency parsing) with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
+`SuPar` provides a collection of state-of-the-art syntactic parsing models (including dependency parsing and constituency parsing) with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
 * Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
 * CRFNP Dependency Parser ([Koo et al., 2007](#koo-2007-structured); [Ma and Hovy, 2017](#ma-2017-neural))
 * CRF Dependency Parser ([Zhang et al., 2020a](#zhang-2020-efficient))
 * CRF2o Dependency Parser ([Zhang et al, 2020a](#zhang-2020-efficient))
 * CRF Constituency Parser ([Zhang et al, 2020b](#zhang-2020-fast))
 
-This package also integrates implementations of several popular and well-known algorithms, including MST (ChuLiu/Edmods), Eisner, TreeCRF, MatrixTree, CKY, etc.
+The implementations of several popular and well-known algorithms, like MST (ChuLiu/Edmods), Eisner, CKY, MatrixTree, TreeCRF, are also integrated in this package.
+
+Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inputs to the encoder, optionally, `SuPar` also allows to utilize CharLSTM/BERT layers to produce character/subword-level features.
+The BERT module in `SuPar` extracts BERT representations coming from the pretrained model in `transformers`. 
+It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
 
 ## Requirements
 
