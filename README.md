@@ -1,9 +1,9 @@
 # SuPar
 
 [![GitHub actions](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
-[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
 [![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
+[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
 `SuPar` provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
 * Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
@@ -20,17 +20,37 @@ Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inpu
 The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers). 
 It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
 
-## Requirements
+## Contents
 
+* Installation
+* Performance
+* Usage
+* References
+
+## Installation
+
+`SuPar` can be installed via pip
+```sh
+pip install supar
+```
+Or installing from source is also permitted:
+```sh
+git clone https://github.com/yzhangcs/parser
+cd parser
+python setup.py install
+```
+
+As a prerequisite, the following requirements should be satisfied:
 * `python`: 3.7
 * [`pytorch`](https://github.com/pytorch/pytorch): 1.4
 * [`transformers`](https://github.com/huggingface/transformers): 3.0
 
 ## Performance
 
-`SuPar` releases several pretrained models for English and Chinese.
+`SuPar` provides several pretrained models for English and Chinese.
 The English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while the Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
-The performance and parsing speed of these models is listed in the following table.
+
+The performance and parsing speed of these models are listed in the following table.
 Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7. 
 
 <table>
