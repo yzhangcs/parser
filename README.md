@@ -33,7 +33,8 @@ It is also compatiable with other language models like XLNet, RoBERTa and ELECTR
     <tr>
       <th>Dataset</th>
       <th align="center">Type</th>
-      <th align="center">Parser</th>
+      <th align="center">Name</th>
+      <th align="center">Reference</th>
       <th align="center">Metric</th>
       <th align="center" colspan=2>Performance</th>
       <th align="right">Speed (Sents/s)</th>
@@ -43,32 +44,32 @@ It is also compatiable with other language models like XLNet, RoBERTa and ELECTR
     <tr>
       <td rowspan=5>PTB</td>
       <td rowspan=4>Dependency</td>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/biaffine_dependency.py">Biaffine</a></code></td>
+      <td><code>biaffine-dep-en</code></td><td><a href="#dozat-2017-biaffine">[Dozat and Manning, 2017]</a></td>
       <td align="center">UAS/LAS</td>
       <td align="center">96.03</td><td align="center">94.37</td>
       <td align="right">1826.77</td>
     </tr>
     <tr>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
+      <td><code>crfnp-dep-en</code></td><td><a href="#koo-2007-structured">[Koo et al., 2007]</a></td>
       <td align="center">UAS/LAS</td>
       <td align="center">96.01</td><td align="center">94.42</td>
       <td align="right">2197.15</td>
     </tr>
     <tr>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
+      <td><code>crf-dep-en</code></td><td><a href="#zhang-2020-efficient">[Zhang et al., 2020a]</a></td>
       <td align="center">UAS/LAS</td>
       <td align="center">96.12</td><td align="center">94.50</td>
       <td align="right">652.41</td>
     </tr>
     <tr>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
+      <td><code>crf2o-dep-en</a></code></td><td><a href="#zhang-2020-efficient">[Zhang et al., 2020a]</a></td>
       <td align="center">UAS/LAS</td>
       <td align="center">96.14</td><td align="center">94.55</td>
       <td align="right">465.64</td>
     </tr>
     <tr>
       <td>Constituency</td>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_constituency.py">CRF</a></code></td>
+      <td><code>crf-con-en</a></code></td><td><a href="#zhang-2020-fast">[Zhang and Manning, 2020b]</a></td>
       <td align="center">F<sub>1</sub></td>
       <td align="center" colspan=2>94.18</td><td align="right">923.74</td>
     </tr>
@@ -77,28 +78,28 @@ It is also compatiable with other language models like XLNet, RoBERTa and ELECTR
     <tr>
       <td rowspan=5>CTB7</td>
       <td rowspan=4>Dependency</td>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/biaffine_dependency.py">Biaffine</a></code></td>
+      <td><code>biaffine-dep-zh</code></td><td><a href="#dozat-2017-biaffine">[Dozat and Manning, 2017]</a></td>
       <td align="center">UAS/LAS</td>
       <td>88.77</td><td>85.63</td><td align="right">1155.50</td>
     </tr>
     <tr>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crfnp_dependency.py">CRFNP</a></code></td>
+      <td><code>crfnp-dep-zh</code></td><td><a href="#koo-2007-structured">[Koo et al., 2007]</a></td>
       <td align="center">UAS/LAS</td>
       <td>88.78</td><td>85.64</td><td align="right">1323.75</td>
     </tr>
     <tr>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_dependency.py">CRF</a></code></td>
+      <td><code>crf-dep-zh</code></td><td><a href="#zhang-2020-efficient">[Zhang et al., 2020a]</a></td>
       <td align="center">UAS/LAS</td>
       <td>88.98</td><td>85.84</td><td align="right">354.65</td>
     </tr>
     <tr>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf2o_dependency.py">CRF2o</a></code></td>
+      <td><code>crf-dep-zh</code></td><td><a href="#zhang-2020-efficient">[Zhang et al., 2020a]</a></td>
       <td align="center">UAS/LAS</td>
       <td>89.35</td><td>86.25</td><td align="right">217.09</td>
     </tr>
     <tr>
       <td>Constituency</td>
-      <td><code><a href="https://github.com/yzhangcs/parser/blob/release/supar/parsers/crf_constituency.py">CRF</a></code></td>
+      <td><code>crf-con-zh</code></td><td><a href="#zhang-2020-fast">[Zhang et al., 2020b]</a></td>
       <td align="center">F<sub>1</sub></td>
       <td align="center" colspan=2>88.67</td>
       <td align="right">639.27</td>
