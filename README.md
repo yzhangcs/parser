@@ -46,13 +46,14 @@ If you are interested in them, please cite:
 
 ## Contents
 
-* [Contents](#contents)
-* [Installation](#installation)
-* [Performance](#performance)
-* [Usage](#usage)
-  * [Training](#training)
-  * [Evaluation](#evaluation)
-* [References](#references)
+- [SuPar](#supar)
+  - [Contents](#contents)
+  - [Installation](#installation)
+  - [Performance](#performance)
+  - [Usage](#usage)
+    - [Training](#training)
+    - [Evaluation](#evaluation)
+  - [References](#references)
 
 ## Installation
 
@@ -197,6 +198,7 @@ If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize`
 5       a       _       _       _       _       6       det     _       _
 6       telescope       _       _       _       _       4       pobj    _       _
 7       .       _       _       _       _       2       punct   _       _
+
 ```
 
 If there are a plenty of sentences to parse, `SuPar` also supports for loading them from file, and save to the `pred` file if specified.
@@ -359,7 +361,6 @@ Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
 2020-07-25 20:59:19 INFO Evaluate the dataset
 2020-07-25 20:59:20 INFO loss: 0.2326 - UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%
 2020-07-25 20:59:20 INFO 0:00:01.253601s elapsed, 1927.25 Sents/s
-(0.23255667225881058, UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%)
 ```
 
 ## References
