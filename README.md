@@ -20,6 +20,29 @@ Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inpu
 The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers). 
 It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
 
+The CRF models for Dependency/Constituency parsing are our recent works published in ACL 2020 and IJCAI 2020 respectively. 
+If you are interested in them, please cite:
+```bib
+@inproceedings{zhang-etal-2020-efficient,
+  title     = {Efficient Second-Order {T}ree{CRF} for Neural Dependency Parsing},
+  author    = {Zhang, Yu and Li, Zhenghua and Zhang Min},
+  booktitle = {Proceedings of ACL},
+  year      = {2020},
+  url       = {https://www.aclweb.org/anthology/2020.acl-main.302},
+  pages     = {3295--3305}
+}
+
+@inproceedings{zhang-etal-2020-fast,
+  title     = {Fast and Accurate Neural {CRF} Constituency Parsing},
+  author    = {Zhang, Yu and Zhou, Houquan and Li, Zhenghua},
+  booktitle = {Proceedings of IJCAI},
+  year      = {2020},
+  doi       = {10.24963/ijcai.2020/560},
+  url       = {https://doi.org/10.24963/ijcai.2020/560},
+  pages     = {4046--4053}
+}
+```
+
 ## Contents
 
 * Installation
@@ -35,8 +58,7 @@ pip install supar
 ```
 Or installing from source is also permitted:
 ```sh
-git clone https://github.com/yzhangcs/parser
-cd parser
+git clone https://github.com/yzhangcs/parser && cd parser
 python setup.py install
 ```
 
@@ -216,30 +238,6 @@ $ cat naive.conllx
 | patience      | patience for early stop                                      |                                  100                                   |
 | min_freq      | minimum frequency of words in the training set not discarded |                                   2                                    |
 | fix_len       | fixed length of a word                                       |                                   20                                   |
-
-## Citation
-
-The CRF models for Dependency/Constituency parsing are our recent works published in ACL 2020 and IJCAI 2020 respectively. If you are interested in them, please cite:
-```
-@inproceedings{zhang-etal-2020-efficient,
-  title     = {Efficient Second-Order {T}ree{CRF} for Neural Dependency Parsing},
-  author    = {Zhang, Yu and Li, Zhenghua and Zhang Min},
-  booktitle = {Proceedings of ACL},
-  year      = {2020},
-  url       = {https://www.aclweb.org/anthology/2020.acl-main.302},
-  pages     = {3295--3305}
-}
-
-@inproceedings{zhang-etal-2020-fast,
-  title     = {Fast and Accurate Neural {CRF} Constituency Parsing},
-  author    = {Zhang, Yu and Zhou, Houquan and Li, Zhenghua},
-  booktitle = {Proceedings of IJCAI},
-  year      = {2020},
-  doi       = {10.24963/ijcai.2020/560},
-  url       = {https://doi.org/10.24963/ijcai.2020/560},
-  pages     = {4046--4053}
-}
-```
 
 ## References
 
