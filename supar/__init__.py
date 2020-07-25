@@ -18,14 +18,14 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFConstituencyParser]}
 
 PRETRAINED = {
-    'biaffine-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.biaffine.dependency.char.zip',
-    'biaffine-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.biaffine.dependency.char.zip',
-    'crfnp-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crfnp.dependency.char.zip',
-    'crfnp-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crfnp.dependency.char.zip',
-    'crf-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf.dependency.char.zip',
-    'crf-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.dependency.char.zip',
-    'crf2o-dep-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf2o.dependency.char.zip',
-    'crf2o-dep-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf2o.dependency.char.zip',
-    'crf-con-en': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ptb.crf.constituency.char.zip',
-    'crf-con-zh': 'http://hlt.suda.edu.cn/LA/yzhang/supar/ctb7.crf.constituency.char.zip'
+    'biaffine-dep-en': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ptb.biaffine.dependency.char.zip',
+    'biaffine-dep-zh': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ctb7.biaffine.dependency.char.zip',
+    'crfnp-dep-en': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ptb.crfnp.dependency.char.zip',
+    'crfnp-dep-zh': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ctb7.crfnp.dependency.char.zip',
+    'crf-dep-en': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ptb.crf.dependency.char.zip',
+    'crf-dep-zh': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ctb7.crf.dependency.char.zip',
+    'crf2o-dep-en': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ptb.crf2o.dependency.char.zip',
+    'crf2o-dep-zh': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ctb7.crf2o.dependency.char.zip',
+    'crf-con-en': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ptb.crf.constituency.char.zip',
+    'crf-con-zh': 'https://github.com/yzhangcs/supar/releases/download/v0.1.0/ctb7.crf.constituency.char.zip'
 }
