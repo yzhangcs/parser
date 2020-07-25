@@ -45,12 +45,13 @@ If you are interested in them, please cite:
 
 ## Contents
 
-* Installation
-* Performance
-* Usage
-  * Training
-  * Evaluation
-* References
+* [Contents](#contents)
+* [Installation](#installation)
+* [Performance](#performance)
+* [Usage](#usage)
+  * [Training](#training)
+  * [Evaluation](#evaluation)
+* [References](#references)
 
 ## Installation
 
@@ -72,7 +73,7 @@ As a prerequisite, the following requirements should be satisfied:
 ## Performance
 
 Currently, `SuPar` provides pretrained models for English and Chinese.
-The English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while the Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
+English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
 
 The performance and parsing speed of these models are listed in the following table.
 Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7. 
@@ -157,7 +158,7 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
 
 ## Usage
 
-`SuPar` is very easy to use. You can load the pretrained model and run dependency parsing over sentences with a few lines of code:
+`SuPar` is very easy to use. You can download the pretrained model and run dependency parsing over sentences with a few lines of code:
 ```py
 >>> from supar import Parser
 >>> parser = Parser.load('biaffine-dep-en')
@@ -181,14 +182,100 @@ arcs: [2, 0, 2, 2, 6, 4, 2]
 rels: ['nsubj', 'root', 'dobj', 'prep', 'det', 'pobj', 'punct']
 ```
 
-
-Constituency trees can be parsed in a similar manner:
+Note that `SuPar` requires pre-tokenized sentences as inputs. 
+If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize` to do the tokenization first:
 ```py
->>> from supar import Parser
+>>> import nltk
+>>> text = nltk.word_tokenize('I saw Sarah with a telescope.')
+>>> print(parser.predict([text], verbose=False).sentences[0])
+100%|####################################| 1/1 00:00<00:00, 74.20it/s
+1       I       _       _       _       _       2       nsubj   _       _
+2       saw     _       _       _       _       0       root    _       _
+3       Sarah   _       _       _       _       2       dobj    _       _
+4       with    _       _       _       _       2       prep    _       _
+5       a       _       _       _       _       6       det     _       _
+6       telescope       _       _       _       _       4       pobj    _       _
+7       .       _       _       _       _       2       punct   _       _
+```
+
+If there are a plenty of sentences to parse, `SuPar` also supports for loading them from file, and save then to the `pred` file if specified.
+```py
+>>> parser.predict('data/ptb/test.conllx',pred='pred.conllx')
+2020-07-25 18:13:50 INFO Load the data
+2020-07-25 18:13:52 INFO                                                         
+Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
+2020-07-25 18:13:52 INFO Make predictions on the dataset
+100%|####################################| 13/13 00:01<00:00, 10.58it/s
+2020-07-25 18:13:53 INFO Save predicted results to pred.conllx
+2020-07-25 18:13:54 INFO 0:00:01.335261s elapsed, 1809.38 Sents/s
+Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
+```
+Please make sure the file is in CoNLL-X format. If some fields are missing, you can use underscores as placeholders.
+`SuPar` provides an interface for the transformation.
+```py
+>>> from supar.utils import CoNLL
+>>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']))
+1       I       _       _       _       _       _       _       _       _
+2       saw     _       _       _       _       _       _       _       _
+3       Sarah   _       _       _       _       _       _       _       _
+4       with    _       _       _       _       _       _       _       _
+5       a       _       _       _       _       _       _       _       _
+6       telescope       _       _       _       _       _       _       _       _
+7       .       _       _       _       _       _       _       _       _
+
+```
+
+For Universial Dependencies (UD), the CoNLL-U file is also supported, while comment lines in the file can be reserved before prediction and recovered during post-processing.
+```py
+>>> import os
+>>> import tempfile
+>>> text = '''# text = But I found the location wonderful and the neighbors very kind.
+1\tBut\t_\t_\t_\t_\t_\t_\t_\t_
+2\tI\t_\t_\t_\t_\t_\t_\t_\t_
+3\tfound\t_\t_\t_\t_\t_\t_\t_\t_
+4\tthe\t_\t_\t_\t_\t_\t_\t_\t_
+5\tlocation\t_\t_\t_\t_\t_\t_\t_\t_
+6\twonderful\t_\t_\t_\t_\t_\t_\t_\t_
+7\tand\t_\t_\t_\t_\t_\t_\t_\t_
+7.1\tfound\t_\t_\t_\t_\t_\t_\t_\t_
+8\tthe\t_\t_\t_\t_\t_\t_\t_\t_
+9\tneighbors\t_\t_\t_\t_\t_\t_\t_\t_
+10\tvery\t_\t_\t_\t_\t_\t_\t_\t_
+11\tkind\t_\t_\t_\t_\t_\t_\t_\t_
+12\t.\t_\t_\t_\t_\t_\t_\t_\t_
+
+'''
+>>> path = os.path.join(tempfile.mkdtemp(), 'data.conllx')
+>>> with open(path, 'w') as f:
+...     f.write(text)
+...
+>>> print(parser.predict(path, verbose=False).sentences[0])
+100%|####################################| 1/1 00:00<00:00, 68.60it/s
+# text = But I found the location wonderful and the neighbors very kind.
+1       But     _       _       _       _       3       cc      _       _
+2       I       _       _       _       _       3       nsubj   _       _
+3       found   _       _       _       _       0       root    _       _
+4       the     _       _       _       _       5       det     _       _
+5       location        _       _       _       _       6       nsubj   _       _
+6       wonderful       _       _       _       _       3       xcomp   _       _
+7       and     _       _       _       _       6       cc      _       _
+7.1     found   _       _       _       _       _       _       _       _
+8       the     _       _       _       _       9       det     _       _
+9       neighbors       _       _       _       _       11      dep     _       _
+10      very    _       _       _       _       11      advmod  _       _
+11      kind    _       _       _       _       6       conj    _       _
+12      .       _       _       _       _       3       punct   _       _
+
+```
+
+Constituency trees can be parsed in a similar manner. 
+The returned `dataset` holds all predicted trees represented using `nltk.Tree` objects.
+```py
 >>> parser = Parser.load('crf-con-en')
->>> tree = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], verbose=False).trees[0]
+>>> dataset = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], verbose=False)
 100%|####################################| 1/1 00:00<00:00, 75.86it/s
->>> print(tree)
+>>> print(f"trees:\n{dataset.trees[0]}")
+trees:
 (TOP
   (S
     (NP (_ I))
@@ -197,7 +284,28 @@ Constituency trees can be parsed in a similar manner:
       (NP (_ Sarah))
       (PP (_ with) (NP (_ a) (_ telescope))))
     (_ .)))
+>>> parser.predict('data/ptb/test.pid',pred='pred.pid')
+2020-07-25 18:21:28 INFO Load the data
+2020-07-25 18:21:33 INFO                                                     
+Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
+2020-07-25 18:21:33 INFO Make predictions on the dataset
+100%|####################################| 13/13 00:02<00:00,  5.30it/s
+2020-07-25 18:21:36 INFO Save predicted results to pred.pid
+2020-07-25 18:21:36 INFO 0:00:02.455740s elapsed, 983.82 Sents/s
+Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 ```
+
+Analogous to dependency parsing, a sentence can be transformed to an empty `nltk.Tree` conveniently:
+```py
+>>> from supar.utils import Tree
+>>> print(Tree.totree(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']))
+( (_ I) (_ saw) (_ Sarah) (_ with) (_ a) (_ telescope) (_ .))
+```
+
+
+### Training
+
+### Evaluation
 
 ## References
 
