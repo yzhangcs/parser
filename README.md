@@ -1,8 +1,6 @@
 # SuPar
 
-[![GitHub actions](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
-[![GitHub stars](https://img.shields.io/github/stars/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/stargazers)		
-[![GitHub forks](https://img.shields.io/github/forks/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/network/members)
+[![build](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
 [![LICENSE](https://img.shields.io/github/license/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
 `SuPar` provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
@@ -46,14 +44,13 @@ If you are interested in them, please cite:
 
 ## Contents
 
-- [SuPar](#supar)
-  - [Contents](#contents)
-  - [Installation](#installation)
-  - [Performance](#performance)
-  - [Usage](#usage)
-    - [Training](#training)
-    - [Evaluation](#evaluation)
-  - [References](#references)
+* [Contents](#contents)
+* [Installation](#installation)
+* [Performance](#performance)
+* [Usage](#usage)
+  * [Training](#training)
+  * [Evaluation](#evaluation)
+* [References](#references)
 
 ## Installation
 
