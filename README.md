@@ -48,11 +48,13 @@ If you are interested in them, please cite:
 * Installation
 * Performance
 * Usage
+  * Training
+  * Evaluation
 * References
 
 ## Installation
 
-`SuPar` can be installed via pip
+`SuPar` can be installed via pip:
 ```sh
 pip install supar
 ```
@@ -69,7 +71,7 @@ As a prerequisite, the following requirements should be satisfied:
 
 ## Performance
 
-`SuPar` provides several pretrained models for English and Chinese.
+Currently, `SuPar` provides pretrained models for English and Chinese.
 The English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while the Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
 
 The performance and parsing speed of these models are listed in the following table.
@@ -155,89 +157,47 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
 
 ## Usage
 
-You can start the training, evaluation and prediction process by using subcommands registered in `parser.cmds`.
+`SuPar` is very easy to use. You can load the pretrained model and run dependency parsing over sentences with a few lines of code:
+```py
+>>> from supar import Parser
+>>> parser = Parser.load('biaffine-dep-en')
+>>> dataset = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], verbose=False)
+100%|####################################| 1/1 00:00<00:00, 75.86it/s
+```
+The call to `parser.predict` will return an instance of `supar.utils.Dataset` containing the predicted syntactic trees.
+For dependency parsing, you can either access each sentence held in `dataset` or an individual field of all the trees.
+```py
+>>> print(dataset.sentences[0])
+1       I       _       _       _       _       2       nsubj   _       _
+2       saw     _       _       _       _       0       root    _       _
+3       Sarah   _       _       _       _       2       dobj    _       _
+4       with    _       _       _       _       2       prep    _       _
+5       a       _       _       _       _       6       det     _       _
+6       telescope       _       _       _       _       4       pobj    _       _
+7       .       _       _       _       _       2       punct   _       _
 
-```sh
-$ python run.py -h
-usage: run.py [-h] {evaluate,predict,train} ...
-
-Create the Biaffine Parser model.
-
-optional arguments:
-  -h, --help            show this help message and exit
-
-Commands:
-  {evaluate,predict,train}
-    evaluate            Evaluate the specified parser and dataset.
-    predict             Use a trained parser to make predictions.
-    train               Train a parser.
+>>> print(f"arcs: {dataset.arcs[0]}\nrels: {dataset.rels[0]}")
+arcs: [2, 0, 2, 2, 6, 4, 2]
+rels: ['nsubj', 'root', 'dobj', 'prep', 'det', 'pobj', 'punct']
 ```
 
-Before triggering the subcommands, please make sure that the data files must be in CoNLL-X format. 
-If some fields are missing, you can use underscores as placeholders.
-Below are some examples:
 
-```sh
-$ python run.py train -d=0 -p=exp/ptb.char --feat=char  \
-      --train=data/ptb/train.conllx  \
-      --dev=data/ptb/dev.conllx  \
-      --test=data/ptb/test.conllx  \
-      --embed=data/glove.6B.100d.txt  \
-      --unk=unk
-
-$ python run.py evaluate -d=0 -f=exp/ptb.char --feat=char --tree  \
-      --data=data/ptb/test.conllx
-
-$ cat data/naive.conllx 
-1       Too     _       _       _       _       _       _       _       _
-2       young   _       _       _       _       _       _       _       _
-3       too     _       _       _       _       _       _       _       _
-4       simple  _       _       _       _       _       _       _       _
-5       ,       _       _       _       _       _       _       _       _
-6       sometimes       _       _       _       _       _       _       _       _
-7       naive   _       _       _       _       _       _       _       _
-8       .       _       _       _       _       _       _       _       _
-
-$ python run.py predict -d=0 -p=exp/ptb.char --feat=char --tree  \
-      --data=data/naive.conllx  \
-      --pred=naive.conllx
-
-# support for outputting the probabilities of predicted arcs, triggered by `--prob`
-$ cat naive.conllx
-1	Too	_	_	_	_	2	advmod	0.8894	_
-2	young	_	_	_	_	0	root	0.9322	_
-3	too	_	_	_	_	4	advmod	0.8722	_
-4	simple	_	_	_	_	2	dep	0.8948	_
-5	,	_	_	_	_	2	punct	0.8664	_
-6	sometimes	_	_	_	_	7	advmod	0.8406	_
-7	naive	_	_	_	_	2	dep	0.971	_
-8	.	_	_	_	_	2	punct	0.9741	_
-
+Constituency trees can be parsed in a similar manner:
+```py
+>>> from supar import Parser
+>>> parser = Parser.load('crf-con-en')
+>>> tree = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], verbose=False).trees[0]
+100%|####################################| 1/1 00:00<00:00, 75.86it/s
+>>> print(tree)
+(TOP
+  (S
+    (NP (_ I))
+    (VP
+      (_ saw)
+      (NP (_ Sarah))
+      (PP (_ with) (NP (_ a) (_ telescope))))
+    (_ .)))
 ```
-
-## Hyperparameters
-
-| Param         | Description                                                  |                                 Value                                  |
-| :------------ | :----------------------------------------------------------- | :--------------------------------------------------------------------: |
-| n_embed       | dimension of embeddings                                      |                                  100                                   |
-| n_char_embed  | dimension of char embeddings                                 |                                   50                                   |
-| n_bert_layers | number of bert layers to use                                 |                                   4                                    |
-| embed_dropout | dropout ratio of embeddings                                  |                                  0.33                                  |
-| n_lstm_hidden | dimension of lstm hidden states                              |                                  400                                   |
-| n_lstm_layers | number of lstm layers                                        |                                   3                                    |
-| lstm_dropout  | dropout ratio of lstm                                        |                                  0.33                                  |
-| n_mlp_arc     | arc mlp size                                                 |                                  500                                   |
-| n_mlp_rel     | label mlp size                                               |                                  100                                   |
-| mlp_dropout   | dropout ratio of mlp                                         |                                  0.33                                  |
-| lr            | starting learning rate of training                           |                                  2e-3                                  |
-| betas         | hyperparameters of momentum and L2 norm                      |                               (0.9, 0.9)                               |
-| epsilon       | stability constant                                           |                                 1e-12                                  |
-| annealing     | formula of learning rate annealing                           | <img src="https://latex.codecogs.com/gif.latex?.75^{\frac{t}{5000}}"/> |
-| batch_size    | approximate number of tokens per training update             |                                  5000                                  |
-| epochs        | max number of epochs                                         |                                 50000                                  |
-| patience      | patience for early stop                                      |                                  100                                   |
-| min_freq      | minimum frequency of words in the training set not discarded |                                   2                                    |
-| fix_len       | fixed length of a word                                       |                                   20                                   |
 
 ## References
 

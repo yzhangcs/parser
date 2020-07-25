@@ -46,7 +46,7 @@ class Parser(object):
         self.transform.train()
         if dist.is_initialized():
             args.batch_size = args.batch_size // dist.get_world_size()
-        logger.info(f"Load the data")
+        logger.info("Load the data")
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
         test = Dataset(self.transform, args.test)
@@ -103,7 +103,7 @@ class Parser(object):
         init_logger(logger, verbose=args.verbose)
 
         self.transform.train()
-        logger.info(f"Load the data")
+        logger.info("Load the data")
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
         logger.info(f"\n{dataset}")
@@ -125,7 +125,7 @@ class Parser(object):
         if args.prob:
             self.transform.append(Field('probs'))
 
-        logger.info(f"Load the data")
+        logger.info("Load the data")
         dataset = Dataset(self.transform, data)
         dataset.build(args.batch_size, args.buckets)
         logger.info(f"\n{dataset}")
