@@ -307,31 +307,37 @@ Analogous to dependency parsing, a sentence can be transformed to an empty `nltk
 To train a model from scratch, it is preferred to use the command-line option, which is more flexible and customizable.
 Here are some training examples: 
 ```sh
+# Biaffine Dependency Parser
 # some common and default arguments are stored in config.ini
 $ python -m supar.cmds.biaffine_dependency train -b -d 0 -p exp/ptb.biaffine.dependency.char/model -f char  \
     -c config.ini
-# to use BERT, `-f` should be set to bert and the `--bert` (default to bert-bsae-cased) option should be specified
+# to use BERT, `-f` and `--bert` (default to bert-base-cased) should be specified
 # if you'd like to use XLNet, you can type `--bert xlnet-base-cased`
 $ python -m supar.cmds.biaffine_dependency train -b -d 0 -p exp/ptb.biaffine.dependency.bert/model -f bert  \
     --bert bert-base-cased
+
+# CRF Dependency Parser
 # for CRF dependency parsers, you should use `--proj` to discard all non-projective training instances
 # optionally, you can use `--mbr` to perform mbr decoding
 $ python -m supar.cmds.crf_dependency train -b -d 0 -p exp/ptb.crf.dependency.char/model -f char  \
     --mbr  \
     --proj
+
+# CRF Constituency Parser
 # the training of CRF constituency parser behaves like dependency parsers
 $ python -m supar.cmds.crf_constituency train -b -d 0 -p exp/ptb.crf.constituency.char/model -f char  \
     --mbr
 ```
 
-Please type `python -m python -m supar.cmds.<parser> train -h` for more instructions on training.
-If you mind the command prefix is ​​too long, `SuPar` also provides some equivalent command entry points registered in `setup.py`: 
-`biaffine-dependency`, `crfnp_dependency`, `crf_dependency`, `crf2o_dependency` and `crf_constituency`.
+For more instructions on training, please type `python -m supar.cmds.<parser> train -h`.
 
-Distributed training is also supported to accommodate large models.
+If you mind the command prefix is ​​too long, `SuPar` also provides some equivalent command entry points registered in `setup.py`: 
+`biaffine-dependency`, `crfnp-dependency`, `crf-dependency`, `crf2o-dependency` and `crf-constituency`.
+
+To accommodate large models, distributed training is also supported:
 ```sh
 python -m torch.distributed.launch --nproc_per_node=4 --master_port=10000  \
-    -m supar.cmds.biaffine_dependency train -b -d 0,1,3,4 -p exp/ptb.biaffine.dependency.char/model -f char  \
+    -m supar.cmds.biaffine_dependency train -b -d 0,1,3,4 -p exp/ptb.biaffine.dependency.char/model -f char
 ```
 You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
 
