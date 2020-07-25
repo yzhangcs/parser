@@ -17,6 +17,7 @@ You can load released pretrained models for the above parsers and obtain depende
 The implementations of several popular and well-known algorithms, like MST (ChuLiu/Edmods), Eisner, CKY, MatrixTree, TreeCRF, are also integrated in this package.
 
 Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inputs to the encoder, optionally, `SuPar` also allows to utilize CharLSTM/BERT layers to produce character/subword-level features.
+Among them, CharLSTM is taken as the default option, which avoids additional requirements for generating POS tags, as well as the inefficiency of BERT.
 The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers). 
 It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
 
@@ -198,9 +199,9 @@ If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize`
 7       .       _       _       _       _       2       punct   _       _
 ```
 
-If there are a plenty of sentences to parse, `SuPar` also supports for loading them from file, and save then to the `pred` file if specified.
+If there are a plenty of sentences to parse, `SuPar` also supports for loading them from file, and save to the `pred` file if specified.
 ```py
->>> parser.predict('data/ptb/test.conllx',pred='pred.conllx')
+>>> dataset = parser.predict('data/ptb/test.conllx', pred='pred.conllx')
 2020-07-25 18:13:50 INFO Load the data
 2020-07-25 18:13:52 INFO                                                         
 Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
@@ -208,10 +209,10 @@ Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 100%|####################################| 13/13 00:01<00:00, 10.58it/s
 2020-07-25 18:13:53 INFO Save predicted results to pred.conllx
 2020-07-25 18:13:54 INFO 0:00:01.335261s elapsed, 1809.38 Sents/s
-Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 ```
+
 Please make sure the file is in CoNLL-X format. If some fields are missing, you can use underscores as placeholders.
-`SuPar` provides an interface for the transformation.
+`SuPar` provides an interface for the transformation from text to CoNLL-X format string.
 ```py
 >>> from supar.utils import CoNLL
 >>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']))
@@ -284,7 +285,7 @@ trees:
       (NP (_ Sarah))
       (PP (_ with) (NP (_ a) (_ telescope))))
     (_ .)))
->>> parser.predict('data/ptb/test.pid',pred='pred.pid')
+>>> dataset = parser.predict('data/ptb/test.pid', pred='pred.pid')
 2020-07-25 18:21:28 INFO Load the data
 2020-07-25 18:21:33 INFO                                                     
 Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
@@ -292,33 +293,68 @@ Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 100%|####################################| 13/13 00:02<00:00,  5.30it/s
 2020-07-25 18:21:36 INFO Save predicted results to pred.pid
 2020-07-25 18:21:36 INFO 0:00:02.455740s elapsed, 983.82 Sents/s
-Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 ```
 
 Analogous to dependency parsing, a sentence can be transformed to an empty `nltk.Tree` conveniently:
 ```py
 >>> from supar.utils import Tree
->>> print(Tree.totree(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']))
-( (_ I) (_ saw) (_ Sarah) (_ with) (_ a) (_ telescope) (_ .))
+>>> print(Tree.totree(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], root='TOP'))
+(TOP (_ I) (_ saw) (_ Sarah) (_ with) (_ a) (_ telescope) (_ .))
 ```
-
 
 ### Training
 
+To train a model from scratch, it is preferred to use the command-line option, which is more flexible and customizable.
+Here are some training examples: 
+```sh
+# some common and default arguments are stored in config.ini
+$ python -m supar.cmds.biaffine_dependency train -b -d 0 -c config.ini -p exp/ptb.biaffine.dependency.char/model -f char
+# to use BERT, `-f` should be set to bert and the `--bert` (default to bert-bsae-cased) option should be specified
+# if you'd like to use XLNet, you can type `--bert xlnet-base-cased`
+$ python -m supar.cmds.biaffine_dependency train -b -d 0 -p exp/ptb.biaffine.dependency.bert/model -f bert 
+    --bert bert-base-cased
+# for CRF dependency parsers, you should use `--proj` to discard all non-projective training instances
+# optionally, you can use `--mbr` to perform mbr decoding
+$ python -m supar.cmds.crf_dependency train -b -d 0 -p exp/ptb.crf.dependency.char/model -f char --mbr --proj
+# the training of CRF constituency parser behaves like dependency parsers
+$ python -m supar.cmds.crf_constituency train -b -d 0 -p exp/ptb.crf.constituency.char/model -f char --mbr
+```
+
+Please type `python -m python -m supar.cmds.<parser> train -h` for more instructions on training.
+If you mind the command prefix is ​​too long, `SuPar` also provides some equivalent command entry points registered in `setup.py`: 
+`biaffine-dependency`, `crfnp_dependency`, `crf_dependency`, `crf2o_dependency` and `crf_constituency`.
+
+Distributed training is also supported to accommodate large models.
+```sh
+python -m torch.distributed.launch --nproc_per_node=4 --master_port=10000 
+    -m supar.cmds.biaffine_dependency train -b -d 0,1,3,4 -p exp/ptb.biaffine.dependency.char/model  -f char
+```
+You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
+
 ### Evaluation
+
+The evaluation phrase resembles the prediction:
+```py
+>>> parser = Parser.load('biaffine-dep-en')
+>>> parser.evaluate('data/ptb/test.conllx')
+2020-07-25 20:59:17 INFO Load the data
+2020-07-25 20:59:19 INFO                                                         
+Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
+2020-07-25 20:59:19 INFO Evaluate the dataset
+2020-07-25 20:59:20 INFO loss: 0.2326 - UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%
+2020-07-25 20:59:20 INFO 0:00:01.253601s elapsed, 1927.25 Sents/s
+(0.23255667225881058, UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%)
+```
 
 ## References
 
-* <a id="dozat-2017-biaffine"></a> 
-Timothy Dozat and Christopher D. Manning. 2017. [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/pdf?id=Hk95PK9le).
 * <a id="koo-2007-structured"></a> 
 Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007. [Structured Prediction Models via the Matrix-Tree Theorem](https://www.aclweb.org/anthology/D07-1015/).
+* <a id="dozat-2017-biaffine"></a> 
+Timothy Dozat and Christopher D. Manning. 2017. [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/pdf?id=Hk95PK9le).
 * <a id="ma-2017-neural"></a> 
 Xuezhe Ma and Eduard Hovy. 2017. [Neural Probabilistic Model for Non-projective MST Parsing](https://www.aclweb.org/anthology/I17-1007/).
-* <a id="zhang-2020-efficient"></a> 
-Yu Zhang, Zhenghua Li and Min Zhang. 2020.
-[Efficient Second-Order TreeCRF for Neural Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.302/).
 * <a id="zhang-2020-fast"></a> 
-Yu Zhang, Houquan Zhou and Zhenghua Li. 2020.
-[Fast and Accurate Neural CRF Constituency Parsing](https://www.ijcai.org/Proceedings/2020/560/).
-<!-- * [Stack-Pointer Networks for Dependency Parsing](https://www.aclweb.org/anthology/P18-1130.pdf) -->
+Yu Zhang, Houquan Zhou and Zhenghua Li. 2020. [Fast and Accurate Neural CRF Constituency Parsing](https://www.ijcai.org/Proceedings/2020/560/).
+* <a id="zhang-2020-efficient"></a> 
+Yu Zhang, Zhenghua Li and Min Zhang. 2020. [Efficient Second-Order TreeCRF for Neural Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.302/).
