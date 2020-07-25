@@ -309,17 +309,23 @@ Here are some training examples:
 ```sh
 # Biaffine Dependency Parser
 # some common and default arguments are stored in config.ini
-$ python -m supar.cmds.biaffine_dependency train -b -d 0 -p exp/ptb.biaffine.dependency.char/model -f char  \
+$ python -m supar.cmds.biaffine_dependency train -b -d 0  \
+    -p exp/ptb.biaffine.dependency.char/model  \
+    -f char  \
     -c config.ini
 # to use BERT, `-f` and `--bert` (default to bert-base-cased) should be specified
 # if you'd like to use XLNet, you can type `--bert xlnet-base-cased`
-$ python -m supar.cmds.biaffine_dependency train -b -d 0 -p exp/ptb.biaffine.dependency.bert/model -f bert  \
+$ python -m supar.cmds.biaffine_dependency train -b -d 0  \
+    -p exp/ptb.biaffine.dependency.bert/model  \
+    -f bert  \
     --bert bert-base-cased
 
 # CRF Dependency Parser
 # for CRF dependency parsers, you should use `--proj` to discard all non-projective training instances
 # optionally, you can use `--mbr` to perform mbr decoding
-$ python -m supar.cmds.crf_dependency train -b -d 0 -p exp/ptb.crf.dependency.char/model -f char  \
+$ python -m supar.cmds.crf_dependency train -b -d 0  \
+    -p exp/ptb.crf.dependency.char/model  \
+    -f char  \
     --mbr  \
     --proj
 
@@ -346,7 +352,7 @@ You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/note
 The evaluation phase resembles prediction:
 ```py
 >>> parser = Parser.load('biaffine-dep-en')
->>> parser.evaluate('data/ptb/test.conllx')
+>>> loss, metric = parser.evaluate('data/ptb/test.conllx')
 2020-07-25 20:59:17 INFO Load the data
 2020-07-25 20:59:19 INFO                                                         
 Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
