@@ -16,7 +16,7 @@
 
 import supar
 
-import sphinx_theme
+import stanford_theme
 
 # -- Project information -----------------------------------------------------
 
