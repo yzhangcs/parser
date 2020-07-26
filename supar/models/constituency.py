@@ -27,45 +27,48 @@ class CRFConstituencyModel(nn.Module):
             Size of the feat vocabulary.
         n_labels (int):
             Number of labels.
-        feat (str, default: 'char'):
+        feat (str):
             Specifies which type of additional feature to use: 'char' | 'bert' | 'tag'.
             'char': Character-level representations extracted by CharLSTM.
             'bert': BERT representations, other pretrained langugae models like `XLNet` are also feasible.
             'tag': POS tag embeddings.
-        n_embed (int, default: 100):
-            Size of word embeddings.
-        n_feat_embed (int, default: 100):
-            Size of feature representations.
-        n_char_embed (int, default: 50):
-            Size of character embeddings serving as inputs of CharLSTM, required if feat='char'.
-        bert (str, default: None):
+            Default: 'char'.
+        n_embed (int):
+            Size of word embeddings. Default: 100.
+        n_feat_embed (int):
+            Size of feature representations. Default: 100.
+        n_char_embed (int):
+            Size of character embeddings serving as inputs of CharLSTM, required if feat='char'. Default: 50.
+        bert (str):
             Specify which kind of language model to use, e.g., 'bert-base-cased' and 'xlnet-base-cased'.
             This is required if feat='bert'. The full list can be found in `transformers`.
-        n_bert_layers (int, default: 4):
+            Default: `None`.
+        n_bert_layers (int):
             Specify how many last layers to use. Required if feat='bert'.
             The final outputs would be the weight sum of the hidden states of these layers.
-        mix_dropout (float, default: .0):
-            Dropout ratio of BERT layers. Required if feat='bert'.
-        embed_dropout (float, default: .33):
-            Dropout ratio of input embeddings.
-        n_lstm_hidden (int, default: 400):
-            Dimension of LSTM hidden states.
-        n_lstm_layers (int, default: 3):
-            Number of LSTM layers.
-        lstm_dropout (float, default: .33):
-            Dropout ratio of LSTM.
-        n_mlp_span (int, default: 500):
-            Span MLP size.
-        n_mlp_label  (int, default: 100):
-            Label MLP size.
-        mlp_dropout (float, default: .33):
-            Dropout ratio of MLP layers.
-        feat_pad_index (int, default: 0):
-            The index of the padding token in the feat vocabulary.
-        pad_index (int, default: 0):
-            The index of the padding token in the word vocabulary.
-        unk_index (int, default: 1):
-            The index of the unknown token in the word vocabulary.
+            Default: 4.
+        mix_dropout (float):
+            Dropout ratio of BERT layers. Required if feat='bert'. Default: .0.
+        embed_dropout (float):
+            Dropout ratio of input embeddings. Default: .33.
+        n_lstm_hidden (int):
+            Dimension of LSTM hidden states. Default: 400.
+        n_lstm_layers (int):
+            Number of LSTM layers. Default: 3.
+        lstm_dropout (float):
+            Dropout ratio of LSTM. Default: .33.
+        n_mlp_span (int):
+            Span MLP size. Default: 500.
+        n_mlp_label  (int):
+            Label MLP size. Default: 100.
+        mlp_dropout (float):
+            Dropout ratio of MLP layers. Default: .33.
+        feat_pad_index (int):
+            The index of the padding token in the feat vocabulary. Default: 0.
+        pad_index (int):
+            The index of the padding token in the word vocabulary. Default: 0.
+        unk_index (int):
+            The index of the unknown token in the word vocabulary. Default: 1.
     """
 
     def __init__(self,
@@ -224,8 +227,8 @@ class CRFConstituencyModel(nn.Module):
                 Tensor of gold-standard labels.
             mask (BoolTensor): [batch_size, seq_len, seq_len]
                 Mask for covering the unpadded tokens in each chart.
-            mbr (bool, default: True):
-                If True, returns marginals for MBR decoding.
+            mbr (bool):
+                If True, returns marginals for MBR decoding. Default: True.
 
         Returns:
             loss (Tensor): scalar
