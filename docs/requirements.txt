@@ -1,2 +1,2 @@
 supar
-stanford_theme
+stanford-theme
