@@ -1,7 +1,9 @@
 # SuPar
 
 [![build](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
-[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser.svg)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
+[![release](https://img.shields.io/github/v/release/yzhangcs/parser)](https://yzhangcs/parser/releases)
+[![downloads](https://pepy.tech/badge/supar)](https://pepy.tech/project/supar)
+[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
 `SuPar` provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
 * Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
@@ -157,7 +159,7 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
 
 ## Usage
 
-`SuPar` is very easy to use. You can download the pretrained model and run dependency parsing over sentences with a few lines of code:
+`SuPar` is very easy to use. You can download the pretrained model and run syntactic parsing over sentences with a few lines of code:
 ```py
 >>> from supar import Parser
 >>> parser = Parser.load('biaffine-dep-en')
@@ -211,7 +213,7 @@ Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 ```
 
 Please make sure the file is in CoNLL-X format. If some fields are missing, you can use underscores as placeholders.
-`SuPar` provides an interface for the transformation from text to CoNLL-X format string.
+An interface is provided for the transformation from text to CoNLL-X format string.
 ```py
 >>> from supar.utils import CoNLL
 >>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']))
@@ -225,7 +227,7 @@ Please make sure the file is in CoNLL-X format. If some fields are missing, you 
 
 ```
 
-For Universial Dependencies (UD), the CoNLL-U file is also supported, while comment lines in the file can be reserved before prediction and recovered during post-processing.
+For Universial Dependencies (UD), the CoNLL-U file is also allowed, while comment lines in the file can be reserved before prediction and recovered during post-processing.
 ```py
 >>> import os
 >>> import tempfile
@@ -336,19 +338,22 @@ $ python -m supar.cmds.crf_constituency train -b -d 0 -p exp/ptb.crf.constituenc
 
 For more instructions on training, please type `python -m supar.cmds.<parser> train -h`.
 
-If you mind the command prefix is ​​too long, `SuPar` also provides some equivalent command entry points registered in `setup.py`: 
+Alternatively, `SuPar` also provides some equivalent command entry points registered in `setup.py`: 
 `biaffine-dependency`, `crfnp-dependency`, `crf-dependency`, `crf2o-dependency` and `crf-constituency`.
+```sh
+$ biaffine-dependency train -b -d 0 -p exp/ptb.biaffine.dependency.char/model -f char -c config.ini
+```
 
 To accommodate large models, distributed training is also supported:
 ```sh
 python -m torch.distributed.launch --nproc_per_node=4 --master_port=10000  \
-    -m supar.cmds.biaffine_dependency train -b -d 0,1,3,4 -p exp/ptb.biaffine.dependency.char/model -f char
+    -m supar.cmds.biaffine_dependency train -b -d 0,1,2,3 -p exp/ptb.biaffine.dependency.char/model -f char
 ```
 You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
 
 ### Evaluation
 
-The evaluation phase resembles prediction:
+The evaluation process resembles prediction:
 ```py
 >>> parser = Parser.load('biaffine-dep-en')
 >>> loss, metric = parser.evaluate('data/ptb/test.conllx')

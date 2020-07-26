@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='supar',
-    version='0.1.0',
+    version='0.0.0',
     author='Yu Zhang',
     author_email='yzhang.cs@outlook.com',
     description='Syntactic Parsing Models',
@@ -26,9 +26,9 @@ setup(
     entry_points={
         'console_scripts': [
             'biaffine-dependency=supar.cmds.biaffine_dependency:main',
+            'crfnp-dependency=supar.cmds.crfnp_dependency:main',
             'crf-dependency=supar.cmds.crf_dependency:main',
             'crf2o-dependency=supar.cmds.crf2o_dependency:main',
-            'crfnp-dependency=supar.cmds.crfnp_dependency:main',
             'crf-constituency=supar.cmds.crf_constituency:main'
         ]
     },
