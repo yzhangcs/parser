@@ -49,13 +49,6 @@ MLP
     :members:
     :special-members: __init__
 
-ScalarMix
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: ScalarMix
-    :members:
-    :special-members: __init__
-
 TreeCRF
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
