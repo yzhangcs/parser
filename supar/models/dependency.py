@@ -17,9 +17,9 @@ class BiaffineDependencyModel(nn.Module):
     The implementation of Biaffine Dependency Parser.
 
     References:
-    - Timothy Dozat and Christopher D. Manning (ICLR'17)
-      Deep Biaffine Attention for Neural Dependency Parsing
-      https://openreview.net/pdf?id=Hk95PK9le/
+        - Timothy Dozat and Christopher D. Manning (ICLR'17)
+          Deep Biaffine Attention for Neural Dependency Parsing
+          https://openreview.net/pdf?id=Hk95PK9le/
 
     Args:
         n_words (int):
@@ -277,12 +277,12 @@ class CRFNPDependencyModel(BiaffineDependencyModel):
     The implementation of non-projective CRF Dependency Parser.
 
     References:
-    - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
-      Neural Probabilistic Model for Non-projective MST Parsing
-      https://www.aclweb.org/anthology/I17-1007/
-    - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
-      Structured Prediction Models via the Matrix-Tree Theorem
-      https://www.aclweb.org/anthology/D07-1015/
+        - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
+          Neural Probabilistic Model for Non-projective MST Parsing
+          https://www.aclweb.org/anthology/I17-1007/
+        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
+          Structured Prediction Models via the Matrix-Tree Theorem
+          https://www.aclweb.org/anthology/D07-1015/
     """
 
     def __init__(self, **kwargs):
@@ -327,9 +327,9 @@ class CRFDependencyModel(BiaffineDependencyModel):
     The implementation of first-order CRF Dependency Parser.
 
     References:
-    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-      Efficient Second-Order TreeCRF for Neural Dependency Parsing
-      https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+          Efficient Second-Order TreeCRF for Neural Dependency Parsing
+          https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
     def __init__(self, **kwargs):
@@ -379,9 +379,9 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     The implementation of second-order CRF Dependency Parser.
 
     References:
-    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-      Efficient Second-Order TreeCRF for Neural Dependency Parsing
-      https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+          Efficient Second-Order TreeCRF for Neural Dependency Parsing
+          https://www.aclweb.org/anthology/2020.acl-main.302/
 
     Args:
         Remainings required arguments are listed in BiaffineDependencyModel.

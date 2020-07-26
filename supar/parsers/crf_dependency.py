@@ -16,9 +16,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
     The implementation of first-order CRF Dependency Parser.
 
     References:
-    - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-      Efficient Second-Order TreeCRF for Neural Dependency Parsing
-      https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
+          Efficient Second-Order TreeCRF for Neural Dependency Parsing
+          https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
     NAME = 'crf-dependency'

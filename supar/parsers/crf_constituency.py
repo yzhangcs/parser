@@ -21,9 +21,9 @@ class CRFConstituencyParser(Parser):
     The implementation of CRF Constituency Parser.
 
     References:
-    - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
-      Fast and Accurate Neural CRF Constituency Parsing
-      https://www.ijcai.org/Proceedings/2020/560/
+        - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
+          Fast and Accurate Neural CRF Constituency Parsing
+          https://www.ijcai.org/Proceedings/2020/560/
     """
 
     NAME = 'crf-constituency'

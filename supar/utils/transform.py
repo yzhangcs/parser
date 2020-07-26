@@ -146,9 +146,9 @@ class CoNLL(Transform):
             Dependency relations to the PHEAD, or underscores if not available.
 
     References:
-    - Sabine Buchholz and Erwin Marsi (CoNLL'06)
-      CoNLL-X Shared Task on Multilingual Dependency Parsing
-      https://www.aclweb.org/anthology/W06-2920/
+        - Sabine Buchholz and Erwin Marsi (CoNLL'06)
+          CoNLL-X Shared Task on Multilingual Dependency Parsing
+          https://www.aclweb.org/anthology/W06-2920/
     """
 
     fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS', 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']

@@ -83,9 +83,9 @@ def eisner(scores, mask):
     First-order Eisner algorithm for projective decoding.
 
     References:
-    - Ryan McDonald, Koby Crammer and Fernando Pereira (ACL'05)
-      Online Large-Margin Training of Dependency Parsers
-      https://www.aclweb.org/anthology/P05-1012/
+        - Ryan McDonald, Koby Crammer and Fernando Pereira (ACL'05)
+          Online Large-Margin Training of Dependency Parsers
+          https://www.aclweb.org/anthology/P05-1012/
 
     Args:
         scores (Tensor): [batch_size, seq_len, seq_len]
@@ -166,9 +166,9 @@ def eisner2o(scores, mask):
     This is an extension of the first-order one and further incorporates sibling scores into tree scoring.
 
     References:
-    - Ryan McDonald and Fernando Pereira (EACL'06)
-      Online Learning of Approximate Dependency Parsing Algorithms
-      https://www.aclweb.org/anthology/E06-1011/
+        - Ryan McDonald and Fernando Pereira (EACL'06)
+          Online Learning of Approximate Dependency Parsing Algorithms
+          https://www.aclweb.org/anthology/E06-1011/
 
     Args:
         scores (Tuple[Tensor, Tensor]):
@@ -293,9 +293,9 @@ def cky(scores, mask):
     The implementation of Cocke-Kasami-Younger (CKY) algorithm to parse constituency trees.
 
     References:
-    - Yu Zhang, Houquan Zhou and Zhenghua Li (IJCAI'20)
-      Fast and Accurate Neural CRF Constituency Parsing
-      https://www.ijcai.org/Proceedings/2020/560/
+        - Yu Zhang, Houquan Zhou and Zhenghua Li (IJCAI'20)
+          Fast and Accurate Neural CRF Constituency Parsing
+          https://www.ijcai.org/Proceedings/2020/560/
 
     Args:
         scores (Tensor): [batch_size seq_len, seq_len]
@@ -410,9 +410,9 @@ def chuliu_edmonds(s):
     Descriptions of notations and formulas can be found in the following paper.
 
     References:
-    - Ryan McDonald, Fernando Pereira, Kiril Ribarov and Jan Hajic (EMNLP'05)
-      Non-projective Dependency Parsing using Spanning Tree Algorithms
-      https://www.aclweb.org/anthology/H05-1066/
+        - Ryan McDonald, Fernando Pereira, Kiril Ribarov and Jan Hajic (EMNLP'05)
+          Non-projective Dependency Parsing using Spanning Tree Algorithms
+          https://www.aclweb.org/anthology/H05-1066/
 
     Args:
         s (Tensor): [seq_len, seq_len]

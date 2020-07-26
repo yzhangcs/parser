@@ -18,9 +18,9 @@ class BiLSTM(nn.Module):
     and only allows PackedSequence as input.
 
     References:
-    - Timothy Dozat and Christopher D. Manning (ICLR'17)
-      Deep Biaffine Attention for Neural Dependency Parsing
-      https://openreview.net/pdf?id=Hk95PK9le/
+        - Timothy Dozat and Christopher D. Manning (ICLR'17)
+          Deep Biaffine Attention for Neural Dependency Parsing
+          https://openreview.net/pdf?id=Hk95PK9le/
 
     Args:
         input_size (int):
