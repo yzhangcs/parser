@@ -10,7 +10,7 @@ __all__ = ['Parser',
            'CRFDependencyParser',
            'CRF2oDependencyParser',
            'CRFConstituencyParser']
-__version__ = '0.0.0'
+__version__ = '0.0.1'
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFNPDependencyParser,
