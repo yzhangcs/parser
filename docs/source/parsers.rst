@@ -1,0 +1,39 @@
+supar.parsers
+==================
+
+.. currentmodule:: supar.parsers
+
+CRFConstituencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: CRFConstituencyParser
+    :members:
+    :special-members: __init__
+
+BiaffineDependencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: BiaffineDependencyParser
+    :members:
+    :special-members: __init__
+
+CRF2oDependencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: CRF2oDependencyParser
+    :members:
+    :special-members: __init__
+
+CRFDependencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: CRFDependencyParser
+    :members:
+    :special-members: __init__
+
+CRFNPDependencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: CRFNPDependencyParser
+    :members:
+    :special-members: __init__
