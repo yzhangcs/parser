@@ -1,2 +1,3 @@
 supar
+sphinx>=3.0
 stanford-theme
