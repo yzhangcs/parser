@@ -24,7 +24,7 @@ def kmeans(x, k, max_it=32):
         clusters (List[List[int]]):
             List of clusters that hold indices of data points.
 
-    Examples::
+    Examples:
         >>> x = torch.randint(10,20,(10,)).tolist()
         >>> x
         [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
@@ -357,7 +357,7 @@ def tarjan(sequence):
     Returns:
         A generator that yields SCCs (cycles) lazily. All self-loops are ignored.
 
-    Examples::
+    Examples:
         >>> next(tarjan([2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
         [2, 5, 1]
     """

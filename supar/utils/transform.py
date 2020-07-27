@@ -213,7 +213,7 @@ class CoNLL(Transform):
         Returns:
             a string in CoNLL-X format.
 
-        Examples::
+        Examples:
             >>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope']))
             1       I       _       _       _       _       _       _       _       _
             2       saw     _       _       _       _       _       _       _       _
@@ -247,7 +247,7 @@ class CoNLL(Transform):
         Returns:
             True if the tree is projective, False otherwise.
 
-        Examples::
+        Examples:
             >>> CoNLL.isprojective([2, -1, 1])  # -1 denotes un-annotated cases
             False
             >>> CoNLL.isprojective([3, -1, 2])
@@ -282,7 +282,7 @@ class CoNLL(Transform):
         Returns:
             True if the arcs form an valid tree, False otherwise.
 
-        Examples::
+        Examples:
             >>> CoNLL.istree([3, 0, 0, 3], multiroot=True)
             True
             >>> CoNLL.istree([3, 0, 0, 3], proj=True)
@@ -350,7 +350,7 @@ class CoNLLSentence(Sentence):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
 
-    Examples::
+    Examples:
         >>> lines = ['# text = But I found the location wonderful and the neighbors very kind.',
                      '1\tBut\t_\t_\t_\t_\t_\t_\t_\t_',
                      '2\tI\t_\t_\t_\t_\t_\t_\t_\t_',
@@ -457,7 +457,7 @@ class Tree(Transform):
         Returns:
             a nltk.Tree object.
 
-        Examples::
+        Examples:
             >>> print(Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP'))
             (TOP (_ I) (_ really) (_ love) (_ this) (_ game))
         """
@@ -483,7 +483,7 @@ class Tree(Transform):
         Returns:
             the binarized tree.
 
-        Examples::
+        Examples:
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -537,7 +537,7 @@ class Tree(Transform):
         Returns:
             The sequence of factorized tree.
 
-        Examples::
+        Examples:
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -585,7 +585,7 @@ class Tree(Transform):
         Returns:
             A result constituency tree.
 
-        Examples::
+        Examples:
             >>> tree = Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP')
             >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'),
                             (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]

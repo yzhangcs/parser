@@ -250,7 +250,7 @@ class SubwordField(Field):
             To save the memory, the final length will be the smaller value
             between the max length of subword pieces in a batch and fix_len.
 
-    Examples::
+    Examples:
         >>> from transformers import AutoTokenizer
         >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
         >>> field = SubwordField('bert',
@@ -324,7 +324,7 @@ class ChartField(Field):
     This field receives sequences of binarized trees factorized in pre-order,
     and returns two tensors representing the bracketing trees and labels on each constituent respectively.
 
-    Examples::
+    Examples:
         >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'),
                         (2, 5, 'VP'), (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
         >>> spans, labels = field.transform([sequence])[0]  # this example field is built from ptb

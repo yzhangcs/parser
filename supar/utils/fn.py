@@ -41,7 +41,7 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
     Returns:
         a diagonal stripe of the tensor.
 
-    Examples::
+    Examples:
         >>> x = torch.arange(25).view(5, 5)
         >>> x
         tensor([[ 0,  1,  2,  3,  4],

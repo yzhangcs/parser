@@ -16,7 +16,7 @@ class SharedDropout(nn.Module):
             If True, then the input and output tensors are provided as [batch_size, seq_len, *].
             Default: True.
 
-    Examples::
+    Examples:
         >>> x = torch.ones(1, 3, 5)
         >>> nn.Dropout()(x)
         tensor([[[0., 2., 2., 0., 0.],
@@ -74,7 +74,7 @@ class IndependentDropout(nn.Module):
         p (float):
             The probability of an element to be zeroed. Default: 0.5.
 
-    Examples::
+    Examples:
         >>> x, y = torch.ones(1, 3, 5), torch.ones(1, 3, 5)
         >>> x, y = IndependentDropout()(x, y)
         >>> x
