@@ -184,13 +184,12 @@ class CRFNPDependencyParser(BiaffineDependencyParser):
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
-                s_arc = s_arc.softmax(-1)
-                arc_probs = s_arc.gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
-                probs.extend(arc_probs[mask].split(lens))
+                arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
+                probs.extend([prob[1:i+1, :i+1] for i, prob in zip(lens, arc_probs.unbind())])
         arcs = [seq.tolist() for seq in arcs]
         rels = [self.REL.vocab[seq.tolist()] for seq in rels]
         preds = {'arcs': arcs, 'rels': rels}
         if self.args.prob:
-            preds['probs'] = [seq.tolist() for seq in probs]
+            preds['probs'] = probs
 
         return preds

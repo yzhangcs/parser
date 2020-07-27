@@ -164,7 +164,7 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
 ```py
 >>> from supar import Parser
 >>> parser = Parser.load('biaffine-dep-en')
->>> dataset = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], verbose=False)
+>>> dataset = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], prob=True, verbose=False)
 100%|####################################| 1/1 00:00<00:00, 75.86it/s
 ```
 The call to `parser.predict` will return an instance of `supar.utils.Dataset` containing the predicted syntactic trees.
@@ -179,10 +179,15 @@ For dependency parsing, you can either access each sentence held in `dataset` or
 6       telescope       _       _       _       _       4       pobj    _       _
 7       .       _       _       _       _       2       punct   _       _
 
->>> print(f"arcs: {dataset.arcs[0]}\nrels: {dataset.rels[0]}")
-arcs: [2, 0, 2, 2, 6, 4, 2]
-rels: ['nsubj', 'root', 'dobj', 'prep', 'det', 'pobj', 'punct']
+>>> print(f"arcs:  {dataset.arcs[0]}\n"
+          f"rels:  {dataset.rels[0]}\n"
+          f"probs: {dataset.probs[0].gather(1,torch.tensor(dataset.arcs[0]).unsqueeze(1)).squeeze(-1)}")
+arcs:  [2, 0, 2, 2, 6, 4, 2]
+rels:  ['nsubj', 'root', 'dobj', 'prep', 'det', 'pobj', 'punct']
+probs: tensor([1.0000, 0.9999, 0.9991, 0.8956, 0.9999, 0.9999, 0.9997])
 ```
+Probabilities can be returned along with the results if `prob=True`. 
+As for CRF parsers, marginals are available if `mbr=True`, i.e., using mbr decoding.
 
 Note that `SuPar` requires pre-tokenized sentences as inputs. 
 If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize` to do the tokenization first:
