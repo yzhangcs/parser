@@ -14,9 +14,10 @@ class Transform(object):
     It holds several instances of data fields that provide instructions for preprocessing and numericalizing, etc.
 
     Attributes:
-        training (bool, default: True):
+        training (bool):
             Set the object in training mode.
             If False, some data fields not required for predictions won't be returned.
+            Default: True.
     """
 
     fields = []
@@ -273,10 +274,10 @@ class CoNLL(Transform):
         Args:
             sequence (List[int]):
                 A list of head indices.
-            proj (bool, default: False):
-                If True, requires the tree to be projective.
-            multiroot (bool, default: True):
-                If False, requires the tree to contain only a single root.
+            proj (bool):
+                If True, requires the tree to be projective. Default: False.
+            multiroot (bool):
+                If False, requires the tree to contain only a single root. Default: True.
 
         Returns:
             True if the arcs form an valid tree, False otherwise.
@@ -308,10 +309,10 @@ class CoNLL(Transform):
         Args:
             data (List[List] or str):
                 A list of instances or a filename.
-            proj (bool, default: False):
-                If True, discard all non-projective sentences.
-            max_len (int, default: None):
-                Sentences exceeding the length will be discarded.
+            proj (bool):
+                If True, discard all non-projective sentences. Default: False.
+            max_len (int):
+                Sentences exceeding the length will be discarded. Default: None.
 
         Returns:
             A list of CoNLLSentence instances.
@@ -450,8 +451,8 @@ class Tree(Transform):
         Args:
             tokens (List[str] or List[tuple]):
                 This can be either a list of words or word/pos pairs.
-            root (str, default: ''):
-                The root label of the tree.
+            root (str):
+                The root label of the tree. Default: ''.
 
         Returns:
             a nltk.Tree object.
@@ -521,15 +522,17 @@ class Tree(Transform):
         Args:
             tree (nltk.Tree):
                 the tree to be factorized.
-            delete_labels (Set[str], default: None):
+            delete_labels (Set[str]):
                 A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
                 In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
-            equal_labels (Dict[str, str], default: None):
+                Default: None.
+            equal_labels (Dict[str, str]):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default dict defined in EVALB is: {'ADVP': 'PRT'}
+                Default: None.
 
         Returns:
             The sequence of factorized tree.
@@ -618,8 +621,8 @@ class Tree(Transform):
         Args:
             data (List[List] or str):
                 A list of instances or a filename.
-            max_len (int, default: None):
-                Sentences exceeding the length will be discarded.
+            max_len (int):
+                Sentences exceeding the length will be discarded. Default: None.
 
         Returns:
             A list of TreeSentence instances.

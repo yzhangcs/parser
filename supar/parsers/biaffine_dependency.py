@@ -48,18 +48,18 @@ class BiaffineDependencyParser(Parser):
         Args:
             train, dev, test (List[List] or str):
                 the train/dev/test data, both list of instances and filename are allowed.
-            buckets (int, default: 32):
-                Number of buckets that sentences are assigned to.
-            batch_size (int, default: 5000):
-                Number of tokens in each batch.
-            punct (bool, default: False):
-                If False, ignores the punctuations during evaluation.
-            tree (bool, default: False):
-                If True, ensures to output well-formed trees.
-            proj (bool, default: False):
-                If True, ensures to output projective trees.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
+            buckets (int):
+                Number of buckets that sentences are assigned to. Default: 32.
+            batch_size (int):
+                Number of tokens in each batch. Default: 5000.
+            punct (bool):
+                If False, ignores the punctuations during evaluation. Default: False.
+            tree (bool):
+                If True, ensures to output well-formed trees. Default: False.
+            proj (bool):
+                If True, ensures to output projective trees. Default: False.
+            verbose (bool):
+                If True, increases the output verbosity. Default: True.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
@@ -72,18 +72,18 @@ class BiaffineDependencyParser(Parser):
         Args:
             data (str):
                 The data to be evaluated.
-            buckets (int, default: 32):
-                Number of buckets that sentences are assigned to.
-            batch_size (int, default: 5000):
-                Number of tokens in each batch.
-            punct (bool, default: False):
-                If False, ignores the punctuations during evaluation.
-            tree (bool, default: False):
-                If True, ensures to output well-formed trees.
-            proj (bool, default: False):
-                If True, ensures to output projective trees.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
+            buckets (int):
+                Number of buckets that sentences are assigned to. Default: 32.
+            batch_size (int):
+                Number of tokens in each batch. Default: 5000.
+            punct (bool):
+                If False, ignores the punctuations during evaluation. Default: False.
+            tree (bool):
+                If True, ensures to output well-formed trees. Default: False.
+            proj (bool):
+                If True, ensures to output projective trees. Default: False.
+            verbose (bool):
+                If True, increases the output verbosity. Default: True.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 
@@ -99,20 +99,20 @@ class BiaffineDependencyParser(Parser):
         Args:
             data (List[List] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
-            pred (str, default: None):
-                If specified, the predicted results will be saved to the file.
-            buckets (int, default: 32):
-                Number of buckets that sentences are assigned to.
-            batch_size (int, default: 5000):
-                Number of tokens in each batch.
-            prob (bool, default: False):
-                If True, outputs the probabilities.
-            tree (bool, default: False):
-                If True, ensures to output well-formed trees.
-            proj (bool, default: False):
-                If True, ensures to output projective trees.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
+            pred (str):
+                If specified, the predicted results will be saved to the file. Default: None.
+            buckets (int):
+                Number of buckets that sentences are assigned to. Default: 32.
+            batch_size (int):
+                Number of tokens in each batch. Default: 5000.
+            prob (bool):
+                If True, outputs the probabilities. Default: False.
+            tree (bool):
+                If True, ensures to output well-formed trees. Default: False.
+            proj (bool):
+                If True, ensures to output projective trees. Default: False.
+            verbose (bool):
+                If True, increases the output verbosity. Default: True.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 
@@ -207,11 +207,12 @@ class BiaffineDependencyParser(Parser):
         Args:
             path (str):
                 The path of the model to be saved.
-            min_freq (str, default: 2):
-                The minimum frequency needed to include a token in the vocabulary.
-            fix_len (int, default: 20):
+            min_freq (str):
+                The minimum frequency needed to include a token in the vocabulary. Default: 2.
+            fix_len (int):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
+                Default: 20.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 

@@ -10,10 +10,11 @@ class SharedDropout(nn.Module):
     the dropout mask is shared across one dimension.
 
     Args:
-        p (float, default:0.5):
-            The probability of an element to be zeroed.
-        batch_first (bool, default: True):
+        p (float):
+            The probability of an element to be zeroed. Default: 0.5.
+        batch_first (bool):
             If True, then the input and output tensors are provided as [batch_size, seq_len, *].
+            Default: True.
 
     Examples::
         >>> x = torch.ones(1, 3, 5)
@@ -70,8 +71,8 @@ class IndependentDropout(nn.Module):
     and when all of them are dropped together, zeros are returned.
 
     Args:
-        p (float, default:0.5):
-            The probability of an element to be zeroed.
+        p (float):
+            The probability of an element to be zeroed. Default: 0.5.
 
     Examples::
         >>> x, y = torch.ones(1, 3, 5), torch.ones(1, 3, 5)

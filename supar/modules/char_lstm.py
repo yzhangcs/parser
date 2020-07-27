@@ -17,8 +17,8 @@ class CharLSTM(nn.Module):
             The size of each embedding vector as input to LSTM.
         n_out (int):
             The size of each output.
-        pad_index (int, default:0):
-            The index of the padding token in the vocabulary.
+        pad_index (int):
+            The index of the padding token in the vocabulary. Default: 0.
     """
 
     def __init__(self, n_chars, n_embed, n_out, pad_index=0):

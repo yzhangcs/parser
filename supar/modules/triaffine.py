@@ -23,10 +23,10 @@ class Triaffine(nn.Module):
     Args:
         n_in (int):
             The dimension of the input feature.
-        bias_x (bool, default: False):
-            If True, add a bias term for tensor x.
-        bias_y (bool, default: False):
-            If True, add a bias term for tensor y.
+        bias_x (bool):
+            If True, add a bias term for tensor x. Default: False.
+        bias_y (bool):
+            If True, add a bias term for tensor y. Default: False.
     """
 
     def __init__(self, n_in, bias_x=False, bias_y=False):

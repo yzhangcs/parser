@@ -48,18 +48,20 @@ class CRFConstituencyParser(Parser):
         Args:
             train, dev, test (List[List] or str):
                 the train/dev/test data, both list of instances and filename are allowed.
-            buckets (int, default: 32):
-                Number of buckets that sentences are assigned to.
-            batch_size (int, default: 5000):
-                Number of tokens in each batch.
-            mbr (bool, default: True):
-                If True, performs mbr decoding.
-            delete (Set[str], default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}):
+            buckets (int):
+                Number of buckets that sentences are assigned to. Default: 32.
+            batch_size (int):
+                Number of tokens in each batch. Default: 5000.
+            mbr (bool):
+                If True, performs mbr decoding. Default: True.
+            delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
-            equal (Dict[str, str], default: {'ADVP': 'PRT'}):
+                Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
+            equal (Dict[str, str]):
                 The pairs in the dict are considered equivalent during evaluation.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
+                Default: {'ADVP': 'PRT'}.
+            verbose (bool):
+                If True, increases the output verbosity. Default: True.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
@@ -75,18 +77,20 @@ class CRFConstituencyParser(Parser):
         Args:
             data (str):
                 The data to be evaluated.
-            buckets (int, default: 32):
-                Number of buckets that sentences are assigned to.
-            batch_size (int, default: 5000):
-                Number of tokens in each batch.
-            mbr (bool, default: True):
-                If True, performs mbr decoding.
-            delete (Set[str], default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}):
+            buckets (int):
+                Number of buckets that sentences are assigned to. Default: 32.
+            batch_size (int):
+                Number of tokens in each batch. Default: 5000.
+            mbr (bool):
+                If True, performs mbr decoding. Default: True.
+            delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
-            equal (Dict[str, str], default: {'ADVP': 'PRT'}):
+                Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
+            equal (Dict[str, str]):
                 The pairs in the dict are considered equivalent during evaluation.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
+                Default: {'ADVP': 'PRT'}.
+            verbose (bool):
+                If True, increases the output verbosity. Default: True.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 
@@ -101,18 +105,18 @@ class CRFConstituencyParser(Parser):
         Args:
             data (List[List] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
-            pred (str, default: None):
-                If specified, the predicted results will be saved to the file.
-            buckets (int, default: 32):
-                Number of buckets that sentences are assigned to.
-            batch_size (int, default: 5000):
-                Number of tokens in each batch.
-            prob (bool, default: False):
-                If True, outputs the probabilities.
-            mbr (bool, default: True):
-                If True, performs mbr decoding.
-            verbose (bool, default: True):
-                If True, increases the output verbosity.
+            pred (str):
+                If specified, the predicted results will be saved to the file. Default: None.
+            buckets (int):
+                Number of buckets that sentences are assigned to. Default: 32.
+            batch_size (int):
+                Number of tokens in each batch. Default: 5000.
+            prob (bool):
+                If True, outputs the probabilities. Default: False.
+            mbr (bool):
+                If True, performs mbr decoding. Default: True.
+            verbose (bool):
+                If True, increases the output verbosity. Default: True.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 
@@ -200,11 +204,12 @@ class CRFConstituencyParser(Parser):
         Args:
             path (str):
                 The path of the model to be saved.
-            min_freq (str, default: 2):
-                The minimum frequency needed to include a token in the vocabulary.
-            fix_len (int, default: 20):
+            min_freq (str):
+                The minimum frequency needed to include a token in the vocabulary. Default: 2.
+            fix_len (int):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
+                Default: 20.
             kwargs (Dict):
                 A dict holding the unconsumed arguments.
 

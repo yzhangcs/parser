@@ -25,14 +25,15 @@ class BertEmbedding(nn.Module):
         n_out (int):
             The requested size of the embeddings.
             If 0, use the size of the pretrained embedding model.
-        pad_index (int, default: 0):
-            The index of the padding token in the BERT vocabulary.
-        dropout (float, default: 0):
-            Dropout ratio of BERT layers.
+        pad_index (int):
+            The index of the padding token in the BERT vocabulary. Default: 0.
+        dropout (float):
+            Dropout ratio of BERT layers. Default: 0.
             This value will be passed into the ScalarMix layer.
-        requires_grad (bool, default: False):
+        requires_grad (bool):
             If True, the parameters of the pretrained model won't be freezed,
             and will be updated together with the downstream task.
+            Default: False.
     """
 
     def __init__(self, model, n_layers, n_out, pad_index=0, dropout=0,

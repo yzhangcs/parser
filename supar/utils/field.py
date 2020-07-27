@@ -17,8 +17,8 @@ class RawField(object):
     Args:
         name (str):
             The name of the field.
-        fn (function, default: None):
-            The function used for preprocessing the examples.
+        fn (function):
+            The function used for preprocessing the examples. Default: None.
     """
 
     def __init__(self, name, fn=None):
@@ -50,25 +50,24 @@ class Field(RawField):
     Args:
         name (str):
             The name of the field.
-        pad_token (str, default: None):
-            The string token used as padding.
-        unk_token (str, default: None):
-            The string token used to represent OOV words.
-        bos_token (str, default: None):
-            A token that will be prepended to every example using this
-            field, or None for no bos_token.
-        eos_token (str, default: None):
-            A token that will be appended to every example using this
-            field, or None for no eos_token.
-        lower (bool, default: False):
-            Whether to lowercase the text in this field.
-        use_vocab (bool, default: True):
-            Whether to use a Vocab object.
-            If False, the data in this field should already be numerical.
-        tokenize (function, default: None):
-            The function used to tokenize strings using this field into sequential examples.
-        fn (function, default: None):
-            The function used for preprocessing the examples.
+        pad_token (str):
+            The string token used as padding. Default: None.
+        unk_token (str):
+            The string token used to represent OOV words. Default: None.
+        bos_token (str):
+            A token that will be prepended to every example using this field, or None for no bos_token.
+            Default: None.
+        eos_token (str):
+            A token that will be appended to every example using this field, or None for no eos_token.
+        lower (bool):
+            Whether to lowercase the text in this field. Default: False.
+        use_vocab (bool):
+            Whether to use a Vocab object. If False, the data in this field should already be numerical.
+            Default: True.
+        tokenize (function):
+            The function used to tokenize strings using this field into sequential examples. Default: None.
+        fn (function):
+            The function used for preprocessing the examples. Default: None.
     """
 
     def __init__(self, name, pad=None, unk=None, bos=None, eos=None,
@@ -169,10 +168,10 @@ class Field(RawField):
         Args:
             dataset (Dataset):
                 A Dataset instance. One of the attributes should be named after the name of this field.
-            min_freq (int, default: 1):
-                The minimum frequency needed to include a token in the vocabulary.
-            embed (Embedding, default: None):
-                An Embedding instance, words in which will be extended to the vocabulary.
+            min_freq (int):
+                The minimum frequency needed to include a token in the vocabulary. Default: 1.
+            embed (Embedding):
+                An Embedding instance, words in which will be extended to the vocabulary. Default: None.
         """
 
         if hasattr(self, 'vocab'):

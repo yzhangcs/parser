@@ -15,8 +15,8 @@ class MLP(nn.Module):
             The size of each input feature.
         n_out (Tensor):
             The size of each output feature.
-        dropout (float, default: 0):
-            If non-zero, introduce a `SharedDropout` layer on the output with this dropout ratio.
+        dropout (float):
+            If non-zero, introduce a `SharedDropout` layer on the output with this dropout ratio. Default: 0.
     """
 
     def __init__(self, n_in, n_out, dropout=0):

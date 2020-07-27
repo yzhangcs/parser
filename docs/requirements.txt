@@ -1,2 +1,1 @@
-supar
 sphinx>=3.0

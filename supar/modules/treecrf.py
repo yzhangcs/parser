@@ -28,10 +28,10 @@ class MatrixTree(nn.Module):
             mask (BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
-            target (LongTensor, default: None): [batch_size, seq_len]
-                Tensor of gold-standard dependent-head pairs.
-            mbr (bool, default: False):
-                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+            target (LongTensor): [batch_size, seq_len]
+                Tensor of gold-standard dependent-head pairs. Default: None.
+            mbr (bool):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding. Default: False.
 
         Returns:
             loss (Tensor): scalar
@@ -105,14 +105,15 @@ class CRFDependency(nn.Module):
             mask (BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
-            target (LongTensor, default: None): [batch_size, seq_len]
+            target (LongTensor): [batch_size, seq_len]
                 Tensor of gold-standard dependent-head pairs.
                 This should be provided for loss calculation.
                 If partially annotated, the unannotated positions should be filled with -1.
-            mbr (bool, default: False):
-                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
-            partial (bool, default: False):
-                True indicates that the trees are partially annotated.
+                Default: None.
+            mbr (bool):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding. Default: False.
+            partial (bool):
+                True indicates that the trees are partially annotated. Default: False.
 
         Returns:
             loss (Tensor): scalar
@@ -221,13 +222,14 @@ class CRF2oDependency(nn.Module):
             mask (BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
-            target (LongTensor, default: None): [batch_size, seq_len]
+            target (LongTensor): [batch_size, seq_len]
                 Tensors of gold-standard dependent-head pairs and dependent-head-sibling triples.
                 If partially annotated, the unannotated positions should be filled with -1.
-            mbr (bool, default: False):
-                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
-            partial (bool, default: False):
-                True indicates that the trees are partially annotated.
+                Default: None.
+            mbr (bool):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding. Default: False.
+            partial (bool):
+                True indicates that the trees are partially annotated. Default: False.
 
         Returns:
             loss (Tensor): scalar
@@ -365,10 +367,10 @@ class CRFConstituency(nn.Module):
             mask (BoolTensor): [batch_size, seq_len, seq_len]
                 Mask to avoid parsing over padding tokens.
                 For each square matrix in a batch, the positions except upper triangular part should be masked out.
-            target (BoolTensor, default: None): [batch_size, seq_len, seq_len]
-                Tensor of gold-standard constituents. True if a constituent exists.
-            mbr (bool, default: False):
-                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding.
+            target (BoolTensor): [batch_size, seq_len, seq_len]
+                Tensor of gold-standard constituents. True if a constituent exists. Default: None.
+            mbr (bool):
+                If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding. Default: False.
 
         Returns:
             loss (Tensor): scalar

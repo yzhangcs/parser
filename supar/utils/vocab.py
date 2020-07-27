@@ -11,12 +11,12 @@ class Vocab(object):
     Args:
         counter (Counter):
             Counter object holding the frequencies of each value found in the data.
-        min_freq (int, default: 1):
-            The minimum frequency needed to include a token in the vocabulary.
-        specials (List[str], default: []):
-            The list of special tokens (e.g., pad, unk, bos and eos) that will be prepended to the vocabulary.
-        unk_index (int, default: 0):
-            The index of unk token.
+        min_freq (int):
+            The minimum frequency needed to include a token in the vocabulary. Default: 1.
+        specials (List[str]):
+            The list of special tokens (e.g., pad, unk, bos and eos) that will be prepended to the vocabulary. Default: [].
+        unk_index (int):
+            The index of unk token. Default: 0.
 
     Attributes:
         itos:

@@ -27,11 +27,12 @@ class BiLSTM(nn.Module):
             The number of expected features in the input.
         hidden_size (int):
             The number of features in the hidden state h.
-        num_layers (int, default: 1):
-            Number of recurrent layers.
-        dropout (float, default: 0):
+        num_layers (int):
+            Number of recurrent layers. Default: 1.
+        dropout (float):
             If non-zero, introduces a SharedDropout layer on the outputs of each LSTM layer
             except the last layer, with dropout probability equal to `dropout`.
+            Default: 0.
     """
 
     def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
@@ -115,12 +116,13 @@ class BiLSTM(nn.Module):
         Args:
             sequence (PackedSequence):
                 A packed variable length sequence.
-            hx=(h, x) (Tuple[Tensor, Tensor], default: None):
+            hx=(h, x) (Tuple[Tensor, Tensor]):
                 h ([num_layers * 2, batch_size, hidden_size]) contains the initial hidden state
                 for each element in the batch.
                 c ([num_layers * 2, batch_size, hidden_size]) contains the initial cell state
                 for each element in the batch.
                 If (h, x) is not provided, both h and c default to zero.
+                Default: None.
         Returns:
             x (PackedSequence):
                 A packed variable length sequence.
