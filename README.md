@@ -78,7 +78,6 @@ Currently, `SuPar` provides pretrained models for English and Chinese.
 English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
 
 The performance and parsing speed of these models are listed in the following table.
-All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz CPU and Nvidia GeForce GTX 1080 Ti GPU.
 Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7. 
 
 <table>
@@ -158,6 +157,8 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
     </tr>
   </tbody>
 </table>
+
+All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz and Nvidia GeForce GTX 1080 Ti GPU.
 
 ## Usage
 
@@ -336,7 +337,7 @@ $ python -m supar.cmds.crf_constituency train -b -d 0 -p exp/ptb.crf.constituenc
 
 For more instructions on training, please type `python -m supar.cmds.<parser> train -h`.
 
-Alternatively, `SuPar` also provides some equivalent command entry points registered in `setup.py`: 
+Alternatively, `SuPar` provides some equivalent command entry points registered in `setup.py`: 
 `biaffine-dependency`, `crfnp-dependency`, `crf-dependency`, `crf2o-dependency` and `crf-constituency`.
 ```sh
 $ biaffine-dependency train -b -d 0 -p exp/ptb.biaffine.dependency.char/model -f char -c config.ini
