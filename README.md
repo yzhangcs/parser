@@ -164,27 +164,25 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
 ```py
 >>> from supar import Parser
 >>> parser = Parser.load('biaffine-dep-en')
->>> dataset = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], prob=True, verbose=False)
-100%|####################################| 1/1 00:00<00:00, 75.86it/s
+>>> dataset = parser.predict([['She', 'enjoys', 'playing', 'tennis', '.']], prob=True, verbose=False)
+100%|####################################| 1/1 00:00<00:00, 85.15it/s
 ```
 The call to `parser.predict` will return an instance of `supar.utils.Dataset` containing the predicted syntactic trees.
 For dependency parsing, you can either access each sentence held in `dataset` or an individual field of all the trees.
 ```py
 >>> print(dataset.sentences[0])
-1       I       _       _       _       _       2       nsubj   _       _
-2       saw     _       _       _       _       0       root    _       _
-3       Sarah   _       _       _       _       2       dobj    _       _
-4       with    _       _       _       _       2       prep    _       _
-5       a       _       _       _       _       6       det     _       _
-6       telescope       _       _       _       _       4       pobj    _       _
-7       .       _       _       _       _       2       punct   _       _
+1       She     _       _       _       _       2       nsubj   _       _
+2       enjoys  _       _       _       _       0       root    _       _
+3       playing _       _       _       _       2       xcomp   _       _
+4       tennis  _       _       _       _       3       dobj    _       _
+5       .       _       _       _       _       2       punct   _       _
 
 >>> print(f"arcs:  {dataset.arcs[0]}\n"
           f"rels:  {dataset.rels[0]}\n"
           f"probs: {dataset.probs[0].gather(1,torch.tensor(dataset.arcs[0]).unsqueeze(1)).squeeze(-1)}")
-arcs:  [2, 0, 2, 2, 6, 4, 2]
-rels:  ['nsubj', 'root', 'dobj', 'prep', 'det', 'pobj', 'punct']
-probs: tensor([1.0000, 0.9999, 0.9991, 0.8956, 0.9999, 0.9999, 0.9997])
+arcs:  [2, 0, 2, 3, 2]
+rels:  ['nsubj', 'root', 'xcomp', 'dobj', 'punct']
+probs: tensor([1.0000, 1.0000, 0.9650, 0.9687, 0.9996])
 ```
 Probabilities can be returned along with the results if `prob=True`. 
 As for CRF parsers, marginals are available if `mbr=True`, i.e., using mbr decoding.
@@ -193,16 +191,14 @@ Note that `SuPar` requires pre-tokenized sentences as inputs.
 If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize` to do the tokenization first:
 ```py
 >>> import nltk
->>> text = nltk.word_tokenize('I saw Sarah with a telescope.')
+>>> text = nltk.word_tokenize('She enjoys playing tennis.')
 >>> print(parser.predict([text], verbose=False).sentences[0])
 100%|####################################| 1/1 00:00<00:00, 74.20it/s
-1       I       _       _       _       _       2       nsubj   _       _
-2       saw     _       _       _       _       0       root    _       _
-3       Sarah   _       _       _       _       2       dobj    _       _
-4       with    _       _       _       _       2       prep    _       _
-5       a       _       _       _       _       6       det     _       _
-6       telescope       _       _       _       _       4       pobj    _       _
-7       .       _       _       _       _       2       punct   _       _
+1       She     _       _       _       _       2       nsubj   _       _
+2       enjoys  _       _       _       _       0       root    _       _
+3       playing _       _       _       _       2       xcomp   _       _
+4       tennis  _       _       _       _       3       dobj    _       _
+5       .       _       _       _       _       2       punct   _       _
 
 ```
 
@@ -222,14 +218,12 @@ Please make sure the file is in CoNLL-X format. If some fields are missing, you 
 An interface is provided for the transformation from text to CoNLL-X format string.
 ```py
 >>> from supar.utils import CoNLL
->>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']))
-1       I       _       _       _       _       _       _       _       _
-2       saw     _       _       _       _       _       _       _       _
-3       Sarah   _       _       _       _       _       _       _       _
-4       with    _       _       _       _       _       _       _       _
-5       a       _       _       _       _       _       _       _       _
-6       telescope       _       _       _       _       _       _       _       _
-7       .       _       _       _       _       _       _       _       _
+>>> print(CoNLL.toconll(['She', 'enjoys', 'playing', 'tennis', '.']))
+1       She     _       _       _       _       _       _       _       _
+2       enjoys  _       _       _       _       _       _       _       _
+3       playing _       _       _       _       _       _       _       _
+4       tennis  _       _       _       _       _       _       _       _
+5       .       _       _       _       _       _       _       _       _
 
 ```
 
@@ -280,17 +274,14 @@ Constituency trees can be parsed in a similar manner.
 The returned `dataset` holds all predicted trees represented using `nltk.Tree` objects.
 ```py
 >>> parser = Parser.load('crf-con-en')
->>> dataset = parser.predict([['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.']], verbose=False)
+>>> dataset = parser.predict([['She', 'enjoys', 'playing', 'tennis', '.']], verbose=False)
 100%|####################################| 1/1 00:00<00:00, 75.86it/s
 >>> print(f"trees:\n{dataset.trees[0]}")
 trees:
 (TOP
   (S
-    (NP (_ I))
-    (VP
-      (_ saw)
-      (NP (_ Sarah))
-      (PP (_ with) (NP (_ a) (_ telescope))))
+    (NP (_ She))
+    (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
     (_ .)))
 >>> dataset = parser.predict('data/ptb/test.pid', pred='pred.pid')
 2020-07-25 18:21:28 INFO Load the data
@@ -305,8 +296,8 @@ Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 Analogous to dependency parsing, a sentence can be transformed to an empty `nltk.Tree` conveniently:
 ```py
 >>> from supar.utils import Tree
->>> print(Tree.totree(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], root='TOP'))
-(TOP (_ I) (_ saw) (_ Sarah) (_ with) (_ a) (_ telescope) (_ .))
+>>> print(Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], root='TOP'))
+(TOP (_ She) (_ enjoys) (_ playing) (_ tennis) (_ .))
 ```
 
 ### Training

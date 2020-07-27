@@ -190,7 +190,7 @@ class CRFConstituencyParser(Parser):
             preds['trees'].extend([Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                                    for tree, chart in zip(trees, chart_preds)])
             if self.args.prob:
-                probs.extend([prob[:i-1, 1:i] for i, prob in zip(lens, s_span.unbind())])
+                probs.extend([prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span.unbind())])
         if self.args.prob:
             preds['probs'] = probs
 

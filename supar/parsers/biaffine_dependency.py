@@ -190,7 +190,7 @@ class BiaffineDependencyParser(Parser):
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
                 arc_probs = s_arc.softmax(-1)
-                probs.extend([prob[1:i+1, :i+1] for i, prob in zip(lens, arc_probs.unbind())])
+                probs.extend([prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())])
         arcs = [seq.tolist() for seq in arcs]
         rels = [self.REL.vocab[seq.tolist()] for seq in rels]
         preds = {'arcs': arcs, 'rels': rels}
