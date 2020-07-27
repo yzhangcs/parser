@@ -78,6 +78,7 @@ Currently, `SuPar` provides pretrained models for English and Chinese.
 English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
 
 The performance and parsing speed of these models are listed in the following table.
+All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz CPU and Nvidia GeForce GTX 1080 Ti GPU.
 Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7. 
 
 <table>
