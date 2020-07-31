@@ -214,13 +214,13 @@ class CoNLL(Transform):
             a string in CoNLL-X format.
 
         Examples:
-            >>> print(CoNLL.toconll(['I', 'saw', 'Sarah', 'with', 'a', 'telescope']))
-            1       I       _       _       _       _       _       _       _       _
-            2       saw     _       _       _       _       _       _       _       _
-            3       Sarah   _       _       _       _       _       _       _       _
-            4       with    _       _       _       _       _       _       _       _
-            5       a       _       _       _       _       _       _       _       _
-            6       telescope       _       _       _       _       _       _       _       _
+            >>> print(CoNLL.toconll(['She', 'enjoys', 'playing', 'tennis', '.']))
+            1       She     _       _       _       _       _       _       _       _
+            2       enjoys  _       _       _       _       _       _       _       _
+            3       playing _       _       _       _       _       _       _       _
+            4       tennis  _       _       _       _       _       _       _       _
+            5       .       _       _       _       _       _       _       _       _
+
         """
 
         if isinstance(tokens[0], str):
@@ -458,8 +458,8 @@ class Tree(Transform):
             a nltk.Tree object.
 
         Examples:
-            >>> print(Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP'))
-            (TOP (_ I) (_ really) (_ love) (_ this) (_ game))
+            >>> print(Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP'))
+            (TOP (_ She) (_ enjoys) (_ playing) (_ tennis) (_ .))
         """
 
         if isinstance(tokens[0], str):
@@ -487,15 +487,19 @@ class Tree(Transform):
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
-                                                (NP (_ I))
-                                                  (ADVP (_ really))
-                                                    (VP (_ love) (NP (_ this) (_ game)))))
+                                                (NP (_ She))
+                                                (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
+                                                (_ .)))
                                             ''')
             >>> print(Tree.binarize(tree))
             (TOP
               (S
-                (S|<> (NP (_ I)) (ADVP (_ really)))
-                (VP (VP|<> (_ love)) (NP (NP|<> (_ this)) (NP|<> (_ game))))))
+                (S|<>
+                  (NP (_ She))
+                  (VP
+                    (VP|<> (_ enjoys))
+                    (S+VP (VP|<> (_ playing)) (NP (_ tennis)))))
+                (S|<> (_ .))))
         """
 
         tree = tree.copy(True)
@@ -541,14 +545,14 @@ class Tree(Transform):
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
-                                                (NP (_ I))
-                                                  (ADVP (_ really))
-                                                    (VP (_ love) (NP (_ this) (_ game)))))
+                                                (NP (_ She))
+                                                (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
+                                                (_ .)))
                                             ''')
             >>> Tree.factorize(tree)
-            [(0, 5, 'TOP'), (0, 5, 'S'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'), (3, 5, 'NP')]
+            [(0, 5, 'TOP'), (0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]
             >>> Tree.factorize(tree, delete_labels={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''})
-            [(0, 5, 'S'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'), (3, 5, 'NP')]
+            [(0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]
         """
 
         def track(tree, i):
@@ -586,15 +590,15 @@ class Tree(Transform):
             A result constituency tree.
 
         Examples:
-            >>> tree = Tree.totree(['I', 'really', 'love', 'this', 'game'], 'TOP')
-            >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'), (2, 5, 'VP'),
-                            (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
+            >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
+            >>> sequence = [(0, 5, 'S'), (0, 4, 'S|<>'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP|<>'),
+                            (2, 4, 'S+VP'), (2, 3, 'VP|<>'), (3, 4, 'NP'), (4, 5, 'S|<>')]
             >>> print(Tree.build(tree, sequence))
             (TOP
               (S
-                (NP (_ I))
-                  (ADVP (_ really))
-                    (VP (_ love) (NP (_ this) (_ game)))))
+                (NP (_ She))
+                (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
+                (_ .)))
         """
 
         root = tree.label()

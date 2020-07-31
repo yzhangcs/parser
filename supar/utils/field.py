@@ -325,22 +325,22 @@ class ChartField(Field):
     and returns two tensors representing the bracketing trees and labels on each constituent respectively.
 
     Examples:
-        >>> sequence = [(0, 5, 'S'), (0, 2, 'S|<>'), (0, 1, 'NP'), (1, 2, 'ADVP'),
-                        (2, 5, 'VP'), (2, 3, 'VP|<>'), (3, 5, 'NP'), (3, 4, 'NP|<>'), (4, 5, 'NP|<>')]
+        >>> sequence = [(0, 5, 'S'), (0, 4, 'S|<>'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP|<>'),
+                        (2, 4, 'S+VP'), (2, 3, 'VP|<>'), (3, 4, 'NP'), (4, 5, 'S|<>')]
         >>> spans, labels = field.transform([sequence])[0]  # this example field is built from ptb
         >>> spans
-        tensor([[False,  True,  True, False, False,  True],
-                [False, False,  True, False, False, False],
-                [False, False, False,  True, False,  True],
-                [False, False, False, False,  True,  True],
+        tensor([[False,  True, False, False,  True,  True],
+                [False, False,  True, False,  True, False],
+                [False, False, False,  True,  True, False],
+                [False, False, False, False,  True, False],
                 [False, False, False, False, False,  True],
                 [False, False, False, False, False, False]])
         >>> labels
-        tensor([[  0,  37, 107,   0,   0,  79],
-                [  0,   0,   6,   0,   0,   0],
-                [  0,   0,   0, 120,   0, 112],
-                [  0,   0,   0,   0,  52,  37],
-                [  0,   0,   0,   0,   0,  52],
+        tensor([[  0,  37,   0,   0, 107,  79],
+                [  0,   0, 120,   0, 112,   0],
+                [  0,   0,   0, 120,  86,   0],
+                [  0,   0,   0,   0,  37,   0],
+                [  0,   0,   0,   0,   0, 107],
                 [  0,   0,   0,   0,   0,   0]])
     """
 
