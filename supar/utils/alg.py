@@ -20,7 +20,7 @@ def kmeans(x, k, max_it=32):
 
     Returns:
         centroids (List[float]):
-            Average lengths in each cluster.
+            Average lengths of sentences in each cluster.
         clusters (List[List[int]]):
             List of clusters that hold indices of data points.
 

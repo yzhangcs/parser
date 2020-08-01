@@ -25,45 +25,36 @@ Dataset
 
 .. autoclass:: Dataset
     :members:
-    :special-members: __init__
 
 Field
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: RawField
     :members:
-    :special-members: __init__
 
 .. autoclass:: Field
     :members:
-    :special-members: __init__
 
 .. autoclass:: SubwordField
     :members:
-    :special-members: __init__
 
 .. autoclass:: ChartField
     :members:
-    :special-members: __init__
 
 Transform
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: Transform
     :members:
-    :special-members: __init__
 
 .. autoclass:: CoNLL
     :members:
-    :special-members: __init__
 
 .. autoclass:: Tree
     :members:
-    :special-members: __init__
 
 Vocab
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: Vocab
     :members:
-    :special-members: __init__

@@ -577,7 +577,7 @@ class Tree(Transform):
         """
         Build a constituency tree from the sequence. The sequence is generated in pre-order.
         During building the tree, the sequence is de-binarized to the original format (i.e.,
-        the suffixes '|<>' are ignored, the collapsed labels are recovered).
+        the suffixes ``|<>`` are ignored, the collapsed labels are recovered).
 
         Args:
             tree (nltk.Tree):
