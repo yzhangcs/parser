@@ -16,17 +16,17 @@ class Dataset(torch.utils.data.Dataset):
         transform (Transform):
             An instance of a subclass of the `Transform` class and its derivations.
             The instance holds a series of loading and processing behaviours with regard to the specfic data format.
-        data (List[List] or str):
+        data (list[list] or str):
             A list of instances or a filename.
             This will be passed into `transform.load` to load the input data.
-        kwargs (Dict):
+        kwargs (dict):
             Keyword arguments that will be passed into `transform.load` together with `data`
             to control the loading behaviour.
 
     Attributes:
         transform (Transform):
             The passed instance of `Transform`.
-        sentences (List[Sentence]):
+        sentences (list[Sentence]):
             A list of sentences loaded from the data.
             Each sentence includes fields obeying the data format defined in transform.
     """
@@ -115,7 +115,7 @@ class Sampler(torch.utils.data.Sampler):
     Sampler supporting for bucketizing and token-level batchification.
 
     Args:
-        buckets (Dict):
+        buckets (dict):
             The dict that maps each centroid to the indices of the clustering sentences.
             The centroid corresponds to the average length of all sentences in the bucket.
         batch_size (int):

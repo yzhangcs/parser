@@ -9,11 +9,11 @@ class Vocab(object):
     Defines a vocabulary object that will be used to numericalize a field.
 
     Args:
-        counter (Counter):
+        counter (collections.Counter):
             Counter object holding the frequencies of each value found in the data.
         min_freq (int):
             The minimum frequency needed to include a token in the vocabulary. Default: 1.
-        specials (List[str]):
+        specials (list[str]):
             The list of special tokens (e.g., pad, unk, bos and eos) that will be prepended to the vocabulary. Default: [].
         unk_index (int):
             The index of unk token. Default: 0.

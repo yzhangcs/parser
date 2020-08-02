@@ -46,7 +46,7 @@ class BiaffineDependencyParser(Parser):
               punct=False, tree=False, proj=False, verbose=True, **kwargs):
         """
         Args:
-            train, dev, test (List[List] or str):
+            train, dev, test (list[list] or str):
                 the train/dev/test data, both list of instances and filename are allowed.
             buckets (int):
                 Number of buckets that sentences are assigned to. Default: 32.
@@ -60,7 +60,7 @@ class BiaffineDependencyParser(Parser):
                 If True, ensures to output projective trees. Default: False.
             verbose (bool):
                 If True, increases the output verbosity. Default: True.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
         """
 
@@ -84,7 +84,7 @@ class BiaffineDependencyParser(Parser):
                 If True, ensures to output projective trees. Default: False.
             verbose (bool):
                 If True, increases the output verbosity. Default: True.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
 
         Returns:
@@ -97,7 +97,7 @@ class BiaffineDependencyParser(Parser):
                 prob=False, tree=True, proj=False, verbose=True, **kwargs):
         """
         Args:
-            data (List[List] or str):
+            data (list[list] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: None.
@@ -113,7 +113,7 @@ class BiaffineDependencyParser(Parser):
                 If True, ensures to output projective trees. Default: False.
             verbose (bool):
                 If True, increases the output verbosity. Default: True.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
 
         Returns:
@@ -213,7 +213,7 @@ class BiaffineDependencyParser(Parser):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
                 Default: 20.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
 
         Returns:

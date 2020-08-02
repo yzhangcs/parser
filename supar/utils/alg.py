@@ -9,7 +9,7 @@ def kmeans(x, k, max_it=32):
     KMeans algorithm for clustering the sentences by length.
 
     Args:
-        x (List[int]):
+        x (list[int]):
             Lengths of sentences.
         k (int):
             Number of clusters.
@@ -19,9 +19,9 @@ def kmeans(x, k, max_it=32):
             If centroids does not converge after several iterations, the algorithm will be early stopped.
 
     Returns:
-        centroids (List[float]):
+        centroids (list[float]):
             Average lengths of sentences in each cluster.
-        clusters (List[List[int]]):
+        clusters (list[list[int]]):
             List of clusters that hold indices of data points.
 
     Examples:
@@ -83,7 +83,7 @@ def tarjan(sequence):
     Tarjan algorithm for finding Strongly Connected Components (SCCs) of a graph.
 
     Args:
-        sequence (List):
+        sequence (list):
             List of head indices.
 
     Returns:
@@ -147,11 +147,11 @@ def chuliu_edmonds(s):
           https://www.aclweb.org/anthology/H05-1066/
 
     Args:
-        s (Tensor): [seq_len, seq_len]
+        s (torch.Tensor): [seq_len, seq_len]
             The scores of dependent-head pairs.
 
     Returns:
-        tree (Tensor): [seq_len]
+        tree (torch.Tensor): [seq_len]
             A non-projective parse tree.
     """
 
@@ -232,9 +232,9 @@ def mst(scores, mask, multiroot=False):
     Otherwise the resulting trees are directly taken as the final outputs.
 
     Args:
-        scores (Tensor): [batch_size, seq_len, seq_len]
+        scores (torch.Tensor): [batch_size, seq_len, seq_len]
             The scores of dependent-head pairs.
-        mask (BoolTensor): [batch_size, seq_len]
+        mask (torch.BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
             The first column with pseudo words as roots should be set to False.
         muliroot (bool):
@@ -279,9 +279,9 @@ def eisner(scores, mask):
           https://www.aclweb.org/anthology/P05-1012/
 
     Args:
-        scores (Tensor): [batch_size, seq_len, seq_len]
+        scores (torch.Tensor): [batch_size, seq_len, seq_len]
             The scores of dependent-head pairs.
-        mask (BoolTensor): [batch_size, seq_len]
+        mask (torch.BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
             The first column with pseudo words as roots should be set to False.
 
@@ -362,11 +362,11 @@ def eisner2o(scores, mask):
           https://www.aclweb.org/anthology/E06-1011/
 
     Args:
-        scores (Tuple[Tensor, Tensor]):
+        scores (tuple[torch.Tensor, torch.Tensor]):
             A tuple of two tensors representing the first-order and second-order scores repectively.
             The first ([batch_size, seq_len, seq_len]) holds scores of dependent-head pairs.
             The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the dependent-head-sibling triples.
-        mask (BoolTensor): [batch_size, seq_len]
+        mask (torch.BoolTensor): [batch_size, seq_len]
             Mask to avoid parsing over padding tokens.
             The first column with pseudo words as roots should be set to False.
 
@@ -489,14 +489,14 @@ def cky(scores, mask):
           https://www.ijcai.org/Proceedings/2020/560/
 
     Args:
-        scores (Tensor): [batch_size seq_len, seq_len]
+        scores (torch.Tensor): [batch_size seq_len, seq_len]
             The scores of all candidate constituents.
-        mask (BoolTensor): [batch_size, seq_len, seq_len]
+        mask (torch.BoolTensor): [batch_size, seq_len, seq_len]
             Mask to avoid parsing over padding tokens.
             For each square matrix in a batch, the positions except upper triangular part should be masked out.
 
     Returns:
-        trees (List[List[Tuple]]):
+        trees (list[list[tuple]]):
             The sequences of factorized predicted bracketed trees traversed in pre-order.
     """
 

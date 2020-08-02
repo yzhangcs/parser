@@ -55,12 +55,12 @@ class Triaffine(nn.Module):
     def forward(self, x, y, z):
         """
         Args:
-            x (Tensor): [batch_size, seq_len, n_in]
-            y (Tensor): [batch_size, seq_len, n_in]
-            z (Tensor): [batch_size, seq_len, n_in]
+            x (torch.Tensor): [batch_size, seq_len, n_in]
+            y (torch.Tensor): [batch_size, seq_len, n_in]
+            z (torch.Tensor): [batch_size, seq_len, n_in]
 
         Returns:
-            s (Tensor): [batch_size, seq_len, seq_len, seq_len]
+            s (torch.Tensor): [batch_size, seq_len, seq_len, seq_len]
         """
 
         if self.bias_x:

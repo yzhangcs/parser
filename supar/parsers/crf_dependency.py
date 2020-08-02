@@ -31,7 +31,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
               mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         """
         Args:
-            train, dev, test (List[List] or str):
+            train, dev, test (list[list] or str):
                 the train/dev/test data, both list of instances and filename are allowed.
             buckets (int):
                 Number of buckets that sentences are assigned to. Default: 32.
@@ -49,7 +49,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 True denotes the trees are partially annotated. Default: False.
             verbose (bool):
                 If True, increases the output verbosity. Default: True.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
         """
 
@@ -77,7 +77,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 True denotes the trees are partially annotated. Default: False.
             verbose (bool):
                 If True, increases the output verbosity. Default: True.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
 
         Returns:
@@ -90,7 +90,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         """
         Args:
-            data (List[List] or str):
+            data (list[list] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: None.
@@ -108,7 +108,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 If True, ensures to output projective trees. Default: False.
             verbose (bool):
                 If True, increases the output verbosity. Default: True.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
 
         Returns:

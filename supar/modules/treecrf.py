@@ -23,20 +23,20 @@ class MatrixTree(nn.Module):
     def forward(self, scores, mask, target=None, mbr=False):
         """
         Args:
-            scores (Tensor): [batch_size, seq_len, seq_len]
+            scores (torch.Tensor): [batch_size, seq_len, seq_len]
                 The scores of all possible dependent-head pairs.
-            mask (BoolTensor): [batch_size, seq_len]
+            mask (torch.BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
-            target (LongTensor): [batch_size, seq_len]
+            target (torch.LongTensor): [batch_size, seq_len]
                 Tensor of gold-standard dependent-head pairs. Default: None.
             mbr (bool):
                 If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding. Default: False.
 
         Returns:
-            loss (Tensor): scalar
+            loss (torch.Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
-            probs (Tensor): [batch_size, seq_len, ]
+            probs (torch.Tensor): [batch_size, seq_len, ]
                 Marginals if performing mbr decoding, original scores otherwise.
         """
 
@@ -100,12 +100,12 @@ class CRFDependency(nn.Module):
     def forward(self, scores, mask, target=None, mbr=False, partial=False):
         """
         Args:
-            scores (Tensor): [batch_size, seq_len, seq_len]
+            scores (torch.Tensor): [batch_size, seq_len, seq_len]
                 The scores of all possible dependent-head pairs.
-            mask (BoolTensor): [batch_size, seq_len]
+            mask (torch.BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
-            target (LongTensor): [batch_size, seq_len]
+            target (torch.LongTensor): [batch_size, seq_len]
                 Tensor of gold-standard dependent-head pairs.
                 This should be provided for loss calculation.
                 If partially annotated, the unannotated positions should be filled with -1.
@@ -116,9 +116,9 @@ class CRFDependency(nn.Module):
                 True indicates that the trees are partially annotated. Default: False.
 
         Returns:
-            loss (Tensor): scalar
+            loss (torch.Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
-            probs (Tensor): [batch_size, seq_len, seq_len]
+            probs (torch.Tensor): [batch_size, seq_len, seq_len]
                 Marginals if performing mbr decoding, original scores otherwise.
         """
 
@@ -215,14 +215,14 @@ class CRF2oDependency(nn.Module):
     def forward(self, scores, mask, target=None, mbr=True, partial=False):
         """
         Args:
-            scores (Tuple[Tensor, Tensor]):
-                Tuple of two tensors s_arc and s_sib.
+            scores (tuple[torch.Tensor, torch.Tensor]):
+                tuple of two tensors s_arc and s_sib.
                 s_arc ([batch_size, seq_len, seq_len]) holds The scores of all possible dependent-head pairs.
                 s_sib ([batch_size, seq_len, seq_len, seq_len]) holds the scores of dependent-head-sibling triples.
-            mask (BoolTensor): [batch_size, seq_len]
+            mask (torch.BoolTensor): [batch_size, seq_len]
                 Mask to avoid aggregation on padding tokens.
                 The first column with pseudo words as roots should be set to False.
-            target (LongTensor): [batch_size, seq_len]
+            target (torch.LongTensor): [batch_size, seq_len]
                 Tensors of gold-standard dependent-head pairs and dependent-head-sibling triples.
                 If partially annotated, the unannotated positions should be filled with -1.
                 Default: None.
@@ -232,9 +232,9 @@ class CRF2oDependency(nn.Module):
                 True indicates that the trees are partially annotated. Default: False.
 
         Returns:
-            loss (Tensor): scalar
+            loss (torch.Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
-            probs (Tensor): [batch_size, seq_len, seq_len]
+            probs (torch.Tensor): [batch_size, seq_len, seq_len]
                 Marginals if performing mbr decoding, original scores otherwise.
         """
 
@@ -362,20 +362,20 @@ class CRFConstituency(nn.Module):
     def forward(self, scores, mask, target=None, mbr=False):
         """
         Args:
-            scores (Tensor): [batch_size, seq_len, seq_len]
+            scores (torch.Tensor): [batch_size, seq_len, seq_len]
                 The scores of all possible constituents.
-            mask (BoolTensor): [batch_size, seq_len, seq_len]
+            mask (torch.BoolTensor): [batch_size, seq_len, seq_len]
                 Mask to avoid parsing over padding tokens.
                 For each square matrix in a batch, the positions except upper triangular part should be masked out.
-            target (BoolTensor): [batch_size, seq_len, seq_len]
+            target (torch.BoolTensor): [batch_size, seq_len, seq_len]
                 Tensor of gold-standard constituents. True if a constituent exists. Default: None.
             mbr (bool):
                 If True, marginals will be returned to perform minimum Bayes-risk (mbr) decoding. Default: False.
 
         Returns:
-            loss (Tensor): scalar
+            loss (torch.Tensor): scalar
                 Loss averaged by number of tokens. This won't be returned if target is None.
-            probs (Tensor): [batch_size, seq_len, seq_len]
+            probs (torch.Tensor): [batch_size, seq_len, seq_len]
                 Marginals if performing mbr decoding, original scores otherwise.
         """
 

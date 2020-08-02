@@ -207,7 +207,7 @@ class CoNLL(Transform):
         Missing fields are filled with underscores.
 
         Args:
-            tokens (List[str] or List[tuple]):
+            tokens (list[str] or list[tuple]):
                 This can be either a list of words or word/pos pairs.
 
         Returns:
@@ -241,7 +241,7 @@ class CoNLL(Transform):
         that are hard to detect in the scenario of partial annotation.
 
         Args:
-            sequence (List[int]):
+            sequence (list[int]):
                 A list of head indices.
 
         Returns:
@@ -272,7 +272,7 @@ class CoNLL(Transform):
         Check if the arcs form an valid dependency tree.
 
         Args:
-            sequence (List[int]):
+            sequence (list[int]):
                 A list of head indices.
             proj (bool):
                 If True, requires the tree to be projective. Default: False.
@@ -307,7 +307,7 @@ class CoNLL(Transform):
         Also support for loading data from CoNLL-U file with comments and non-integer IDs.
 
         Args:
-            data (List[List] or str):
+            data (list[list] or str):
                 A list of instances or a filename.
             proj (bool):
                 If True, discard all non-projective sentences. Default: False.
@@ -346,7 +346,7 @@ class CoNLLSentence(Sentence):
     Args:
         transform (CoNLL):
             A CoNLL object.
-        lines (List[str]):
+        lines (list[str]):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
 
@@ -449,7 +449,7 @@ class Tree(Transform):
         Missing fields are filled with underscores.
 
         Args:
-            tokens (List[str] or List[tuple]):
+            tokens (list[str] or list[tuple]):
                 This can be either a list of words or word/pos pairs.
             root (str):
                 The root label of the tree. Default: ''.
@@ -477,7 +477,7 @@ class Tree(Transform):
         Second, all unary productions in the tree are collapsed.
 
         Args:
-            tree (nltk.Tree):
+            tree (nltk.tree.Tree):
                 the tree to be binarized.
 
         Returns:
@@ -524,16 +524,16 @@ class Tree(Transform):
         The tree is traversed in pre-order.
 
         Args:
-            tree (nltk.Tree):
+            tree (nltk.tree.Tree):
                 the tree to be factorized.
-            delete_labels (Set[str]):
+            delete_labels (set[str]):
                 A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
                 In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
                 Default: None.
-            equal_labels (Dict[str, str]):
+            equal_labels (dict[str, str]):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default dict defined in EVALB is: {'ADVP': 'PRT'}
                 Default: None.
@@ -580,9 +580,9 @@ class Tree(Transform):
         the suffixes ``|<>`` are ignored, the collapsed labels are recovered).
 
         Args:
-            tree (nltk.Tree):
+            tree (nltk.tree.Tree):
                 An empty tree providing a base for building a result tree.
-            sequence (List[tuple]):
+            sequence (list[tuple]):
                 A list of tuples used for generating a tree.
                 Each tuple consits of the indices of left/right span boundaries and label of the span.
 
@@ -623,7 +623,7 @@ class Tree(Transform):
     def load(self, data, max_len=None, **kwargs):
         """
         Args:
-            data (List[List] or str):
+            data (list[list] or str):
                 A list of instances or a filename.
             max_len (int):
                 Sentences exceeding the length will be discarded. Default: None.
@@ -656,7 +656,7 @@ class TreeSentence(Sentence):
     Args:
         transform (Tree):
             A Tree object.
-        tree (nltk.Tree):
+        tree (nltk.tree.Tree):
             A nltk.Tree object.
     """
 

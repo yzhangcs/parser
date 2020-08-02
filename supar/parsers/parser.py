@@ -169,7 +169,7 @@ class Parser(object):
                 - a string with the shortcut name of a pre-trained parser defined in supar.PRETRAINED
                   to load from cache or download, e.g., `crf-dep-en`.
                 - a path to a directory containing a pre-trained parser, e.g., `./<path>/model`.
-            kwargs (Dict):
+            kwargs (dict):
                 A dict holding the unconsumed arguments.
 
         Returns:

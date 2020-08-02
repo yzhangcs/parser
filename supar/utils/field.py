@@ -143,11 +143,11 @@ class Field(RawField):
         If `self.tokenize` is not None, the input will be tokenized.
         Then the input will be optionally lowercased.
 
-        Args (List):
+        Args (list):
             The sequence to be preprocessed.
 
         Returns:
-            sequence (List):
+            sequence (list):
                 the preprocessed sequence.
         """
 
@@ -203,11 +203,11 @@ class Field(RawField):
         Each sequence is first preprocessed and then numericalized if needed.
 
         Args:
-            sequences (List[List[str]]):
-                A List of sequences.
+            sequences (list[list[str]]):
+                A list of sequences.
 
         Returns:
-            sequences (List[Tensor]):
+            sequences (list[torch.torch.Tensor]):
                 A list of tensors transformed from the input sequences.
         """
 
@@ -227,8 +227,8 @@ class Field(RawField):
         Compose a batch of sequences into a padded tensor.
 
         Args:
-            sequences (List[Tensor]):
-                A List of tensors.
+            sequences (list[torch.torch.Tensor]):
+                A list of tensors.
 
         Returns:
             A padded tensor converted to proper device.

@@ -116,7 +116,7 @@ class BiLSTM(nn.Module):
         Args:
             sequence (PackedSequence):
                 A packed variable length sequence.
-            hx (Tuple[Tensor, Tensor]):
+            hx (tuple[torch.Tensor, torch.Tensor]):
                 h (``[num_layers * 2, batch_size, hidden_size]``) contains the initial hidden state
                 for each element in the batch.
                 c (``[num_layers * 2, batch_size, hidden_size]``) contains the initial cell state
@@ -127,7 +127,7 @@ class BiLSTM(nn.Module):
         Returns:
             x (PackedSequence):
                 A packed variable length sequence.
-            hx (Tuple[Tensor, Tensor]):
+            hx (tuple[torch.Tensor, torch.Tensor]):
                 h (``[num_layers * 2, batch_size, hidden_size]``) contains the hidden state for ``t = seq_len``.
                 Like output, the layers can be separated using ``h.view(num_layers, 2, batch_size, hidden_size)``
                 and similarly for c.

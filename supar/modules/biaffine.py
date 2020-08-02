@@ -55,11 +55,11 @@ class Biaffine(nn.Module):
     def forward(self, x, y):
         """
         Args:
-            x (Tensor): [batch_size, seq_len, n_in]
-            y (Tensor): [batch_size, seq_len, n_in]
+            x (torch.Tensor): [batch_size, seq_len, n_in]
+            y (torch.Tensor): [batch_size, seq_len, n_in]
 
         Returns:
-            s (Tensor): [batch_size, n_out, seq_len, seq_len]
+            s (torch.Tensor): [batch_size, n_out, seq_len, seq_len]
                 If n_out is 1, the dimension of n_out will be squeezed automatically.
         """
 
