@@ -357,8 +357,8 @@ class ChartField(Field):
 
         for sequence in sequences:
             seq_len = sequence[0][1] + 1
-            span_chart = torch.full((seq_len, seq_len), self.pad_index).bool()
-            label_chart = torch.full((seq_len, seq_len), self.pad_index).long()
+            span_chart = torch.full((seq_len, seq_len), self.pad_index, dtype=torch.bool)
+            label_chart = torch.full((seq_len, seq_len), self.pad_index, dtype=torch.long)
             for i, j, label in sequence:
                 span_chart[i, j] = 1
                 label_chart[i, j] = self.vocab[label]
