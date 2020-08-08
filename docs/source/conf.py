@@ -82,8 +82,8 @@ html_static_path = []
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
+    'nltk': ('https://www.nltk.org', None),
     'numpy': ('https://numpy.org/doc/stable', None),
-    'torch': ('https://pytorch.org/docs/stable', None),
-    'nltk': ('https://www.nltk.org', None)
+    'python': ('https://docs.python.org/3', None),
+    'torch': ('https://pytorch.org/docs/stable', None)
 }

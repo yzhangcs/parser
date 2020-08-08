@@ -19,10 +19,9 @@ def kmeans(x, k, max_it=32):
             If centroids does not converge after several iterations, the algorithm will be early stopped.
 
     Returns:
-        centroids (list[float]):
-            Average lengths of sentences in each cluster.
-        clusters (list[list[int]]):
-            List of clusters that hold indices of data points.
+        list[float], list[list[int]]:
+            The first list contains average lengths of sentences in each cluster.
+            The second is the list of clusters holding indices of data points.
 
     Examples:
         >>> x = torch.randint(10,20,(10,)).tolist()
@@ -86,8 +85,8 @@ def tarjan(sequence):
         sequence (list):
             List of head indices.
 
-    Returns:
-        A generator that yields SCCs (cycles) lazily. All self-loops are ignored.
+    Yields:
+        A list of indices that make up a SCC. All self-loops are ignored.
 
     Examples:
         >>> next(tarjan([2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
