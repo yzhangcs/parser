@@ -147,9 +147,11 @@ class CoNLL(Transform):
             Dependency relations to the PHEAD, or underscores if not available.
 
     References:
-        - Sabine Buchholz and Erwin Marsi (CoNLL'06)
-          CoNLL-X Shared Task on Multilingual Dependency Parsing
-          https://www.aclweb.org/anthology/W06-2920/
+        - Sabine Buchholz and Erwin Marsi. 2006.
+          `CoNLL-X Shared Task on Multilingual Dependency Parsing`_.
+
+    .. _CoNLL-X Shared Task on Multilingual Dependency Parsing:
+        https://www.aclweb.org/anthology/W06-2920/
     """
 
     fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS', 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']
@@ -530,7 +532,7 @@ class Tree(Transform):
                 A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
-                In EVALB (https://nlp.cs.nyu.edu/evalb/), the default set is:
+                In `EVALB`_, the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
                 Default: None.
             equal_labels (dict[str, str]):
@@ -553,6 +555,9 @@ class Tree(Transform):
             [(0, 5, 'TOP'), (0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]
             >>> Tree.factorize(tree, delete_labels={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''})
             [(0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]
+
+        .. _EVALB:
+            https://nlp.cs.nyu.edu/evalb/
         """
 
         def track(tree, i):

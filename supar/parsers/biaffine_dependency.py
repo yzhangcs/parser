@@ -22,9 +22,11 @@ class BiaffineDependencyParser(Parser):
     The implementation of Biaffine Dependency Parser.
 
     References:
-        - Timothy Dozat and Christopher D. Manning (ICLR'17)
-          Deep Biaffine Attention for Neural Dependency Parsing
-          https://openreview.net/pdf?id=Hk95PK9le/
+        - Timothy Dozat and Christopher D. Manning. 2017.
+          `Deep Biaffine Attention for Neural Dependency Parsing`_.
+
+    .. _Deep Biaffine Attention for Neural Dependency Parsing:
+        https://openreview.net/pdf?id=Hk95PK9le/
     """
 
     NAME = 'biaffine-dependency'

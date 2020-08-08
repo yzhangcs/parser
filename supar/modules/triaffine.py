@@ -13,12 +13,10 @@ class Triaffine(nn.Module):
     Usually, `x` and `y` can be concatenated with bias terms.
 
     References:
-        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-          Efficient Second-Order TreeCRF for Neural Dependency Parsing
-          https://www.aclweb.org/anthology/2020.acl-main.302/
-        - Xinyu Wang, Jingxian Huang, and Kewei Tu (ACL'19)
-          Second-Order Semantic Dependency Parsing with End-to-End Neural Networks
-          https://www.aclweb.org/anthology/P19-1454/
+        - Yu Zhang, Zhenghua Li and Min Zhang. 2020.
+          `Efficient Second-Order TreeCRF for Neural Dependency Parsing`_.
+        - Xinyu Wang, Jingxian Huang, and Kewei Tu. 2019.
+          `Second-Order Semantic Dependency Parsing with End-to-End Neural Networks`_.
 
     Args:
         n_in (int):
@@ -27,6 +25,11 @@ class Triaffine(nn.Module):
             If True, add a bias term for tensor x. Default: False.
         bias_y (bool):
             If True, add a bias term for tensor y. Default: False.
+
+    .. _Efficient Second-Order TreeCRF for Neural Dependency Parsing:
+        https://www.aclweb.org/anthology/2020.acl-main.302/
+    .. _Second-Order Semantic Dependency Parsing with End-to-End Neural Networks:
+        https://www.aclweb.org/anthology/P19-1454/
     """
 
     def __init__(self, n_in, bias_x=False, bias_y=False):

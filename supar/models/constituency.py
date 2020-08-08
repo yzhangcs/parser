@@ -16,9 +16,8 @@ class CRFConstituencyModel(nn.Module):
     This parser is also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) Parser.
 
     References:
-        - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
-          Fast and Accurate Neural CRF Constituency Parsing
-          https://www.ijcai.org/Proceedings/2020/560/
+        - Yu Zhang, Houquan Zhou and Zhenghua Li. 2020.
+          `Fast and Accurate Neural CRF Constituency Parsing`_.
 
     Args:
         n_words (int):
@@ -69,6 +68,9 @@ class CRFConstituencyModel(nn.Module):
             The index of the padding token in the word vocabulary. Default: 0.
         unk_index (int):
             The index of the unknown token in the word vocabulary. Default: 1.
+
+    .. _Fast and Accurate Neural CRF Constituency Parsing:
+        https://www.ijcai.org/Proceedings/2020/560/
     """
 
     def __init__(self,

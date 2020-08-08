@@ -17,9 +17,8 @@ class BiaffineDependencyModel(nn.Module):
     The implementation of Biaffine Dependency Parser.
 
     References:
-        - Timothy Dozat and Christopher D. Manning (ICLR'17)
-          Deep Biaffine Attention for Neural Dependency Parsing
-          https://openreview.net/pdf?id=Hk95PK9le/
+        - Timothy Dozat and Christopher D. Manning. 2017.
+          `Deep Biaffine Attention for Neural Dependency Parsing`_.
 
     Args:
         n_words (int):
@@ -70,6 +69,9 @@ class BiaffineDependencyModel(nn.Module):
             The index of the padding token in the word vocabulary. Default: 0.
         unk_index (int):
             The index of the unknown token in the word vocabulary. Default: 1.
+
+    .. _Deep Biaffine Attention for Neural Dependency Parsing:
+        https://openreview.net/pdf?id=Hk95PK9le/
     """
 
     def __init__(self,
@@ -280,12 +282,15 @@ class CRFNPDependencyModel(BiaffineDependencyModel):
     The implementation of non-projective CRF Dependency Parser.
 
     References:
-        - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
-          Neural Probabilistic Model for Non-projective MST Parsing
-          https://www.aclweb.org/anthology/I17-1007/
-        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
-          Structured Prediction Models via the Matrix-Tree Theorem
-          https://www.aclweb.org/anthology/D07-1015/
+        - Xuezhe Ma and Eduard Hovy. 2017.
+          `Neural Probabilistic Model for Non-projective MST Parsing`_.
+        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007.
+          `Structured Prediction Models via the Matrix-Tree Theorem`_.
+
+    .. _Neural Probabilistic Model for Non-projective MST Parsing:
+        https://www.aclweb.org/anthology/I17-1007/
+    .. _Structured Prediction Models via the Matrix-Tree Theorem:
+        https://www.aclweb.org/anthology/D07-1015/
     """
 
     def __init__(self, **kwargs):
@@ -330,9 +335,11 @@ class CRFDependencyModel(BiaffineDependencyModel):
     The implementation of first-order CRF Dependency Parser.
 
     References:
-        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-          Efficient Second-Order TreeCRF for Neural Dependency Parsing
-          https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang, 2020.
+          `Efficient Second-Order TreeCRF for Neural Dependency Parsing`_.
+
+    .. _Efficient Second-Order TreeCRF for Neural Dependency Parsing:
+        https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
     def __init__(self, **kwargs):
@@ -382,9 +389,8 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     The implementation of second-order CRF Dependency Parser.
 
     References:
-        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-          Efficient Second-Order TreeCRF for Neural Dependency Parsing
-          https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang. 2020.
+          `Efficient Second-Order TreeCRF for Neural Dependency Parsing`_.
 
     Args:
         Remainings required arguments are listed in BiaffineDependencyModel.
@@ -396,6 +402,9 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
             Sibling MLP size. Default: 500.
         mlp_dropout (float):
             Dropout ratio of MLP layers. Default: .33.
+
+    .. _Efficient Second-Order TreeCRF for Neural Dependency Parsing:
+        https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
     def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):

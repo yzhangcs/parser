@@ -14,9 +14,11 @@ class MatrixTree(nn.Module):
     rather than matrix inversion.
 
     References:
-        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
-          Structured Prediction Models via the Matrix-Tree Theorem
-          https://www.aclweb.org/anthology/D07-1015/
+        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007.
+          `Structured Prediction Models via the Matrix-Tree Theorem`_.
+
+    .. _Structured Prediction Models via the Matrix-Tree Theorem:
+        https://www.aclweb.org/anthology/D07-1015/
     """
 
     @torch.enable_grad()
@@ -91,9 +93,11 @@ class CRFDependency(nn.Module):
     and relpace the outside pass with back-propagation totally.
 
     References:
-        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-          Efficient Second-Order TreeCRF for Neural Dependency Parsing
-          https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang. 2020.
+          `Efficient Second-Order TreeCRF for Neural Dependency Parsing`_.
+
+    .. _Efficient Second-Order TreeCRF for Neural Dependency Parsing:
+        https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
     @torch.enable_grad()
@@ -203,9 +207,11 @@ class CRF2oDependency(nn.Module):
 
 
     References:
-        - Yu Zhang, Zhenghua Li and Min Zhang (ACL'20)
-          Efficient Second-Order TreeCRF for Neural Dependency Parsing
-          https://www.aclweb.org/anthology/2020.acl-main.302/
+        - Yu Zhang, Zhenghua Li and Min Zhang. 2020.
+          `Efficient Second-Order TreeCRF for Neural Dependency Parsing`_.
+
+    .. _Efficient Second-Order TreeCRF for Neural Dependency Parsing:
+        https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
     def __init__(self):
@@ -353,9 +359,11 @@ class CRFConstituency(nn.Module):
     and relpace the outside pass with back-propagation totally.
 
     References:
-        - Yu Zhang, houquan Zhou and Zhenghua Li (IJCAI'20)
-          Fast and Accurate Neural CRF Constituency Parsing
-          https://www.ijcai.org/Proceedings/2020/560/
+        - Yu Zhang, houquan Zhou and Zhenghua Li。 2020.
+          `Fast and Accurate Neural CRF Constituency Parsing`_.
+
+    .. _Fast and Accurate Neural CRF Constituency Parsing:
+        https://www.ijcai.org/Proceedings/2020/560/
     """
 
     @torch.enable_grad()

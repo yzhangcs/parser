@@ -19,10 +19,10 @@ The implementations of several popular and well-known algorithms, like MST (ChuL
 
 Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inputs to the encoder, optionally, `SuPar` also allows to utilize CharLSTM/BERT layers to produce character/subword-level features.
 Among them, CharLSTM is taken as the default option, which avoids additional requirements for generating POS tags, as well as the inefficiency of BERT.
-The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers). 
+The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers).
 It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
 
-The CRF models for Dependency/Constituency parsing are our recent works published in ACL 2020 and IJCAI 2020 respectively. 
+The CRF models for Dependency/Constituency parsing are our recent works published in ACL 2020 and IJCAI 2020 respectively.
 If you are interested in them, please cite:
 ```bib
 @inproceedings{zhang-etal-2020-efficient,
@@ -78,7 +78,7 @@ Currently, `SuPar` provides pretrained models for English and Chinese.
 English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
 
 The performance and parsing speed of these models are listed in the following table.
-Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7. 
+Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7.
 
 <table>
   <thead>
@@ -144,7 +144,7 @@ Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved 
       <td>88.98</td><td>85.84</td><td align="right">354.65</td>
     </tr>
     <tr>
-      <td><code>crf-dep-zh</code></td>
+      <td><code>crf2o-dep-zh</code></td>
       <td align="center">UAS/LAS</td>
       <td>89.35</td><td>86.25</td><td align="right">217.09</td>
     </tr>
@@ -186,10 +186,10 @@ arcs:  [2, 0, 2, 3, 2]
 rels:  ['nsubj', 'root', 'xcomp', 'dobj', 'punct']
 probs: tensor([1.0000, 1.0000, 0.9650, 0.9687, 0.9996])
 ```
-Probabilities can be returned along with the results if `prob=True`. 
+Probabilities can be returned along with the results if `prob=True`.
 As for CRF parsers, marginals are available if `mbr=True`, i.e., using mbr decoding.
 
-Note that `SuPar` requires pre-tokenized sentences as inputs. 
+Note that `SuPar` requires pre-tokenized sentences as inputs.
 If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize` to do the tokenization first:
 ```py
 >>> import nltk
@@ -208,7 +208,7 @@ If there are a plenty of sentences to parse, `SuPar` also supports for loading t
 ```py
 >>> dataset = parser.predict('data/ptb/test.conllx', pred='pred.conllx')
 2020-07-25 18:13:50 INFO Load the data
-2020-07-25 18:13:52 INFO                                                         
+2020-07-25 18:13:52 INFO
 Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 2020-07-25 18:13:52 INFO Make predictions on the dataset
 100%|####################################| 13/13 00:01<00:00, 10.58it/s
@@ -272,7 +272,7 @@ For Universial Dependencies (UD), the CoNLL-U file is also allowed, while commen
 
 ```
 
-Constituency trees can be parsed in a similar manner. 
+Constituency trees can be parsed in a similar manner.
 The returned `dataset` holds all predicted trees represented using `nltk.Tree` objects.
 ```py
 >>> parser = Parser.load('crf-con-en')
@@ -287,7 +287,7 @@ trees:
     (_ .)))
 >>> dataset = parser.predict('data/ptb/test.pid', pred='pred.pid')
 2020-07-25 18:21:28 INFO Load the data
-2020-07-25 18:21:33 INFO                                                     
+2020-07-25 18:21:33 INFO
 Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
 2020-07-25 18:21:33 INFO Make predictions on the dataset
 100%|####################################| 13/13 00:02<00:00,  5.30it/s
@@ -305,7 +305,7 @@ Analogous to dependency parsing, a sentence can be transformed to an empty `nltk
 ### Training
 
 To train a model from scratch, it is preferred to use the command-line option, which is more flexible and customizable.
-Here are some training examples: 
+Here are some training examples:
 ```sh
 # Biaffine Dependency Parser
 # some common and default arguments are stored in config.ini
@@ -337,7 +337,7 @@ $ python -m supar.cmds.crf_constituency train -b -d 0 -p exp/ptb.crf.constituenc
 
 For more instructions on training, please type `python -m supar.cmds.<parser> train -h`.
 
-Alternatively, `SuPar` provides some equivalent command entry points registered in `setup.py`: 
+Alternatively, `SuPar` provides some equivalent command entry points registered in `setup.py`:
 `biaffine-dependency`, `crfnp-dependency`, `crf-dependency`, `crf2o-dependency` and `crf-constituency`.
 ```sh
 $ biaffine-dependency train -b -d 0 -p exp/ptb.biaffine.dependency.char/model -f char -c config.ini
@@ -357,7 +357,7 @@ The evaluation process resembles prediction:
 >>> parser = Parser.load('biaffine-dep-en')
 >>> loss, metric = parser.evaluate('data/ptb/test.conllx')
 2020-07-25 20:59:17 INFO Load the data
-2020-07-25 20:59:19 INFO                                                         
+2020-07-25 20:59:19 INFO
 Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
 2020-07-25 20:59:19 INFO Evaluate the dataset
 2020-07-25 20:59:20 INFO loss: 0.2326 - UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%
@@ -366,13 +366,13 @@ Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
 
 ## References
 
-* <a id="koo-2007-structured"></a> 
+* <a id="koo-2007-structured"></a>
 Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007. [Structured Prediction Models via the Matrix-Tree Theorem](https://www.aclweb.org/anthology/D07-1015/).
-* <a id="dozat-2017-biaffine"></a> 
+* <a id="dozat-2017-biaffine"></a>
 Timothy Dozat and Christopher D. Manning. 2017. [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/pdf?id=Hk95PK9le).
-* <a id="ma-2017-neural"></a> 
+* <a id="ma-2017-neural"></a>
 Xuezhe Ma and Eduard Hovy. 2017. [Neural Probabilistic Model for Non-projective MST Parsing](https://www.aclweb.org/anthology/I17-1007/).
-* <a id="zhang-2020-fast"></a> 
+* <a id="zhang-2020-fast"></a>
 Yu Zhang, Houquan Zhou and Zhenghua Li. 2020. [Fast and Accurate Neural CRF Constituency Parsing](https://www.ijcai.org/Proceedings/2020/560/).
-* <a id="zhang-2020-efficient"></a> 
+* <a id="zhang-2020-efficient"></a>
 Yu Zhang, Zhenghua Li and Min Zhang. 2020. [Efficient Second-Order TreeCRF for Neural Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.302/).

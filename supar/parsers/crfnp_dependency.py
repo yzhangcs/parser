@@ -17,12 +17,15 @@ class CRFNPDependencyParser(BiaffineDependencyParser):
     The implementation of non-projective CRF Dependency Parser.
 
     References:
-        - Xuezhe Ma and Eduard Hovy (IJCNLP'17)
-          Neural Probabilistic Model for Non-projective MST Parsing
-          https://www.aclweb.org/anthology/I17-1007/
-        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins (ACL'07)
-          Structured Prediction Models via the Matrix-Tree Theorem
-          https://www.aclweb.org/anthology/D07-1015/
+        - Xuezhe Ma and Eduard Hovy. 2017.
+          `Neural Probabilistic Model for Non-projective MST Parsing`_.
+        - Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007.
+          `Structured Prediction Models via the Matrix-Tree Theorem`_.
+
+    .. _Neural Probabilistic Model for Non-projective MST Parsing:
+        https://www.aclweb.org/anthology/I17-1007/
+    .. _Structured Prediction Models via the Matrix-Tree Theorem:
+        https://www.aclweb.org/anthology/D07-1015/
     """
 
     NAME = 'crfnp-dependency'

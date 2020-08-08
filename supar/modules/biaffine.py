@@ -13,9 +13,8 @@ class Biaffine(nn.Module):
     in which `x` and `y` can be concatenated with bias terms.
 
     References:
-        - Timothy Dozat and Christopher D. Manning (ICLR'17)
-          Deep Biaffine Attention for Neural Dependency Parsing
-          https://openreview.net/pdf?id=Hk95PK9le/
+        - Timothy Dozat and Christopher D. Manning. 2017.
+          `Deep Biaffine Attention for Neural Dependency Parsing`_.
 
     Args:
         n_in (int):
@@ -26,6 +25,9 @@ class Biaffine(nn.Module):
             If True, add a bias term for tensor x. Default: False.
         bias_y (bool):
             If True, add a bias term for tensor y. Default: False.
+
+    .. _Deep Biaffine Attention for Neural Dependency Parsing:
+        https://openreview.net/pdf?id=Hk95PK9le/
     """
 
     def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):

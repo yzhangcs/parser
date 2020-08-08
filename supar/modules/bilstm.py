@@ -18,9 +18,8 @@ class BiLSTM(nn.Module):
     and only allows PackedSequence as input.
 
     References:
-        - Timothy Dozat and Christopher D. Manning (ICLR'17)
-          Deep Biaffine Attention for Neural Dependency Parsing
-          https://openreview.net/pdf?id=Hk95PK9le/
+        - Timothy Dozat and Christopher D. Manning. 2017.
+          `Deep Biaffine Attention for Neural Dependency Parsing`_.
 
     Args:
         input_size (int):
@@ -33,6 +32,9 @@ class BiLSTM(nn.Module):
             If non-zero, introduces a SharedDropout layer on the outputs of each LSTM layer
             except the last layer, with dropout probability equal to `dropout`.
             Default: 0.
+
+    .. _Deep Biaffine Attention for Neural Dependency Parsing:
+        https://openreview.net/pdf?id=Hk95PK9le/
     """
 
     def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
