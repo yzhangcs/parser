@@ -246,6 +246,17 @@ def mst(scores, mask, multiroot=False):
     Returns:
         torch.Tensor:
             A tensor with shape ``[batch_size, seq_len]`` for the resulting non-projective parse trees.
+
+    Examples:
+        >>> scores = torch.tensor([[[-11.9436, -13.1464,  -6.4789, -13.8917],
+                                    [-60.6957, -60.2866, -48.6457, -63.8125],
+                                    [-38.1747, -49.9296, -45.2733, -49.5571],
+                                    [-19.7504, -23.9066,  -9.9139, -16.2088]]])
+        >>> scores[:, 0, 1:] = float('-inf')
+        >>> scores.diagonal(0, 1, 2)[1:].fill_(float('-inf'))
+        >>> mask = torch.tensor([[False,  True,  True,  True]])
+        >>> mst(scores, mask)
+        tensor([[0, 2, 0, 2]])
     """
 
     batch_size, seq_len, _ = scores.shape
@@ -291,6 +302,14 @@ def eisner(scores, mask):
         torch.Tensor:
             A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
 
+    Examples:
+        >>> scores = torch.tensor([[[-13.5026, -18.3700, -13.0033, -16.6809],
+                                    [-36.5235, -28.6344, -28.4696, -31.6750],
+                                    [ -2.9084,  -7.4825,  -1.4861,  -6.8709],
+                                    [-29.4880, -27.6905, -26.1498, -27.0233]]])
+        >>> mask = torch.tensor([[False,  True,  True,  True]])
+        >>> eisner(scores, mask)
+        tensor([[0, 2, 0, 2]])
 
     .. _Online Large-Margin Training of Dependency Parsers:
         https://www.aclweb.org/anthology/P05-1012/
@@ -378,6 +397,31 @@ def eisner2o(scores, mask):
     Returns:
         torch.Tensor:
             A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
+
+    Examples:
+        >>> s_arc = torch.tensor([[[ -2.8092,  -7.9104,  -0.9414,  -5.4360],
+                                   [-10.3494,  -7.9298,  -3.6929,  -7.3985],
+                                   [  1.1815,  -3.8291,   2.3166,  -2.7183],
+                                   [ -3.9776,  -3.9063,  -1.6762,  -3.1861]]])
+        >>> s_sib = torch.tensor([[[[ 0.4719,  0.4154,  1.1333,  0.6946],
+                                    [ 1.1252,  1.3043,  2.1128,  1.4621],
+                                    [ 0.5974,  0.5635,  1.0115,  0.7550],
+                                    [ 1.1174,  1.3794,  2.2567,  1.4043]],
+                                   [[-2.1480, -4.1830, -2.5519, -1.8020],
+                                    [-1.2496, -1.7859, -0.0665, -0.4938],
+                                    [-2.6171, -4.0142, -2.9428, -2.2121],
+                                    [-0.5166, -1.0925,  0.5190,  0.1371]],
+                                   [[ 0.5827, -1.2499, -0.0648, -0.0497],
+                                    [ 1.4695,  0.3522,  1.5614,  1.0236],
+                                    [ 0.4647, -0.7996, -0.3801,  0.0046],
+                                    [ 1.5611,  0.3875,  1.8285,  1.0766]],
+                                   [[-1.3053, -2.9423, -1.5779, -1.2142],
+                                    [-0.1908, -0.9699,  0.3085,  0.1061],
+                                    [-1.6783, -2.8199, -1.8853, -1.5653],
+                                    [ 0.3629, -0.3488,  0.9011,  0.5674]]]])
+        >>> mask = torch.tensor([[False,  True,  True,  True]])
+        >>> eisner2o((s_arc, s_sib), mask)
+        tensor([[0, 2, 0, 2]])
 
     .. _Online Learning of Approximate Dependency Parsing Algorithms:
         https://www.aclweb.org/anthology/E06-1011/
@@ -504,6 +548,18 @@ def cky(scores, mask):
 
     Returns:
         Sequences of factorized predicted bracketed trees that are traversed in pre-order.
+
+    Examples:
+        >>> scores = torch.tensor([[[ 2.5659,  1.4253, -2.5272,  3.3011],
+                                    [ 1.3687, -0.5869,  1.0011,  3.3020],
+                                    [ 1.2297,  0.4862,  1.1975,  2.5387],
+                                    [-0.0511, -1.2541, -0.7577,  0.2659]]])
+        >>> mask = torch.tensor([[[False,  True,  True,  True],
+                                  [False, False,  True,  True],
+                                  [False, False, False,  True],
+                                  [False, False, False, False]]])
+        >>> cky(scores, mask)
+        [[(0, 3), (0, 1), (1, 3), (1, 2), (2, 3)]]
 
     .. _Cocke-Kasami-Younger:
         https://en.wikipedia.org/wiki/CYK_algorithm

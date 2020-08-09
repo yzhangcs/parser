@@ -264,8 +264,9 @@ class BiaffineDependencyModel(nn.Module):
         """
 
         lens = mask.sum(1)
+        s_arc[:, 0, 1:] = float('-inf')
         # prevent self-loops
-        s_arc.diagonal(0, 1, 2).fill_(float('-inf'))
+        s_arc.diagonal(0, 1, 2)[1:].fill_(float('-inf'))
         arc_preds = s_arc.argmax(-1)
         bad = [not CoNLL.istree(seq[1:i+1], proj)
                for i, seq in zip(lens.tolist(), arc_preds.tolist())]
