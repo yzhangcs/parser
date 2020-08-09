@@ -18,7 +18,7 @@ class RawField(object):
         name (str):
             The name of the field.
         fn (function):
-            The function used for preprocessing the examples. Default: None.
+            The function used for preprocessing the examples. Default: ``None``.
     """
 
     def __init__(self, name, fn=None):
@@ -51,23 +51,23 @@ class Field(RawField):
         name (str):
             The name of the field.
         pad_token (str):
-            The string token used as padding. Default: None.
+            The string token used as padding. Default: ``None``.
         unk_token (str):
-            The string token used to represent OOV words. Default: None.
+            The string token used to represent OOV words. Default: ``None``.
         bos_token (str):
             A token that will be prepended to every example using this field, or None for no bos_token.
-            Default: None.
+            Default: ``None``.
         eos_token (str):
             A token that will be appended to every example using this field, or None for no eos_token.
         lower (bool):
-            Whether to lowercase the text in this field. Default: False.
+            Whether to lowercase the text in this field. Default: ``False``.
         use_vocab (bool):
-            Whether to use a Vocab object. If False, the data in this field should already be numerical.
-            Default: True.
+            Whether to use a Vocab object. If ``False``, the data in this field should already be numerical.
+            Default: ``True``.
         tokenize (function):
-            The function used to tokenize strings using this field into sequential examples. Default: None.
+            The function used to tokenize strings using this field into sequential examples. Default: ``None``.
         fn (function):
-            The function used for preprocessing the examples. Default: None.
+            The function used for preprocessing the examples. Default: ``None``.
     """
 
     def __init__(self, name, pad=None, unk=None, bos=None, eos=None,
@@ -171,7 +171,7 @@ class Field(RawField):
             min_freq (int):
                 The minimum frequency needed to include a token in the vocabulary. Default: 1.
             embed (Embedding):
-                An Embedding instance, words in which will be extended to the vocabulary. Default: None.
+                An Embedding instance, words in which will be extended to the vocabulary. Default: ``None``.
         """
 
         if hasattr(self, 'vocab'):

@@ -59,7 +59,7 @@ If you are interested in them, please cite:
 
 `SuPar` can be installed via pip:
 ```sh
-pip install supar --upgrade
+pip install -U supar
 ```
 Or installing from source is also permitted:
 ```sh

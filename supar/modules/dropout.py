@@ -13,8 +13,8 @@ class SharedDropout(nn.Module):
         p (float):
             The probability of an element to be zeroed. Default: 0.5.
         batch_first (bool):
-            If True, then the input and output tensors are provided as ``[batch_size, seq_len, *]``.
-            Default: True.
+            If ``True``, then the input and output tensors are provided as ``[batch_size, seq_len, *]``.
+            Default: ``True``.
 
     Examples:
         >>> x = torch.ones(1, 3, 5)

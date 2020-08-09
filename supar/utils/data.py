@@ -121,11 +121,11 @@ class Sampler(torch.utils.data.Sampler):
         batch_size (int):
             Token-level batch size. The resulting batch contains roughly the same number of tokens as batch_size.
         shuffle (bool):
-            If True, the sampler will shuffle both buckets and samples in each bucket. Default: False.
+            If ``True``, the sampler will shuffle both buckets and samples in each bucket. Default: ``False``.
         distributed (bool):
-            If True, the sampler will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
+            If ``True``, the sampler will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
             that restricts data loading to a subset of the dataset.
-            Default: False.
+            Default: ``False``.
     """
 
     def __init__(self, buckets, batch_size, shuffle=False, distributed=False):

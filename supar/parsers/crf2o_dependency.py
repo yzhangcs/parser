@@ -46,17 +46,17 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             punct (bool):
-                If False, ignores the punctuations during evaluation. Default: False.
+                If ``False``, ignores the punctuations during evaluation. Default: ``False``.
             mbr (bool):
-                If True, returns marginals for MBR decoding. Default: True.
+                If ``True``, returns marginals for MBR decoding. Default: ``True``.
             tree (bool):
-                If True, ensures to output well-formed trees. Default: False.
+                If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
-                If True, ensures to output projective trees. Default: False.
+                If ``True``, ensures to output projective trees. Default: ``False``.
             partial (bool):
-                True denotes the trees are partially annotated. Default: False.
+                ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
         """
@@ -74,17 +74,17 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             punct (bool):
-                If False, ignores the punctuations during evaluation. Default: False.
+                If ``False``, ignores the punctuations during evaluation. Default: ``False``.
             mbr (bool):
-                If True, returns marginals for MBR decoding. Default: True.
+                If ``True``, returns marginals for MBR decoding. Default: ``True``.
             tree (bool):
-                If True, ensures to output well-formed trees. Default: False.
+                If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
-                If True, ensures to output projective trees. Default: False.
+                If ``True``, ensures to output projective trees. Default: ``False``.
             partial (bool):
-                True denotes the trees are partially annotated. Default: False.
+                ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
 
@@ -101,21 +101,21 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             data (list[list] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
             pred (str):
-                If specified, the predicted results will be saved to the file. Default: None.
+                If specified, the predicted results will be saved to the file. Default: ``None``.
             buckets (int):
                 Number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             prob (bool):
-                If True, outputs the probabilities. Default: False.
+                If ``True``, outputs the probabilities. Default: ``False``.
             mbr (bool):
-                If True, returns marginals for MBR decoding. Default: True.
+                If ``True``, returns marginals for MBR decoding. Default: ``True``.
             tree (bool):
-                If True, ensures to output well-formed trees. Default: False.
+                If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
-                If True, ensures to output projective trees. Default: False.
+                If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
 

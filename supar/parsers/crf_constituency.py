@@ -55,7 +55,7 @@ class CRFConstituencyParser(Parser):
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             mbr (bool):
-                If True, performs mbr decoding. Default: True.
+                If ``True``, performs mbr decoding. Default: ``True``.
             delete (set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
@@ -63,7 +63,7 @@ class CRFConstituencyParser(Parser):
                 The pairs in the dict are considered equivalent during evaluation.
                 Default: {'ADVP': 'PRT'}.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
         """
@@ -84,7 +84,7 @@ class CRFConstituencyParser(Parser):
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             mbr (bool):
-                If True, performs mbr decoding. Default: True.
+                If ``True``, performs mbr decoding. Default: ``True``.
             delete (set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
@@ -92,7 +92,7 @@ class CRFConstituencyParser(Parser):
                 The pairs in the dict are considered equivalent during evaluation.
                 Default: {'ADVP': 'PRT'}.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
 
@@ -108,17 +108,17 @@ class CRFConstituencyParser(Parser):
             data (list[list] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
             pred (str):
-                If specified, the predicted results will be saved to the file. Default: None.
+                If specified, the predicted results will be saved to the file. Default: ``None``.
             buckets (int):
                 Number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             prob (bool):
-                If True, outputs the probabilities. Default: False.
+                If ``True``, outputs the probabilities. Default: ``False``.
             mbr (bool):
-                If True, performs mbr decoding. Default: True.
+                If ``True``, performs mbr decoding. Default: ``True``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
 

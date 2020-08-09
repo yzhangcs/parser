@@ -31,9 +31,9 @@ class BertEmbedding(nn.Module):
             Dropout ratio of BERT layers. Default: 0.
             This value will be passed into the ScalarMix layer.
         requires_grad (bool):
-            If True, the parameters of the pretrained model won't be freezed,
+            If ``True``, the parameters of the pretrained model won't be freezed,
             and will be updated together with the downstream task.
-            Default: False.
+            Default: ``False``.
     """
 
     def __init__(self, model, n_layers, n_out, pad_index=0, dropout=0,
@@ -68,10 +68,10 @@ class BertEmbedding(nn.Module):
     def forward(self, subwords):
         """
         Args:
-            subwords (torch.Tensor): [batch_size, seq_len, fix_len]
+            subwords (torch.Tensor): ``[batch_size, seq_len, fix_len]``.
 
         Returns:
-            embed (torch.Tensor): [batch_size, seq_len, n_out]
+            embed (torch.Tensor): ``[batch_size, seq_len, n_out]``.
         """
         batch_size, seq_len, fix_len = subwords.shape
         mask = subwords.ne(self.pad_index)

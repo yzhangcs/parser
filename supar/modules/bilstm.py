@@ -34,7 +34,7 @@ class BiLSTM(nn.Module):
             Default: 0.
 
     .. _Deep Biaffine Attention for Neural Dependency Parsing:
-        https://openreview.net/pdf?id=Hk95PK9le/
+        https://openreview.net/pdf?id=Hk95PK9le
     """
 
     def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
@@ -118,18 +118,18 @@ class BiLSTM(nn.Module):
         Args:
             sequence (PackedSequence):
                 A packed variable length sequence.
-            hx (tuple[torch.Tensor, torch.Tensor]):
+            hx (torch.Tensor, torch.Tensor):
                 h (``[num_layers * 2, batch_size, hidden_size]``) contains the initial hidden state
                 for each element in the batch.
                 c (``[num_layers * 2, batch_size, hidden_size]``) contains the initial cell state
                 for each element in the batch.
                 If (h, x) is not provided, both h and c default to zero.
-                Default: None.
+                Default: ``None``.
 
         Returns:
             x (PackedSequence):
                 A packed variable length sequence.
-            hx (tuple[torch.Tensor, torch.Tensor]):
+            hx (torch.Tensor, torch.Tensor):
                 h (``[num_layers * 2, batch_size, hidden_size]``) contains the hidden state for ``t = seq_len``.
                 Like output, the layers can be separated using ``h.view(num_layers, 2, batch_size, hidden_size)``
                 and similarly for c.

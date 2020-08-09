@@ -8,15 +8,15 @@ Algorithms
 
 .. autofunction:: supar.utils.alg.kmeans
 
-.. autofunction:: supar.utils.alg.eisner
-
-.. autofunction:: supar.utils.alg.eisner2o
-
 .. autofunction:: supar.utils.alg.tarjan
 
 .. autofunction:: supar.utils.alg.chuliu_edmonds
 
 .. autofunction:: supar.utils.alg.mst
+
+.. autofunction:: supar.utils.alg.eisner
+
+.. autofunction:: supar.utils.alg.eisner2o
 
 .. autofunction:: supar.utils.alg.cky
 

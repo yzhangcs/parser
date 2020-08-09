@@ -22,12 +22,12 @@ class Biaffine(nn.Module):
         n_out (int):
             The number of output channels.
         bias_x (bool):
-            If True, add a bias term for tensor x. Default: False.
+            If ``True``, add a bias term for tensor x. Default: ``False``.
         bias_y (bool):
-            If True, add a bias term for tensor y. Default: False.
+            If ``True``, add a bias term for tensor y. Default: ``False``.
 
     .. _Deep Biaffine Attention for Neural Dependency Parsing:
-        https://openreview.net/pdf?id=Hk95PK9le/
+        https://openreview.net/pdf?id=Hk95PK9le
     """
 
     def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
@@ -57,11 +57,11 @@ class Biaffine(nn.Module):
     def forward(self, x, y):
         """
         Args:
-            x (torch.Tensor): [batch_size, seq_len, n_in]
-            y (torch.Tensor): [batch_size, seq_len, n_in]
+            x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
+            y (torch.Tensor): ``[batch_size, seq_len, n_in]``.
 
         Returns:
-            s (torch.Tensor): [batch_size, n_out, seq_len, seq_len]
+            s (torch.Tensor): ``[batch_size, n_out, seq_len, seq_len]``.
                 If n_out is 1, the dimension of n_out will be squeezed automatically.
         """
 

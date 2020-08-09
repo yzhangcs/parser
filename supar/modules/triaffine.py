@@ -22,9 +22,9 @@ class Triaffine(nn.Module):
         n_in (int):
             The dimension of the input feature.
         bias_x (bool):
-            If True, add a bias term for tensor x. Default: False.
+            If ``True``, add a bias term for tensor x. Default: ``False``.
         bias_y (bool):
-            If True, add a bias term for tensor y. Default: False.
+            If ``True``, add a bias term for tensor y. Default: ``False``.
 
     .. _Efficient Second-Order TreeCRF for Neural Dependency Parsing:
         https://www.aclweb.org/anthology/2020.acl-main.302/
@@ -58,12 +58,12 @@ class Triaffine(nn.Module):
     def forward(self, x, y, z):
         """
         Args:
-            x (torch.Tensor): [batch_size, seq_len, n_in]
-            y (torch.Tensor): [batch_size, seq_len, n_in]
-            z (torch.Tensor): [batch_size, seq_len, n_in]
+            x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
+            y (torch.Tensor): ``[batch_size, seq_len, n_in]``.
+            z (torch.Tensor): ``[batch_size, seq_len, n_in]``.
 
         Returns:
-            s (torch.Tensor): [batch_size, seq_len, seq_len, seq_len]
+            s (torch.Tensor): ``[batch_size, seq_len, seq_len, seq_len]``.
         """
 
         if self.bias_x:

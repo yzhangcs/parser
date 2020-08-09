@@ -145,12 +145,12 @@ def chuliu_edmonds(s):
           `Non-projective Dependency Parsing using Spanning Tree Algorithms`_.
 
     Args:
-        s (torch.Tensor): [seq_len, seq_len]
-            The scores of dependent-head pairs.
+        s (torch.Tensor): ``[seq_len, seq_len]``.
+            Scores of all dependent-head pairs.
 
     Returns:
-        tree (torch.Tensor): [seq_len]
-            A non-projective parse tree.
+        torch.Tensor:
+            A tensor with shape ``[seq_len]`` for the resulting non-projective parse tree.
 
     .. _tdozat's implementation:
         https://github.com/tdozat/Parser-v3
@@ -230,22 +230,22 @@ def mst(scores, mask, multiroot=False):
     This is a wrapper for ChuLiu/Edmonds algorithm.
 
     The algorithm first runs ChuLiu/Edmonds to parse a tree and then have a check of multi-roots,
-    If multiroot is set to True and there indeed exist multi-roots, the algorithm seeks to find
+    If ``multiroot=True`` and there indeed exist multi-roots, the algorithm seeks to find
     best single-root trees by iterating all possible single-root trees parsed by ChuLiu/Edmonds.
     Otherwise the resulting trees are directly taken as the final outputs.
 
     Args:
-        scores (torch.Tensor): [batch_size, seq_len, seq_len]
-            The scores of dependent-head pairs.
-        mask (torch.BoolTensor): [batch_size, seq_len]
+        scores (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all dependent-head pairs.
+        mask (torch.BoolTensor): ``[batch_size, seq_len]``.
             Mask to avoid parsing over padding tokens.
-            The first column with pseudo words as roots should be set to False.
+            The first column serving as pseudo words for roots should be ``False``.
         muliroot (bool):
-            Ensures to parse a single-root tree if set to False.
+            Ensures to parse a single-root tree If ``False``.
 
     Returns:
-        Tensor: [batch_size, seq_len]
-            Non-projective parse trees.
+        torch.Tensor:
+            A tensor with shape ``[batch_size, seq_len]`` for the resulting non-projective parse trees.
     """
 
     batch_size, seq_len, _ = scores.shape
@@ -281,15 +281,16 @@ def eisner(scores, mask):
           `Online Large-Margin Training of Dependency Parsers`_.
 
     Args:
-        scores (torch.Tensor): [batch_size, seq_len, seq_len]
-            The scores of dependent-head pairs.
-        mask (torch.BoolTensor): [batch_size, seq_len]
+        scores (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all dependent-head pairs.
+        mask (torch.BoolTensor): ``[batch_size, seq_len]``.
             Mask to avoid parsing over padding tokens.
-            The first column with pseudo words as roots should be set to False.
+            The first column serving as pseudo words for roots should be ``False``.
 
     Returns:
-        Tensor: [batch_size, seq_len]
-            Projective parse trees.
+        torch.Tensor:
+            A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
+
 
     .. _Online Large-Margin Training of Dependency Parsers:
         https://www.aclweb.org/anthology/P05-1012/
@@ -359,24 +360,24 @@ def eisner(scores, mask):
 def eisner2o(scores, mask):
     """
     Second-order Eisner algorithm for projective decoding.
-    This is an extension of the first-order one and further incorporates sibling scores into tree scoring.
+    This is an extension of the first-order one that further incorporates sibling scores into tree scoring.
 
     References:
         - Ryan McDonald and Fernando Pereira. 2006.
           `Online Learning of Approximate Dependency Parsing Algorithms`_.
 
     Args:
-        scores (tuple[torch.Tensor, torch.Tensor]):
+        scores (torch.Tensor, torch.Tensor):
             A tuple of two tensors representing the first-order and second-order scores repectively.
-            The first ([batch_size, seq_len, seq_len]) holds scores of dependent-head pairs.
-            The second ([batch_size, seq_len, seq_len, seq_len]) holds scores of the dependent-head-sibling triples.
-        mask (torch.BoolTensor): [batch_size, seq_len]
+            The first (``[batch_size, seq_len, seq_len]``) holds scores of all dependent-head pairs.
+            The second (``[batch_size, seq_len, seq_len, seq_len]``) holds scores of all dependent-head-sibling triples.
+        mask (torch.BoolTensor): ``[batch_size, seq_len]``.
             Mask to avoid parsing over padding tokens.
-            The first column with pseudo words as roots should be set to False.
+            The first column serving as pseudo words for roots should be ``False``.
 
     Returns:
-        Tensor: [batch_size, seq_len]
-            Projective parse trees.
+        torch.Tensor:
+            A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
 
     .. _Online Learning of Approximate Dependency Parsing Algorithms:
         https://www.aclweb.org/anthology/E06-1011/
@@ -488,23 +489,24 @@ def eisner2o(scores, mask):
 
 def cky(scores, mask):
     """
-    The implementation of Cocke-Kasami-Younger (CKY) algorithm to parse constituency trees.
+    The implementation of `Cocke-Kasami-Younger`_ (CKY) algorithm to parse constituency trees.
 
     References:
         - Yu Zhang, Houquan Zhou and Zhenghua Li. 2020.
           `Fast and Accurate Neural CRF Constituency Parsing`_.
 
     Args:
-        scores (torch.Tensor): [batch_size seq_len, seq_len]
-            The scores of all candidate constituents.
-        mask (torch.BoolTensor): [batch_size, seq_len, seq_len]
+        scores (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all candidate constituents.
+        mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
             Mask to avoid parsing over padding tokens.
             For each square matrix in a batch, the positions except upper triangular part should be masked out.
 
     Returns:
-        trees (list[list[tuple]]):
-            The sequences of factorized predicted bracketed trees traversed in pre-order.
+        Sequences of factorized predicted bracketed trees that are traversed in pre-order.
 
+    .. _Cocke-Kasami-Younger:
+        https://en.wikipedia.org/wiki/CYK_algorithm
     .. _Fast and Accurate Neural CRF Constituency Parsing:
         https://www.ijcai.org/Proceedings/2020/560/
     """
@@ -540,7 +542,6 @@ def cky(scores, mask):
         return [(i, j)] + ltree + rtree
 
     p = p.permute(2, 0, 1).tolist()
-    trees = [backtrack(p[i], 0, length)
-             for i, length in enumerate(lens.tolist())]
+    trees = [backtrack(p[i], 0, length) for i, length in enumerate(lens.tolist())]
 
     return trees

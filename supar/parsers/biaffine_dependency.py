@@ -26,7 +26,7 @@ class BiaffineDependencyParser(Parser):
           `Deep Biaffine Attention for Neural Dependency Parsing`_.
 
     .. _Deep Biaffine Attention for Neural Dependency Parsing:
-        https://openreview.net/pdf?id=Hk95PK9le/
+        https://openreview.net/pdf?id=Hk95PK9le
     """
 
     NAME = 'biaffine-dependency'
@@ -55,13 +55,13 @@ class BiaffineDependencyParser(Parser):
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             punct (bool):
-                If False, ignores the punctuations during evaluation. Default: False.
+                If ``False``, ignores the punctuations during evaluation. Default: ``False``.
             tree (bool):
-                If True, ensures to output well-formed trees. Default: False.
+                If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
-                If True, ensures to output projective trees. Default: False.
+                If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
         """
@@ -79,13 +79,13 @@ class BiaffineDependencyParser(Parser):
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             punct (bool):
-                If False, ignores the punctuations during evaluation. Default: False.
+                If ``False``, ignores the punctuations during evaluation. Default: ``False``.
             tree (bool):
-                If True, ensures to output well-formed trees. Default: False.
+                If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
-                If True, ensures to output projective trees. Default: False.
+                If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
 
@@ -102,19 +102,19 @@ class BiaffineDependencyParser(Parser):
             data (list[list] or str):
                 The data to be predicted, both a list of instances and filename are allowed.
             pred (str):
-                If specified, the predicted results will be saved to the file. Default: None.
+                If specified, the predicted results will be saved to the file. Default: ``None``.
             buckets (int):
                 Number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
                 Number of tokens in each batch. Default: 5000.
             prob (bool):
-                If True, outputs the probabilities. Default: False.
+                If ``True``, outputs the probabilities. Default: ``False``.
             tree (bool):
-                If True, ensures to output well-formed trees. Default: False.
+                If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
-                If True, ensures to output projective trees. Default: False.
+                If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
-                If True, increases the output verbosity. Default: True.
+                If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding the unconsumed arguments.
 

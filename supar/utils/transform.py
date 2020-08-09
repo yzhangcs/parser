@@ -16,8 +16,8 @@ class Transform(object):
     Attributes:
         training (bool):
             Set the object in training mode.
-            If False, some data fields not required for predictions won't be returned.
-            Default: True.
+            If ``False``, some data fields not required for predictions won't be returned.
+            Default: ``True``.
     """
 
     fields = []
@@ -247,7 +247,7 @@ class CoNLL(Transform):
                 A list of head indices.
 
         Returns:
-            True if the tree is projective, False otherwise.
+            ``True`` if the tree is projective, ``False`` otherwise.
 
         Examples:
             >>> CoNLL.isprojective([2, -1, 1])  # -1 denotes un-annotated cases
@@ -277,12 +277,12 @@ class CoNLL(Transform):
             sequence (list[int]):
                 A list of head indices.
             proj (bool):
-                If True, requires the tree to be projective. Default: False.
+                If ``True``, requires the tree to be projective. Default: ``False``.
             multiroot (bool):
-                If False, requires the tree to contain only a single root. Default: True.
+                If ``False``, requires the tree to contain only a single root. Default: ``True``.
 
         Returns:
-            True if the arcs form an valid tree, False otherwise.
+            ``True`` if the arcs form an valid tree, ``False`` otherwise.
 
         Examples:
             >>> CoNLL.istree([3, 0, 0, 3], multiroot=True)
@@ -312,9 +312,9 @@ class CoNLL(Transform):
             data (list[list] or str):
                 A list of instances or a filename.
             proj (bool):
-                If True, discard all non-projective sentences. Default: False.
+                If ``True``, discard all non-projective sentences. Default: ``False``.
             max_len (int):
-                Sentences exceeding the length will be discarded. Default: None.
+                Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
             A list of CoNLLSentence instances.
@@ -534,11 +534,11 @@ class Tree(Transform):
                 If it is a non-terminal label, just delete the brackets (don't delete childrens).
                 In `EVALB`_, the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
-                Default: None.
+                Default: ``None``.
             equal_labels (dict[str, str]):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default dict defined in EVALB is: {'ADVP': 'PRT'}
-                Default: None.
+                Default: ``None``.
 
         Returns:
             The sequence of factorized tree.
@@ -631,7 +631,7 @@ class Tree(Transform):
             data (list[list] or str):
                 A list of instances or a filename.
             max_len (int):
-                Sentences exceeding the length will be discarded. Default: None.
+                Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
             A list of TreeSentence instances.
