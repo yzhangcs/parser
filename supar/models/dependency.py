@@ -226,7 +226,7 @@ class BiaffineDependencyModel(nn.Module):
                 Tensor of gold-standard arcs.
             rels (torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard labels.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
 
         Returns:
@@ -249,7 +249,7 @@ class BiaffineDependencyModel(nn.Module):
                 The scores of all possible arcs.
             s_rel (torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 The scores of all possible labels on each arc.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             tree (bool):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
@@ -310,7 +310,7 @@ class CRFNPDependencyModel(BiaffineDependencyModel):
                 Tensor of gold-standard arcs.
             rels (torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard labels.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             mbr (bool):
                 If ``True``, returns marginals for MBR decoding. Default: ``True``.
@@ -359,7 +359,7 @@ class CRFDependencyModel(BiaffineDependencyModel):
                 Tensor of gold-standard arcs.
             rels (torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard labels.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             mbr (bool):
                 If ``True``, returns marginals for MBR decoding. Default: ``True``.
@@ -503,7 +503,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                 Tensor of gold-standard siblings.
             rels (torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard labels.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             mbr (bool):
                 If ``True``, returns marginals for MBR decoding. Default: ``True``.
@@ -538,7 +538,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                 The scores of all possible dependent-head-sibling triples.
             s_rel (torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 The scores of all possible labels on each arc.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             tree (bool):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.

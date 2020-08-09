@@ -4,6 +4,72 @@ import torch
 import torch.nn as nn
 
 
+class Biaffine(nn.Module):
+    """
+    Biaffine layer for first-order scoring.
+
+    This function has a tensor of weights `W` and bias terms if needed.
+    The score `s(x, y)` of the vector pair `(x, y)` is computed as :math: `x^T W y`,
+    in which `x` and `y` can be concatenated with bias terms.
+
+    References:
+        - Timothy Dozat and Christopher D. Manning. 2017.
+          `Deep Biaffine Attention for Neural Dependency Parsing`_.
+
+    Args:
+        n_in (int):
+            Size of the input feature.
+        bias_x (bool):
+            If ``True``, add a bias term for tensor x. Default: ``True``.
+        bias_y (bool):
+            If ``True``, add a bias term for tensor y. Default: ``True``.
+
+    .. _Deep Biaffine Attention for Neural Dependency Parsing:
+        https://openreview.net/pdf?id=Hk95PK9le
+    """
+
+    def __init__(self, n_in, bias_x=True, bias_y=True):
+        super().__init__()
+
+        self.n_in = n_in
+        self.bias_x = bias_x
+        self.bias_y = bias_y
+        self.weight = nn.Parameter(torch.Tensor(n_in+bias_x, n_in+bias_y))
+
+        self.reset_parameters()
+
+    def extra_repr(self):
+        s = f"n_in={self.n_in}"
+        if self.bias_x:
+            s += f", bias_x={self.bias_x}"
+        if self.bias_y:
+            s += f", bias_y={self.bias_y}"
+
+        return s
+
+    def reset_parameters(self):
+        nn.init.zeros_(self.weight)
+
+    def forward(self, x, y):
+        """
+        Args:
+            x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
+            y (torch.Tensor): ``[batch_size, seq_len, n_in]``.
+
+        Returns:
+            s (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+        """
+
+        if self.bias_x:
+            x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
+        if self.bias_y:
+            y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
+        # [batch_size, seq_len, seq_len]
+        s = torch.einsum('bxi,ij,byj->bxy', x, self.weight, y)
+
+        return s
+
+
 class Triaffine(nn.Module):
     """
     Triaffine layer for second-order scoring.
@@ -20,7 +86,7 @@ class Triaffine(nn.Module):
 
     Args:
         n_in (int):
-            The dimension of the input feature.
+            Size of the input feature.
         bias_x (bool):
             If ``True``, add a bias term for tensor x. Default: ``False``.
         bias_y (bool):
