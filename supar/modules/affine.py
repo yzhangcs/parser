@@ -19,6 +19,8 @@ class Biaffine(nn.Module):
     Args:
         n_in (int):
             Size of the input feature.
+        n_out (int):
+            Number of output channels.
         bias_x (bool):
             If ``True``, add a bias term for tensor x. Default: ``True``.
         bias_y (bool):
@@ -28,18 +30,19 @@ class Biaffine(nn.Module):
         https://openreview.net/pdf?id=Hk95PK9le
     """
 
-    def __init__(self, n_in, bias_x=True, bias_y=True):
+    def __init__(self, n_in, n_out=1, bias_x=True, bias_y=True):
         super().__init__()
 
         self.n_in = n_in
+        self.n_out = n_out
         self.bias_x = bias_x
         self.bias_y = bias_y
-        self.weight = nn.Parameter(torch.Tensor(n_in+bias_x, n_in+bias_y))
+        self.weight = nn.Parameter(torch.Tensor(n_out, n_in+bias_x, n_in+bias_y))
 
         self.reset_parameters()
 
     def extra_repr(self):
-        s = f"n_in={self.n_in}"
+        s = f"n_in={self.n_in}, n_out={self.n_out}"
         if self.bias_x:
             s += f", bias_x={self.bias_x}"
         if self.bias_y:
@@ -57,15 +60,18 @@ class Biaffine(nn.Module):
             y (torch.Tensor): ``[batch_size, seq_len, n_in]``.
 
         Returns:
-            s (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            s (torch.Tensor): ``[batch_size, n_out, seq_len, seq_len]``.
+                If n_out is 1, size of n_out will be squeezed automatically.
         """
 
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
-        # [batch_size, seq_len, seq_len]
-        s = torch.einsum('bxi,ij,byj->bxy', x, self.weight, y)
+        # [batch_size, n_out, seq_len, seq_len]
+        s = torch.einsum('bxi,oij,byj->boxy', x, self.weight, y)
+        # remove dim 1 if n_out == 1
+        s = s.squeeze(1)
 
         return s
 
