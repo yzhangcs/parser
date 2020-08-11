@@ -44,7 +44,7 @@ class SharedDropout(nn.Module):
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor):
+            x (~torch.Tensor):
                 x can be of any shape.
         Returns:
             The returned tensor is of the same shape as x.
@@ -98,7 +98,7 @@ class IndependentDropout(nn.Module):
     def forward(self, *items):
         """
         Args:
-            items (list[torch.torch.Tensor]):
+            items (list[~torch.Tensor]):
                 A list of tensors that have the same shape except the last dimension.
         Returns:
             The returned tensors are of the same shape as inputs.

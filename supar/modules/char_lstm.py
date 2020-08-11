@@ -50,11 +50,11 @@ class CharLSTM(nn.Module):
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+            x (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
                 Characters of all tokens.
                 Each token holds no more than fix_len characters, and the excess is cut off directly.
         Returns:
-            embed (torch.Tensor): ``[batch_size, seq_len, n_out]``.
+            embed (~torch.Tensor): ``[batch_size, seq_len, n_out]``.
                 The embeddings (each with size n_out) derived from the characters.
         """
 

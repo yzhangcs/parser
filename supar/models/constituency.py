@@ -164,17 +164,17 @@ class CRFConstituencyModel(nn.Module):
     def forward(self, words, feats):
         """
         Args:
-            words (torch.LongTensor) [batch_size, seq_len]:
+            words (~torch.LongTensor) [batch_size, seq_len]:
                 The word indices.
-            feats (torch.LongTensor):
+            feats (~torch.LongTensor):
                 The feat indices.
                 If feat is 'char' or 'bert', the size of feats should be [batch_size, seq_len, fix_len]
                 If 'tag', then the size is [batch_size, seq_len].
 
         Returns:
-            s_span (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 The scores of all possible spans.
-            s_label (torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
+            s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 The scores of all possible labels on each span.
         """
 
@@ -219,23 +219,23 @@ class CRFConstituencyModel(nn.Module):
     def loss(self, s_span, s_label, spans, labels, mask, mbr=True):
         """
         Args:
-            s_span (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Scores of all spans
-            s_label (torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
+            s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 Scores of all labels on each span.
-            spans (torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
+            spans (~torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
                 Tensor of gold-standard spans. ``True`` denotes there exist a span.
-            labels (torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
+            labels (~torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
                 Tensor of gold-standard labels.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 Mask for covering the unpadded tokens in each chart.
             mbr (bool):
                 If ``True``, returns marginals for MBR decoding. Default: ``True``.
 
         Returns:
-            loss (torch.Tensor): scalar
+            loss (~torch.Tensor): scalar
                 The training loss.
-            span_probs (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            span_probs (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Orginal span scores if mbr is False, marginals otherwise.
         """
 
@@ -249,11 +249,11 @@ class CRFConstituencyModel(nn.Module):
     def decode(self, s_span, s_label, mask):
         """
         Args:
-            s_span (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Scores of all spans
-            s_label (torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
+            s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 Scores of all labels on each span.
-            mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+            mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 Mask for covering the unpadded tokens in each chart.
 
         Returns:

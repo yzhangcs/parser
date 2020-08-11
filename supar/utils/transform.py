@@ -15,7 +15,7 @@ class Transform(object):
 
     Attributes:
         training (bool):
-            Set the object in training mode.
+            Sets the object in training mode.
             If ``False``, some data fields not required for predictions won't be returned.
             Default: ``True``.
     """
@@ -120,10 +120,10 @@ class Sentence(object):
 class CoNLL(Transform):
     """
     The CoNLL object holds ten fields required for CoNLL-X data format.
-    Each field is binded with one or more Field objects. For example,
-    the FORM field can contain both Field and SubwordField to produce tensors for words and subwords.
+    Each field is binded with one or more :class:`Field` objects. For example,
+    ``FORM`` can contain both :class:`Field` and :class:`SubwordField` to produce tensors for words and subwords.
 
-    For each sentence, the ten fields are:
+    Attributes:
         ID:
             Token counter, starting at 1.
         FORM:
@@ -414,13 +414,15 @@ class CoNLLSentence(Sentence):
 
 class Tree(Transform):
     """
-    The Tree object factorize a constituency tree into four fields, each associated with one or more Field objects:
+    The Tree object factorize a constituency tree into four fields, each associated with one or more Field objects.
+
+    Attributes:
         WORD:
             Words in the sentence.
         POS:
             Part-of-speech tags, or underscores if not available.
         TREE:
-            The raw constituency tree in nltk.Tree format.
+            The raw constituency tree in :class:`nltk.tree.Tree` format.
         CHART:
             The factorized sequence of binarized tree traversed in pre-order.
     """

@@ -32,7 +32,7 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
     Returns a diagonal stripe of the tensor.
 
     Args:
-        x (torch.Tensor): the input tensor with 2 or more dims.
+        x (~torch.Tensor): the input tensor with 2 or more dims.
         n (int): the length of the stripe.
         w (int): the width of the stripe.
         offset (tuple): the offset of the first two dims.

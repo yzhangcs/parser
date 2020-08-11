@@ -11,9 +11,9 @@ class MLP(nn.Module):
 
 
     Args:
-        n_in (torch.Tensor):
+        n_in (~torch.Tensor):
             The size of each input feature.
-        n_out (torch.Tensor):
+        n_out (~torch.Tensor):
             The size of each output feature.
         dropout (float):
             If non-zero, introduce a `SharedDropout` layer on the output with this dropout ratio. Default: 0.
@@ -46,7 +46,7 @@ class MLP(nn.Module):
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor):
+            x (~torch.Tensor):
                 The size of each input feature is n_in.
 
         Returns:

@@ -145,11 +145,11 @@ def chuliu_edmonds(s):
           `Non-projective Dependency Parsing using Spanning Tree Algorithms`_.
 
     Args:
-        s (torch.Tensor): ``[seq_len, seq_len]``.
+        s (~torch.Tensor): ``[seq_len, seq_len]``.
             Scores of all dependent-head pairs.
 
     Returns:
-        torch.Tensor:
+        ~torch.Tensor:
             A tensor with shape ``[seq_len]`` for the resulting non-projective parse tree.
 
     .. _tdozat's implementation:
@@ -235,16 +235,16 @@ def mst(scores, mask, multiroot=False):
     Otherwise the resulting trees are directly taken as the final outputs.
 
     Args:
-        scores (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
             Scores of all dependent-head pairs.
-        mask (torch.BoolTensor): ``[batch_size, seq_len]``.
+        mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
             Mask to avoid parsing over padding tokens.
             The first column serving as pseudo words for roots should be ``False``.
         muliroot (bool):
             Ensures to parse a single-root tree If ``False``.
 
     Returns:
-        torch.Tensor:
+        ~torch.Tensor:
             A tensor with shape ``[batch_size, seq_len]`` for the resulting non-projective parse trees.
 
     Examples:
@@ -292,14 +292,14 @@ def eisner(scores, mask):
           `Online Large-Margin Training of Dependency Parsers`_.
 
     Args:
-        scores (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
             Scores of all dependent-head pairs.
-        mask (torch.BoolTensor): ``[batch_size, seq_len]``.
+        mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
             Mask to avoid parsing over padding tokens.
             The first column serving as pseudo words for roots should be ``False``.
 
     Returns:
-        torch.Tensor:
+        ~torch.Tensor:
             A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
 
     Examples:
@@ -386,16 +386,16 @@ def eisner2o(scores, mask):
           `Online Learning of Approximate Dependency Parsing Algorithms`_.
 
     Args:
-        scores (torch.Tensor, torch.Tensor):
+        scores (~torch.Tensor, ~torch.Tensor):
             A tuple of two tensors representing the first-order and second-order scores repectively.
             The first (``[batch_size, seq_len, seq_len]``) holds scores of all dependent-head pairs.
             The second (``[batch_size, seq_len, seq_len, seq_len]``) holds scores of all dependent-head-sibling triples.
-        mask (torch.BoolTensor): ``[batch_size, seq_len]``.
+        mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
             Mask to avoid parsing over padding tokens.
             The first column serving as pseudo words for roots should be ``False``.
 
     Returns:
-        torch.Tensor:
+        ~torch.Tensor:
             A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
 
     Examples:
@@ -540,9 +540,9 @@ def cky(scores, mask):
           `Fast and Accurate Neural CRF Constituency Parsing`_.
 
     Args:
-        scores (torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
             Scores of all candidate constituents.
-        mask (torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
+        mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
             Mask to avoid parsing over padding tokens.
             For each square matrix in a batch, the positions except upper triangular part should be masked out.
 

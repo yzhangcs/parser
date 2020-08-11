@@ -9,8 +9,8 @@ class Vocab(object):
     Defines a vocabulary object that will be used to numericalize a field.
 
     Args:
-        counter (collections.Counter):
-            Counter object holding the frequencies of each value found in the data.
+        counter (~collections.Counter):
+            :class:`~collections.Counter` object holding the frequencies of each value found in the data.
         min_freq (int):
             The minimum frequency needed to include a token in the vocabulary. Default: 1.
         specials (list[str]):
@@ -19,10 +19,10 @@ class Vocab(object):
             The index of unk token. Default: 0.
 
     Attributes:
-        itos:
+        itos (list[str]):
             A list of token strings indexed by their numerical identifiers.
-        stoi:
-            A defaultdict instance mapping token strings to numerical identifiers.
+        stoi (~collections.defaultdict[str, int]):
+            A :class:`~collections.defaultdict` object mapping token strings to numerical identifiers.
     """
 
     def __init__(self, counter, min_freq=1, specials=[], unk_index=0):

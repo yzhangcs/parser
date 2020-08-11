@@ -7,28 +7,28 @@ from supar.utils.alg import kmeans
 
 class Dataset(torch.utils.data.Dataset):
     """
-    Dataset compatible with `torch.utils.data.Dataset`.
+    Dataset that is compatible with :class:`torch.utils.data.Dataset`.
     This serves as a wrapper for manipulating all data fields
-    with the operating behaviours defined in the `Transform` class.
-    The data fields in all the instantiated sentences can be accessed as an attribute of the dataset.
+    with the operating behaviours defined in :class:`Transform`.
+    The data fields of all the instantiated sentences can be accessed as an attribute of the dataset.
 
     Args:
         transform (Transform):
-            An instance of a subclass of the `Transform` class and its derivations.
+            An instance of :class:`Transform` and its derivations.
             The instance holds a series of loading and processing behaviours with regard to the specfic data format.
         data (list[list] or str):
             A list of instances or a filename.
-            This will be passed into `transform.load` to load the input data.
+            This will be passed into :meth:`transform.load`.
         kwargs (dict):
-            Keyword arguments that will be passed into `transform.load` together with `data`
+            Keyword arguments that will be passed into :meth:`transform.load` together with `data`
             to control the loading behaviour.
 
     Attributes:
         transform (Transform):
-            The passed instance of `Transform`.
+            An instance of :class:`Transform`.
         sentences (list[Sentence]):
             A list of sentences loaded from the data.
-            Each sentence includes fields obeying the data format defined in transform.
+            Each sentence includes fields obeying the data format defined in ``transform``.
     """
 
     def __init__(self, transform, data, **kwargs):
@@ -99,7 +99,7 @@ class Dataset(torch.utils.data.Dataset):
 
 class DataLoader(torch.utils.data.DataLoader):
     """
-    DataLoader, matching with the `Dataset` class.
+    DataLoader, matching with :class:`Dataset`.
     """
 
     def __init__(self, *args, **kwargs):
@@ -112,18 +112,18 @@ class DataLoader(torch.utils.data.DataLoader):
 
 class Sampler(torch.utils.data.Sampler):
     """
-    Sampler supporting for bucketizing and token-level batchification.
+    Sampler that supports for bucketization and token-level batchification.
 
     Args:
         buckets (dict):
-            The dict that maps each centroid to the indices of the clustering sentences.
+            A dict that maps each centroid to indices of clustered sentences.
             The centroid corresponds to the average length of all sentences in the bucket.
         batch_size (int):
-            Token-level batch size. The resulting batch contains roughly the same number of tokens as batch_size.
+            Token-level batch size. The resulting batch contains roughly the same number of tokens as ``batch_size``.
         shuffle (bool):
             If ``True``, the sampler will shuffle both buckets and samples in each bucket. Default: ``False``.
         distributed (bool):
-            If ``True``, the sampler will be used be used in conjunction with `torch.nn.parallel.DistributedDataParallel`
+            If ``True``, the sampler will be used in conjunction with :class:`torch.nn.parallel.DistributedDataParallel`
             that restricts data loading to a subset of the dataset.
             Default: ``False``.
     """

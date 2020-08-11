@@ -11,7 +11,7 @@ class RawField(object):
     """
     Defines a general datatype.
 
-    A RawField instance does not assume any property of the datatype and
+    A :class:`RawField` object does not assume any property of the datatype and
     it holds parameters relating to how a datatype should be processed.
 
     Args:
@@ -40,11 +40,11 @@ class RawField(object):
 
 class Field(RawField):
     """
-    Defines a datatype together with instructions for converting to Tensor.
-    Field class models common text processing datatypes that can be represented by tensors.
-    It holds a Vocab object that defines the set of possible values
+    Defines a datatype together with instructions for converting to :class:`~torch.Tensor`.
+    :class:`Field` models common text processing datatypes that can be represented by tensors.
+    It holds a :class:`Vocab` object that defines the set of possible values
     for elements of the field and their corresponding numerical representations.
-    The Field object also holds other parameters relating to how a datatype
+    The :class:`Field` object also holds other parameters relating to how a datatype
     should be numericalized, such as a tokenization method.
 
     Args:
@@ -138,17 +138,16 @@ class Field(RawField):
 
     def preprocess(self, sequence):
         """
-        Load a single example using this field, tokenizing if necessary.
-        The sequence will be first passed to `self.fn` if available.
-        If `self.tokenize` is not None, the input will be tokenized.
-        Then the input will be optionally lowercased.
+        Loads a single example using this field, tokenizing if necessary.
+        The sequence will be first passed to ``fn`` if available.
+        If ``tokenize`` is not None, the input will be tokenized.
+        Then the input will be lowercased optionally.
 
         Args (list):
             The sequence to be preprocessed.
 
         Returns:
-            sequence (list):
-                the preprocessed sequence.
+            A list of preprocessed sequence.
         """
 
         if self.fn is not None:
@@ -162,16 +161,16 @@ class Field(RawField):
 
     def build(self, dataset, min_freq=1, embed=None):
         """
-        Construct the Vocab object for this field from the dataset.
-        If the Vocab has already existed, this function will have no effect.
+        Constructs a :class:`Vocab` object for this field from the dataset.
+        If :class:`Vocab` has already existed, this function will have no effect.
 
         Args:
             dataset (Dataset):
-                A Dataset instance. One of the attributes should be named after the name of this field.
+                A :class:`Dataset` object. One of the attributes should be named after the name of this field.
             min_freq (int):
                 The minimum frequency needed to include a token in the vocabulary. Default: 1.
             embed (Embedding):
-                An Embedding instance, words in which will be extended to the vocabulary. Default: ``None``.
+                An Embedding object, words in which will be extended to the vocabulary. Default: ``None``.
         """
 
         if hasattr(self, 'vocab'):
@@ -207,7 +206,7 @@ class Field(RawField):
                 A list of sequences.
 
         Returns:
-            sequences (list[torch.torch.Tensor]):
+            sequences (list[~torch.Tensor]):
                 A list of tensors transformed from the input sequences.
         """
 
@@ -224,10 +223,10 @@ class Field(RawField):
 
     def compose(self, sequences):
         """
-        Compose a batch of sequences into a padded tensor.
+        Composes a batch of sequences into a padded tensor.
 
         Args:
-            sequences (list[torch.torch.Tensor]):
+            sequences (list[~torch.Tensor]):
                 A list of tensors.
 
         Returns:
@@ -248,7 +247,7 @@ class SubwordField(Field):
             A fixed length that all subword pieces will be padded to.
             This is used for truncating the subword pieces that exceed the length.
             To save the memory, the final length will be the smaller value
-            between the max length of subword pieces in a batch and fix_len.
+            between the max length of subword pieces in a batch and ``fix_len``.
 
     Examples:
         >>> from transformers import AutoTokenizer

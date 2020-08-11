@@ -68,10 +68,10 @@ class BertEmbedding(nn.Module):
     def forward(self, subwords):
         """
         Args:
-            subwords (torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+            subwords (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
 
         Returns:
-            embed (torch.Tensor): ``[batch_size, seq_len, n_out]``.
+            embed (~torch.Tensor): ``[batch_size, seq_len, n_out]``.
         """
         batch_size, seq_len, fix_len = subwords.shape
         mask = subwords.ne(self.pad_index)
