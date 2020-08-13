@@ -120,7 +120,7 @@ class Sentence(object):
 class CoNLL(Transform):
     """
     The CoNLL object holds ten fields required for CoNLL-X data format.
-    Each field is binded with one or more :class:`Field` objects. For example,
+    Each field can be binded with one or more :class:`Field` objects. For example,
     ``FORM`` can contain both :class:`Field` and :class:`SubwordField` to produce tensors for words and subwords.
 
     Attributes:
@@ -205,7 +205,7 @@ class CoNLL(Transform):
     @classmethod
     def toconll(cls, tokens):
         """
-        Convert a list of tokens to a string in CoNLL-X format.
+        Converts a list of tokens to a string in CoNLL-X format.
         Missing fields are filled with underscores.
 
         Args:
@@ -213,7 +213,7 @@ class CoNLL(Transform):
                 This can be either a list of words or word/pos pairs.
 
         Returns:
-            a string in CoNLL-X format.
+            A string in CoNLL-X format.
 
         Examples:
             >>> print(CoNLL.toconll(['She', 'enjoys', 'playing', 'tennis', '.']))
@@ -236,7 +236,7 @@ class CoNLL(Transform):
     @classmethod
     def isprojective(cls, sequence):
         """
-        Check if the dependency tree is projective.
+        Checks if the dependency tree is projective.
         This also works for partial annotation.
 
         Besides the obvious crossing arcs, the examples below illustrate two non-projective cases
@@ -271,7 +271,7 @@ class CoNLL(Transform):
     @classmethod
     def istree(cls, sequence, proj=False, multiroot=False):
         """
-        Check if the arcs form an valid dependency tree.
+        Checks if the arcs form an valid dependency tree.
 
         Args:
             sequence (list[int]):
@@ -305,8 +305,8 @@ class CoNLL(Transform):
 
     def load(self, data, proj=False, max_len=None, **kwargs):
         """
-        Load data in CoNLL-X format.
-        Also support for loading data from CoNLL-U file with comments and non-integer IDs.
+        Loads data in CoNLL-X format.
+        Also supports for loading data from CoNLL-U file with comments and non-integer IDs.
 
         Args:
             data (list[list] or str):
@@ -317,7 +317,7 @@ class CoNLL(Transform):
                 Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
-            A list of CoNLLSentence instances.
+            A list of :class:`CoNLLSentence` instances.
         """
 
         if isinstance(data, str):
@@ -347,7 +347,7 @@ class CoNLLSentence(Sentence):
 
     Args:
         transform (CoNLL):
-            A CoNLL object.
+            A :class:`CoNLL` object.
         lines (list[str]):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
@@ -414,7 +414,7 @@ class CoNLLSentence(Sentence):
 
 class Tree(Transform):
     """
-    The Tree object factorize a constituency tree into four fields, each associated with one or more Field objects.
+    The Tree object factorize a constituency tree into four fields, each associated with one or more :class:`Field` objects.
 
     Attributes:
         WORD:
@@ -449,7 +449,7 @@ class Tree(Transform):
     @classmethod
     def totree(cls, tokens, root=''):
         """
-        Convert a list of tokens to a nltk.Tree.
+        Converts a list of tokens to a :class:`nltk.tree.Tree`.
         Missing fields are filled with underscores.
 
         Args:
@@ -459,7 +459,7 @@ class Tree(Transform):
                 The root label of the tree. Default: ''.
 
         Returns:
-            a nltk.Tree object.
+            A :class:`nltk.tree.Tree` object.
 
         Examples:
             >>> print(Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP'))
@@ -474,10 +474,10 @@ class Tree(Transform):
     @classmethod
     def binarize(cls, tree):
         """
-        Conduct binarization over the tree.
+        Conducts binarization over the tree.
 
-        First, the tree is transformed to satisfy Chomsky Normal Form (CNF).
-        Here we call the member function `chomsky_normal_form` in nltk.Tree to conduct left-binarization.
+        First, the tree is transformed to satisfy `Chomsky Normal Form (CNF)`_.
+        Here we call the member function :meth:`~nltk.tree.Tree.chomsky_normal_form` in :class:`nltk.tree.Tree` to conduct left-binarization.
         Second, all unary productions in the tree are collapsed.
 
         Args:
@@ -485,7 +485,7 @@ class Tree(Transform):
                 the tree to be binarized.
 
         Returns:
-            the binarized tree.
+            The binarized tree.
 
         Examples:
             >>> tree = nltk.Tree.fromstring('''
@@ -504,6 +504,9 @@ class Tree(Transform):
                     (VP|<> (_ enjoys))
                     (S+VP (VP|<> (_ playing)) (NP (_ tennis)))))
                 (S|<> (_ .))))
+
+        .. _Chomsky Normal Form (CNF):
+            https://en.wikipedia.org/wiki/Chomsky_normal_form
         """
 
         tree = tree.copy(True)
@@ -524,7 +527,7 @@ class Tree(Transform):
     @classmethod
     def factorize(cls, tree, delete_labels=None, equal_labels=None):
         """
-        Factorize the tree into a sequence.
+        Factorizes the tree into a sequence.
         The tree is traversed in pre-order.
 
         Args:
@@ -539,11 +542,11 @@ class Tree(Transform):
                 Default: ``None``.
             equal_labels (dict[str, str]):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
-                The default dict defined in EVALB is: {'ADVP': 'PRT'}
+                The default dict defined in `EVALB`_ is: {'ADVP': 'PRT'}
                 Default: ``None``.
 
         Returns:
-            The sequence of factorized tree.
+            The sequence of the factorized tree.
 
         Examples:
             >>> tree = nltk.Tree.fromstring('''
@@ -582,7 +585,7 @@ class Tree(Transform):
     @classmethod
     def build(cls, tree, sequence):
         """
-        Build a constituency tree from the sequence. The sequence is generated in pre-order.
+        Builds a constituency tree from the sequence. The sequence is generated in pre-order.
         During building the tree, the sequence is de-binarized to the original format (i.e.,
         the suffixes ``|<>`` are ignored, the collapsed labels are recovered).
 
@@ -636,7 +639,7 @@ class Tree(Transform):
                 Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
-            A list of TreeSentence instances.
+            A list of :class:`TreeSentence` instances.
         """
         if isinstance(data, str):
             with open(data, 'r') as f:
@@ -662,9 +665,9 @@ class TreeSentence(Sentence):
     """
     Args:
         transform (Tree):
-            A Tree object.
+            A :class:`Tree` object.
         tree (nltk.tree.Tree):
-            A nltk.Tree object.
+            A :class:`nltk.tree.Tree` object.
     """
 
     def __init__(self, transform, tree):

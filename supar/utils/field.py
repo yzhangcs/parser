@@ -143,8 +143,9 @@ class Field(RawField):
         If ``tokenize`` is not None, the input will be tokenized.
         Then the input will be lowercased optionally.
 
-        Args (list):
-            The sequence to be preprocessed.
+        Args:
+            sequence (list):
+                The sequence to be preprocessed.
 
         Returns:
             A list of preprocessed sequence.
@@ -162,7 +163,7 @@ class Field(RawField):
     def build(self, dataset, min_freq=1, embed=None):
         """
         Constructs a :class:`Vocab` object for this field from the dataset.
-        If :class:`Vocab` has already existed, this function will have no effect.
+        If the vocabulary has already existed, this function will have no effect.
 
         Args:
             dataset (Dataset):
@@ -206,8 +207,7 @@ class Field(RawField):
                 A list of sequences.
 
         Returns:
-            sequences (list[~torch.Tensor]):
-                A list of tensors transformed from the input sequences.
+            A list of tensors transformed from the input sequences.
         """
 
         sequences = [self.preprocess(seq) for seq in sequences]
