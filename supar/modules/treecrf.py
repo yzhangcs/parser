@@ -26,7 +26,7 @@ class MatrixTree(nn.Module):
         """
         Args:
             scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible dependent-head pairs.
+                Scores of all possible dependent-head pairs.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask to avoid aggregation on padding tokens.
                 The first column serving as pseudo words for roots should be ``False``.
@@ -105,7 +105,7 @@ class CRFDependency(nn.Module):
         """
         Args:
             scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible dependent-head pairs.
+                Scores of all possible dependent-head pairs.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask to avoid aggregation on padding tokens.
                 The first column serving as pseudo words for roots should be ``False``.
@@ -223,7 +223,7 @@ class CRF2oDependency(nn.Module):
         Args:
             scores (~torch.Tensor, ~torch.Tensor):
                 tuple of two tensors s_arc and s_sib.
-                s_arc ([batch_size, seq_len, seq_len]) holds The scores of all possible dependent-head pairs.
+                s_arc ([batch_size, seq_len, seq_len]) holds Scores of all possible dependent-head pairs.
                 s_sib ([batch_size, seq_len, seq_len, seq_len]) holds the scores of dependent-head-sibling triples.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask to avoid aggregation on padding tokens.
@@ -371,7 +371,7 @@ class CRFConstituency(nn.Module):
         """
         Args:
             scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible constituents.
+                Scores of all possible constituents.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 Mask to avoid parsing over padding tokens.
                 For each square matrix in a batch, the positions except upper triangular part should be masked out.

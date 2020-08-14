@@ -12,8 +12,8 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class CRFConstituencyModel(nn.Module):
     """
-    The implementation of CRF Constituency Parser.
-    This parser is also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) Parser.
+    The implementation of CRF Constituency Parser,
+    also called FANCY (abbr. of Fast and Accurate Neural Crf constituencY) Parser.
 
     References:
         - Yu Zhang, Houquan Zhou and Zhenghua Li. 2020.
@@ -39,11 +39,11 @@ class CRFConstituencyModel(nn.Module):
         n_char_embed (int):
             Size of character embeddings serving as inputs of CharLSTM, required if feat='char'. Default: 50.
         bert (str):
-            Specify which kind of language model to use, e.g., 'bert-base-cased' and 'xlnet-base-cased'.
+            Specifies which kind of language model to use, e.g., 'bert-base-cased' and 'xlnet-base-cased'.
             This is required if feat='bert'. The full list can be found in `transformers`.
-            Default: `None`.
+            Default: ``None``.
         n_bert_layers (int):
-            Specify how many last layers to use. Required if feat='bert'.
+            Specifies how many last layers to use. Required if feat='bert'.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
         mix_dropout (float):
@@ -51,7 +51,7 @@ class CRFConstituencyModel(nn.Module):
         embed_dropout (float):
             Dropout ratio of input embeddings. Default: .33.
         n_lstm_hidden (int):
-            Dimension of LSTM hidden states. Default: 400.
+            Size of LSTM hidden states. Default: 400.
         n_lstm_layers (int):
             Number of LSTM layers. Default: 3.
         lstm_dropout (float):
@@ -164,18 +164,18 @@ class CRFConstituencyModel(nn.Module):
     def forward(self, words, feats):
         """
         Args:
-            words (~torch.LongTensor) [batch_size, seq_len]:
+            words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 The word indices.
             feats (~torch.LongTensor):
                 The feat indices.
-                If feat is 'char' or 'bert', the size of feats should be [batch_size, seq_len, fix_len]
-                If 'tag', then the size is [batch_size, seq_len].
+                If feat is 'char' or 'bert', the size of feats should be ``[batch_size, seq_len, fix_len]``
+                If 'tag', the size is ``[batch_size, seq_len]``.
 
         Returns:
-            s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible spans.
-            s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each span.
+            ~torch.Tensor, ~torch.Tensor:
+                The first tensor of shape ``[batch_size, seq_len, seq_len]`` holds scores of all possible spans.
+                The second of shape ``[batch_size, seq_len, seq_len, n_labels]`` holds
+                scores of all possible labels on each span.
         """
 
         batch_size, seq_len = words.shape
@@ -233,10 +233,9 @@ class CRFConstituencyModel(nn.Module):
                 If ``True``, returns marginals for MBR decoding. Default: ``True``.
 
         Returns:
-            loss (~torch.Tensor): scalar
-                The training loss.
-            span_probs (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                Orginal span scores if mbr is False, marginals otherwise.
+            ~torch.Tensor, ~torch.Tensor:
+                The training loss and
+                original span scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
         span_mask = spans & mask
@@ -250,14 +249,15 @@ class CRFConstituencyModel(nn.Module):
         """
         Args:
             s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                Scores of all spans
+                Scores of all spans.
             s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 Scores of all labels on each span.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 Mask for covering the unpadded tokens in each chart.
 
         Returns:
-            A sequence of factorized labeled tree traversed in pre-order.
+            list[list[tuple]]:
+                Sequences of factorized labeled trees traversed in pre-order.
         """
 
         span_preds = cky(s_span, mask)

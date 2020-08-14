@@ -19,9 +19,9 @@ class Vocab(object):
             The index of unk token. Default: 0.
 
     Attributes:
-        itos (list[str]):
+        itos:
             A list of token strings indexed by their numerical identifiers.
-        stoi (~collections.defaultdict[str, int]):
+        stoi:
             A :class:`~collections.defaultdict` object mapping token strings to numerical identifiers.
     """
 

@@ -40,11 +40,11 @@ class BiaffineDependencyModel(nn.Module):
         n_char_embed (int):
             Size of character embeddings serving as inputs of CharLSTM, required if feat='char'. Default: 50.
         bert (str):
-            Specify which kind of language model to use, e.g., 'bert-base-cased' and 'xlnet-base-cased'.
+            Specifies which kind of language model to use, e.g., 'bert-base-cased' and 'xlnet-base-cased'.
             This is required if feat='bert'. The full list can be found in `transformers`.
-            Default: `None`.
+            Default: ``None``.
         n_bert_layers (int):
-            Specify how many last layers to use. Required if feat='bert'.
+            Specifies how many last layers to use. Required if feat='bert'.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
         mix_dropout (float):
@@ -52,7 +52,7 @@ class BiaffineDependencyModel(nn.Module):
         embed_dropout (float):
             Dropout ratio of input embeddings. Default: .33.
         n_lstm_hidden (int):
-            Dimension of LSTM hidden states. Default: 400.
+            Size of LSTM hidden states. Default: 400.
         n_lstm_layers (int):
             Number of LSTM layers. Default: 3.
         lstm_dropout (float): Default: .33.
@@ -163,18 +163,18 @@ class BiaffineDependencyModel(nn.Module):
     def forward(self, words, feats):
         """
         Args:
-            words (~torch.LongTensor) [batch_size, seq_len]:
+            words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 The word indices.
             feats (~torch.LongTensor):
                 The feat indices.
-                If feat is 'char' or 'bert', the size of feats should be [batch_size, seq_len, fix_len]
-                If 'tag', then the size is [batch_size, seq_len].
+                If feat is 'char' or 'bert', the size of feats should be ``[batch_size, seq_len, fix_len]``.
+                If 'tag', the size is ``[batch_size, seq_len]``.
 
         Returns:
-            s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
-            s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+            ~torch.Tensor, ~torch.Tensor:
+                The first tensor of shape ``[batch_size, seq_len, seq_len]`` holds scores of all possible arcs.
+                The second of shape ``[batch_size, seq_len, seq_len, n_labels]`` holds
+                scores of all possible labels on each arc.
         """
 
         batch_size, seq_len = words.shape
@@ -219,9 +219,9 @@ class BiaffineDependencyModel(nn.Module):
         """
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
+                Scores of all possible arcs.
             s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+                Scores of all possible labels on each arc.
             arcs (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard arcs.
             rels (~torch.LongTensor): ``[batch_size, seq_len]``.
@@ -230,7 +230,7 @@ class BiaffineDependencyModel(nn.Module):
                 Mask for covering the unpadded tokens.
 
         Returns:
-            loss (~torch.Tensor): scalar
+            ~torch.Tensor:
                 The training loss.
         """
 
@@ -246,9 +246,9 @@ class BiaffineDependencyModel(nn.Module):
         """
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
+                Scores of all possible arcs.
             s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+                Scores of all possible labels on each arc.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             tree (bool):
@@ -257,10 +257,8 @@ class BiaffineDependencyModel(nn.Module):
                 If ``True``, ensures to output projective trees. Default: ``False``.
 
         Returns:
-            arc_preds (~torch.Tensor): ``[batch_size, seq_len]``.
-                The predicted arcs.
-            rel_preds (~torch.Tensor): ``[batch_size, seq_len]``.
-                The predicted labels.
+            ~torch.Tensor, ~torch.Tensor:
+                Predicted arcs and labels of shape ``[batch_size, seq_len]``.
         """
 
         lens = mask.sum(1)
@@ -303,9 +301,9 @@ class CRFNPDependencyModel(BiaffineDependencyModel):
         """
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
+                Scores of all possible arcs.
             s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+                Scores of all possible labels on each arc.
             arcs (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard arcs.
             rels (~torch.LongTensor): ``[batch_size, seq_len]``.
@@ -316,10 +314,9 @@ class CRFNPDependencyModel(BiaffineDependencyModel):
                 If ``True``, returns marginals for MBR decoding. Default: ``True``.
 
         Returns:
-            loss (~torch.Tensor): scalar
-                The training loss.
-            arc_probs (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                Orginal arc scores if mbr is False, marginals otherwise.
+            ~torch.Tensor, ~torch.Tensor:
+                The training loss and
+                original arc scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
         batch_size, seq_len = mask.shape
@@ -352,9 +349,9 @@ class CRFDependencyModel(BiaffineDependencyModel):
         """
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
+                Scores of all possible arcs.
             s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+                Scores of all possible labels on each arc.
             arcs (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard arcs.
             rels (~torch.LongTensor): ``[batch_size, seq_len]``.
@@ -367,10 +364,9 @@ class CRFDependencyModel(BiaffineDependencyModel):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
 
         Returns:
-            loss (~torch.Tensor): scalar
-                The training loss.
-            arc_probs (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                Orginal arc scores if mbr is False, marginals otherwise.
+            ~torch.Tensor, ~torch.Tensor:
+                The training loss and
+                original arc scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
         batch_size, seq_len = mask.shape
@@ -396,7 +392,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     Args:
         Remainings required arguments are listed in BiaffineDependencyModel.
         n_lstm_hidden (int):
-            Dimension of LSTM hidden states. Default: 400.
+            Size of LSTM hidden states. Default: 400.
         lstm_dropout (float):
             Dropout ratio of LSTM. Default: .33.
         n_mlp_sib (int):
@@ -429,20 +425,18 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     def forward(self, words, feats):
         """
         Args:
-            words (~torch.LongTensor) [batch_size, seq_len]:
+            words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 The word indices.
             feats (~torch.LongTensor):
                 The feat indices.
                 If feat is 'char' or 'bert', the size of feats should be [batch_size, seq_len, fix_len]
-                If 'tag', then the size is [batch_size, seq_len].
+                If 'tag', the size is [batch_size, seq_len].
 
         Returns:
-            s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
-            s_sib (~torch.Tensor): ``[batch_size, seq_len, seq_len, seq_len]``.
-                The scores of all possible dependent-head-sibling triples.
-            s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+            ~torch.Tensor, ~torch.Tensor, ~torch.Tensor:
+                Scores of all possible arcs (``[batch_size, seq_len, seq_len]``),
+                dependent-head-sibling triples (``[batch_size, seq_len, seq_len, seq_len]``) and
+                all possible labels on each arc (``[batch_size, seq_len, seq_len, n_labels]``).
         """
 
         batch_size, seq_len = words.shape
@@ -492,11 +486,11 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         """
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
+                Scores of all possible arcs.
             s_sib (~torch.Tensor): ``[batch_size, seq_len, seq_len, seq_len]``.
-                The scores of all possible dependent-head-sibling triples.
+                Scores of all possible dependent-head-sibling triples.
             s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+                Scores of all possible labels on each arc.
             arcs (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Tensor of gold-standard arcs.
             sibs (~torch.LongTensor): ``[batch_size, seq_len]``.
@@ -511,10 +505,9 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
 
         Returns:
-            loss (~torch.Tensor): scalar
-                The training loss.
-            arc_probs (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                Orginal arc scores if mbr is False, marginals otherwise.
+            ~torch.Tensor, ~torch.Tensor:
+                The training loss and
+                original arc scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
         batch_size, seq_len = mask.shape
@@ -533,11 +526,11 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         """
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                The scores of all possible arcs.
+                Scores of all possible arcs.
             s_sib (~torch.Tensor): ``[batch_size, seq_len, seq_len, seq_len]``.
-                The scores of all possible dependent-head-sibling triples.
+                Scores of all possible dependent-head-sibling triples.
             s_rel (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                The scores of all possible labels on each arc.
+                Scores of all possible labels on each arc.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 Mask for covering the unpadded tokens.
             tree (bool):
@@ -548,10 +541,8 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                 If ``True``, ensures to output projective trees. Default: ``False``.
 
         Returns:
-            arc_preds (~torch.Tensor): ``[batch_size, seq_len]``.
-                The predicted arcs.
-            rel_preds (~torch.Tensor): ``[batch_size, seq_len]``.
-                The predicted labels.
+            ~torch.Tensor, ~torch.Tensor:
+                Predicted arcs and labels of shape ``[batch_size, seq_len]``.
         """
 
         lens = mask.sum(1)
