@@ -1,22 +1,33 @@
-# ignore data files
+# data files
 data
 
-# ignore bash scripts
+# bash scripts
 *.sh
 
-# ignore experimental results
+# docs
+docs/_build
+
+# intermediate files
+build
+dist
+*.egg-info
+
+# experimental results
 exp
 results
 
-# ignore log files
-log*
+# log files
+*.log
 
-# ignore pycache
+# pycache
 __pycache__
 
-# ignore saved model
+# saved model
 *.pkl
 *.pt
 
-# ignore vscode
+# hidden files
+.*
+
+# vscode
 .vscode
