@@ -230,12 +230,12 @@ If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize`
 If there are a plenty of sentences to parse, `SuPar` also supports for loading them from file, and save to the `pred` file if specified.
 ```py
 >>> dataset = parser.predict('data/ptb/test.conllx', pred='pred.conllx')
-2020-07-25 18:13:50 INFO Load the data
+2020-07-25 18:13:50 INFO Loading the data
 2020-07-25 18:13:52 INFO
 Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
-2020-07-25 18:13:52 INFO Make predictions on the dataset
+2020-07-25 18:13:52 INFO Making predictions on the dataset
 100%|####################################| 13/13 00:01<00:00, 10.58it/s
-2020-07-25 18:13:53 INFO Save predicted results to pred.conllx
+2020-07-25 18:13:53 INFO Saving predicted results to pred.conllx
 2020-07-25 18:13:54 INFO 0:00:01.335261s elapsed, 1809.38 Sents/s
 ```
 
@@ -309,12 +309,12 @@ trees:
     (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
     (_ .)))
 >>> dataset = parser.predict('data/ptb/test.pid', pred='pred.pid')
-2020-07-25 18:21:28 INFO Load the data
+2020-07-25 18:21:28 INFO Loading the data
 2020-07-25 18:21:33 INFO
 Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
-2020-07-25 18:21:33 INFO Make predictions on the dataset
+2020-07-25 18:21:33 INFO Making predictions on the dataset
 100%|####################################| 13/13 00:02<00:00,  5.30it/s
-2020-07-25 18:21:36 INFO Save predicted results to pred.pid
+2020-07-25 18:21:36 INFO Saving predicted results to pred.pid
 2020-07-25 18:21:36 INFO 0:00:02.455740s elapsed, 983.82 Sents/s
 ```
 
@@ -354,7 +354,8 @@ $ python -m supar.cmds.crf_dependency train -b -d 0  \
 
 # CRF Constituency Parser
 # the training of CRF constituency parser behaves like dependency parsers
-$ python -m supar.cmds.crf_constituency train -b -d 0 -p exp/ptb.crf.constituency.char/model -f char  \
+$ python -m supar.cmds.crf_constituency train -b -d 0  \
+    -p exp/ptb.crf.constituency.char/model -f char  \
     --mbr
 ```
 
@@ -381,10 +382,10 @@ The evaluation process resembles prediction:
 ```py
 >>> parser = Parser.load('biaffine-dep-en')
 >>> loss, metric = parser.evaluate('data/ptb/test.conllx')
-2020-07-25 20:59:17 INFO Load the data
+2020-07-25 20:59:17 INFO Loading the data
 2020-07-25 20:59:19 INFO
 Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
-2020-07-25 20:59:19 INFO Evaluate the dataset
+2020-07-25 20:59:19 INFO Evaluating the dataset
 2020-07-25 20:59:20 INFO loss: 0.2326 - UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%
 2020-07-25 20:59:20 INFO 0:00:01.253601s elapsed, 1927.25 Sents/s
 ```
