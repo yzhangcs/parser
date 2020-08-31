@@ -45,7 +45,7 @@ class BiaffineDependencyParser(Parser):
                                     if ispunct(s)]).to(self.args.device)
 
     def train(self, train, dev, test, buckets=32, batch_size=5000,
-              punct=False, tree=False, proj=False, verbose=True, **kwargs):
+              punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
             train/dev/test (list[list] or str):
@@ -60,6 +60,8 @@ class BiaffineDependencyParser(Parser):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
                 If ``True``, ensures to output projective trees. Default: ``False``.
+            partial (bool):
+                ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -69,7 +71,7 @@ class BiaffineDependencyParser(Parser):
         return super().train(**Config().update(locals()))
 
     def evaluate(self, data, buckets=8, batch_size=5000,
-                 punct=False, tree=True, proj=False, verbose=True, **kwargs):
+                 punct=False, tree=True, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
             data (str):
@@ -84,6 +86,8 @@ class BiaffineDependencyParser(Parser):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
                 If ``True``, ensures to output projective trees. Default: ``False``.
+            partial (bool):
+                ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -136,13 +140,15 @@ class BiaffineDependencyParser(Parser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
+            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
             loss.backward()
             nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
             self.scheduler.step()
 
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
+            if self.args.partial:
+                mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
@@ -160,10 +166,12 @@ class BiaffineDependencyParser(Parser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask)
+            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
                                                      self.args.tree,
                                                      self.args.proj)
+            if self.args.partial:
+                mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask &= words.unsqueeze(-1).ne(self.puncts).all(-1)
