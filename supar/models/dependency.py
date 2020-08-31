@@ -221,7 +221,7 @@ class BiaffineDependencyModel(nn.Module):
 
         return s_arc, s_rel
 
-    def loss(self, s_arc, s_rel, arcs, rels, mask):
+    def loss(self, s_arc, s_rel, arcs, rels, mask, partial=False):
         r"""
         Args:
             s_arc (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
@@ -234,12 +234,16 @@ class BiaffineDependencyModel(nn.Module):
                 The tensor of gold-standard labels.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 The mask for covering the unpadded tokens.
+            partial (bool):
+                ``True`` denotes the trees are partially annotated. Default: ``False``.
 
         Returns:
             ~torch.Tensor:
                 The training loss.
         """
 
+        if partial:
+            mask = mask & arcs.ge(0)
         s_arc, arcs = s_arc[mask], arcs[mask]
         s_rel, rels = s_rel[mask], rels[mask]
         s_rel = s_rel[torch.arange(len(arcs)), arcs]

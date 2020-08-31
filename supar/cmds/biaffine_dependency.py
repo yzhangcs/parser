@@ -10,6 +10,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create Biaffine Dependency Parser.')
     parser.add_argument('--tree', action='store_true', help='whether to ensure well-formedness')
     parser.add_argument('--proj', action='store_true', help='whether to projectivise the data')
+    parser.add_argument('--partial', action='store_true', help='whether partial annotation is included')
     parser.set_defaults(Parser=BiaffineDependencyParser)
     subparsers = parser.add_subparsers(title='Commands', dest='mode')
     subparser = subparsers.add_parser('train', help='Train a parser.')
