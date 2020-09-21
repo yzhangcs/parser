@@ -36,7 +36,7 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
         n (int): the length of the stripe.
         w (int): the width of the stripe.
         offset (tuple): the offset of the first two dims.
-        dim (int): 0 if returns a horizontal stripe; 1 otherwise.
+        dim (int): 1 if returns a horizontal stripe; 0 otherwise.
 
     Returns:
         a diagonal stripe of the tensor.
@@ -49,12 +49,15 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
                 [10, 11, 12, 13, 14],
                 [15, 16, 17, 18, 19],
                 [20, 21, 22, 23, 24]])
+        >>> stripe(x, 2, 3)
+        tensor([[0, 1, 2],
+                [6, 7, 8]])
         >>> stripe(x, 2, 3, (1, 1))
         tensor([[ 6,  7,  8],
                 [12, 13, 14]])
-        >>> stripe(x, 2, 3, dim=0)
-        tensor([[ 0,  5, 10],
-                [ 6, 11, 16]])
+        >>> stripe(x, 2, 3, (1, 1), 0)
+        tensor([[ 6, 11, 16],
+                [12, 17, 22]])
     """
 
     x, seq_len = x.contiguous(), x.size(1)
