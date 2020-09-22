@@ -75,15 +75,15 @@ class BertEmbedding(nn.Module):
                 BERT embeddings of shape ``[batch_size, seq_len, n_out]``.
         """
         batch_size, seq_len, fix_len = subwords.shape
-        if self.max_len and seq_len > self.max_len:
-            raise RuntimeError(f"Token indices sequence length is longer than the specified max length "
-                               f"({seq_len} > {self.max_len})")
-
         mask = subwords.ne(self.pad_index)
         lens = mask.sum((1, 2))
         # [batch_size, n_subwords]
         subwords = pad_sequence(subwords[mask].split(lens.tolist()), True)
         bert_mask = pad_sequence(mask[mask].split(lens.tolist()), True)
+        if self.max_len and subwords.shape[1] > self.max_len:
+            raise RuntimeError(f"Token indices sequence length is longer than the specified max length "
+                               f"({subwords.shape[1]} > {self.max_len})")
+
         # return the hidden states of all layers
         bert = self.bert(subwords, attention_mask=bert_mask.float())[-1]
         # [n_layers, batch_size, n_subwords, hidden_size]
