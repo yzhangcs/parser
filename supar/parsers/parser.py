@@ -86,7 +86,7 @@ class Parser(object):
             elapsed += t
             if epoch - best_e >= args.patience:
                 break
-        loss, metric = self.load(args.path)._evaluate(test.loader)
+        loss, metric = self.load(**args)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
         logger.info(f"{'dev:':6} - {best_metric}")
