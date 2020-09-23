@@ -3,7 +3,6 @@
 import torch.nn as nn
 from supar.modules.scalar_mix import ScalarMix
 from torch.nn.utils.rnn import pad_sequence
-from transformers import AutoConfig, AutoModel
 
 
 class BertEmbedding(nn.Module):
@@ -24,8 +23,6 @@ class BertEmbedding(nn.Module):
             If 0, uses the size of the pretrained embedding model.
         pad_index (int):
             The index of the padding token in the BERT vocabulary. Default: 0.
-        max_len (int):
-            Sequences should not exceed the specfied max length. Default: 512.
         dropout (float):
             The dropout ratio of BERT layers. Default: 0.
             This value will be passed into the :class:`ScalarMix` layer.
@@ -37,17 +34,18 @@ class BertEmbedding(nn.Module):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self, model, n_layers, n_out, pad_index=0, max_len=512,  dropout=0, requires_grad=False):
+    def __init__(self, model, n_layers, n_out, pad_index=0, dropout=0, requires_grad=False):
         super().__init__()
 
-        self.model = model
+        from transformers import AutoConfig, AutoModel
         self.bert = AutoModel.from_pretrained(model, config=AutoConfig.from_pretrained(model, output_hidden_states=True))
         self.bert = self.bert.requires_grad_(requires_grad)
+
+        self.model = model
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
         self.hidden_size = self.bert.config.hidden_size
         self.n_out = n_out or self.hidden_size
         self.pad_index = pad_index
-        self.max_len = max_len
         self.dropout = dropout
         self.requires_grad = requires_grad
 
@@ -56,8 +54,6 @@ class BertEmbedding(nn.Module):
 
     def __repr__(self):
         s = f"{self.model}, n_layers={self.n_layers}, n_out={self.n_out}, pad_index={self.pad_index}"
-        if self.max_len is not None:
-            s += f", max_len={self.max_len}"
         if self.dropout > 0:
             s += f", dropout={self.dropout}"
         if self.requires_grad:
@@ -80,9 +76,9 @@ class BertEmbedding(nn.Module):
         # [batch_size, n_subwords]
         subwords = pad_sequence(subwords[mask].split(lens.tolist()), True)
         bert_mask = pad_sequence(mask[mask].split(lens.tolist()), True)
-        if self.max_len and subwords.shape[1] > self.max_len:
+        if subwords.shape[1] > self.bert.config.max_position_embeddings:
             raise RuntimeError(f"Token indices sequence length is longer than the specified max length "
-                               f"({subwords.shape[1]} > {self.max_len})")
+                               f"({subwords.shape[1]} > {self.bert.config.max_position_embeddings})")
 
         # return the hidden states of all layers
         bert = self.bert(subwords, attention_mask=bert_mask.float())[-1]
