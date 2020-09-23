@@ -46,8 +46,6 @@ class CRFConstituencyModel(nn.Module):
             Specifies how many last layers to use. Required if ``feat='bert'``.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
-        max_len (int):
-            Sequences should not exceed the specfied max length. Default: ``None``.
         mix_dropout (float):
             The dropout ratio of BERT layers. Required if ``feat='bert'``. Default: .0.
         embed_dropout (float):
@@ -87,7 +85,6 @@ class CRFConstituencyModel(nn.Module):
                  n_char_embed=50,
                  bert=None,
                  n_bert_layers=4,
-                 max_len=None,
                  mix_dropout=.0,
                  embed_dropout=.33,
                  n_lstm_hidden=400,
@@ -116,7 +113,6 @@ class CRFConstituencyModel(nn.Module):
                                             n_layers=n_bert_layers,
                                             n_out=n_feat_embed,
                                             pad_index=feat_pad_index,
-                                            max_len=max_len,
                                             dropout=mix_dropout)
             self.n_feat_embed = self.feat_embed.n_out
         elif feat == 'tag':
@@ -134,27 +130,14 @@ class CRFConstituencyModel(nn.Module):
         self.lstm_dropout = SharedDropout(p=lstm_dropout)
 
         # the MLP layers
-        self.mlp_span_l = MLP(n_in=n_lstm_hidden*2,
-                              n_out=n_mlp_span,
-                              dropout=mlp_dropout)
-        self.mlp_span_r = MLP(n_in=n_lstm_hidden*2,
-                              n_out=n_mlp_span,
-                              dropout=mlp_dropout)
-        self.mlp_label_l = MLP(n_in=n_lstm_hidden*2,
-                               n_out=n_mlp_label,
-                               dropout=mlp_dropout)
-        self.mlp_label_r = MLP(n_in=n_lstm_hidden*2,
-                               n_out=n_mlp_label,
-                               dropout=mlp_dropout)
+        self.mlp_span_l = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_span, dropout=mlp_dropout)
+        self.mlp_span_r = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_span, dropout=mlp_dropout)
+        self.mlp_label_l = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_label, dropout=mlp_dropout)
+        self.mlp_label_r = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_label, dropout=mlp_dropout)
 
         # the Biaffine layers
-        self.span_attn = Biaffine(n_in=n_mlp_span,
-                                  bias_x=True,
-                                  bias_y=False)
-        self.label_attn = Biaffine(n_in=n_mlp_label,
-                                   n_out=n_labels,
-                                   bias_x=True,
-                                   bias_y=True)
+        self.span_attn = Biaffine(n_in=n_mlp_span, bias_x=True, bias_y=False)
+        self.label_attn = Biaffine(n_in=n_mlp_label, n_out=n_labels, bias_x=True, bias_y=True)
         self.crf = CRFConstituency()
         self.criterion = nn.CrossEntropyLoss()
         self.pad_index = pad_index

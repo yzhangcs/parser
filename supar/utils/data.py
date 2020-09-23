@@ -145,8 +145,8 @@ class Sampler(torch.utils.data.Sampler):
         g = torch.Generator()
         g.manual_seed(self.epoch)
         range_fn = torch.arange
-        # if shuffle, shuffle both the buckets and samples in each bucket
-        # for distributed training, make sure each process generte the same random sequence at each epoch
+        # if `shuffle=True`, shuffle both the buckets and samples in each bucket
+        # for distributed training, make sure each process genertes the same random sequence at each epoch
         if self.shuffle:
             def range_fn(x):
                 return torch.randperm(x, generator=g)

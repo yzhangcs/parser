@@ -243,7 +243,6 @@ class BiaffineDependencyParser(Parser):
         elif args.feat == 'bert':
             from transformers import AutoTokenizer
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
-            args.max_len = min(args.max_len or tokenizer.max_len, tokenizer.max_len)
             FEAT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,

@@ -57,13 +57,8 @@ class Parser(object):
 
         logger.info(f"{self.model}\n")
         if dist.is_initialized():
-            self.model = DDP(self.model,
-                             device_ids=[dist.get_rank()],
-                             find_unused_parameters=True)
-        self.optimizer = Adam(self.model.parameters(),
-                              args.lr,
-                              (args.mu, args.nu),
-                              args.epsilon)
+            self.model = DDP(self.model, device_ids=[args.local_rank], find_unused_parameters=True)
+        self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.epsilon)
         self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
 
         elapsed = timedelta()
@@ -137,7 +132,7 @@ class Parser(object):
 
         for name, value in preds.items():
             setattr(dataset, name, value)
-        if pred is not None:
+        if pred is not None and is_master():
             logger.info(f"Saving predicted results to {pred}")
             self.transform.save(pred, dataset.sentences)
         logger.info(f"{elapsed}s elapsed, {len(dataset) / elapsed.total_seconds():.2f} Sents/s")

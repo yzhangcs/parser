@@ -20,7 +20,7 @@ class DistributedDataParallel(nn.parallel.DistributedDataParallel):
         return super().__getattr__(name)
 
 
-def init_device(device, backend='nccl', host=None, port=None):
+def init_device(device, local_rank=-1, backend='nccl', host=None, port=None):
     os.environ['CUDA_VISIBLE_DEVICES'] = device
     if torch.cuda.device_count() > 1:
         host = host or os.environ.get('MASTER_ADDR', 'localhost')
@@ -28,8 +28,8 @@ def init_device(device, backend='nccl', host=None, port=None):
         os.environ['MASTER_ADDR'] = host
         os.environ['MASTER_PORT'] = port
         dist.init_process_group(backend)
-        torch.cuda.set_device(dist.get_rank())
+        torch.cuda.set_device(local_rank)
 
 
 def is_master():
-    return not dist.is_initialized() or dist.get_rank() == 0
+    return not dist.is_available() or not dist.is_initialized() or dist.get_rank() == 0

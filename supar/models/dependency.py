@@ -47,8 +47,6 @@ class BiaffineDependencyModel(nn.Module):
             Specifies how many last layers to use. Required if ``feat='bert'``.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
-        max_len (int):
-            Sequences should not exceed the specfied max length. Default: ``None``.
         mix_dropout (float):
             The dropout ratio of BERT layers. Required if ``feat='bert'``. Default: .0.
         embed_dropout (float):
@@ -88,7 +86,6 @@ class BiaffineDependencyModel(nn.Module):
                  n_char_embed=50,
                  bert=None,
                  n_bert_layers=4,
-                 max_len=None,
                  mix_dropout=.0,
                  embed_dropout=.33,
                  n_lstm_hidden=400,
@@ -117,7 +114,6 @@ class BiaffineDependencyModel(nn.Module):
                                             n_layers=n_bert_layers,
                                             n_out=n_feat_embed,
                                             pad_index=feat_pad_index,
-                                            max_len=max_len,
                                             dropout=mix_dropout)
             self.n_feat_embed = self.feat_embed.n_out
         elif feat == 'tag':
@@ -135,27 +131,14 @@ class BiaffineDependencyModel(nn.Module):
         self.lstm_dropout = SharedDropout(p=lstm_dropout)
 
         # the MLP layers
-        self.mlp_arc_d = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_arc,
-                             dropout=mlp_dropout)
-        self.mlp_arc_h = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_arc,
-                             dropout=mlp_dropout)
-        self.mlp_rel_d = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_rel,
-                             dropout=mlp_dropout)
-        self.mlp_rel_h = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_rel,
-                             dropout=mlp_dropout)
+        self.mlp_arc_d = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_arc, dropout=mlp_dropout)
+        self.mlp_arc_h = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_arc, dropout=mlp_dropout)
+        self.mlp_rel_d = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_rel, dropout=mlp_dropout)
+        self.mlp_rel_h = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_rel, dropout=mlp_dropout)
 
         # the Biaffine layers
-        self.arc_attn = Biaffine(n_in=n_mlp_arc,
-                                 bias_x=True,
-                                 bias_y=False)
-        self.rel_attn = Biaffine(n_in=n_mlp_rel,
-                                 n_out=n_rels,
-                                 bias_x=True,
-                                 bias_y=True)
+        self.arc_attn = Biaffine(n_in=n_mlp_arc, bias_x=True, bias_y=False)
+        self.rel_attn = Biaffine(n_in=n_mlp_rel, n_out=n_rels, bias_x=True, bias_y=True)
         self.criterion = nn.CrossEntropyLoss()
         self.pad_index = pad_index
         self.unk_index = unk_index
@@ -320,8 +303,6 @@ class CRFNPDependencyModel(BiaffineDependencyModel):
             Specifies how many last layers to use. Required if ``feat='bert'``.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
-        max_len (int):
-            Sequences should not exceed the specfied max length. Default: ``None``.
         mix_dropout (float):
             The dropout ratio of BERT layers. Required if ``feat='bert'``. Default: .0.
         embed_dropout (float):
@@ -422,8 +403,6 @@ class CRFDependencyModel(BiaffineDependencyModel):
             Specifies how many last layers to use. Required if ``feat='bert'``.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
-        max_len (int):
-            Sequences should not exceed the specfied max length. Default: ``None``.
         mix_dropout (float):
             The dropout ratio of BERT layers. Required if ``feat='bert'``. Default: .0.
         embed_dropout (float):
@@ -527,8 +506,6 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
             Specifies how many last layers to use. Required if ``feat='bert'``.
             The final outputs would be the weight sum of the hidden states of these layers.
             Default: 4.
-        max_len (int):
-            Sequences should not exceed the specfied max length. Default: ``None``.
         mix_dropout (float):
             The dropout ratio of BERT layers. Required if ``feat='bert'``. Default: .0.
         embed_dropout (float):
@@ -561,19 +538,11 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
     def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):
         super().__init__(**kwargs)
 
-        self.mlp_sib_s = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_sib,
-                             dropout=mlp_dropout)
-        self.mlp_sib_d = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_sib,
-                             dropout=mlp_dropout)
-        self.mlp_sib_h = MLP(n_in=n_lstm_hidden*2,
-                             n_out=n_mlp_sib,
-                             dropout=mlp_dropout)
+        self.mlp_sib_s = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_sib, dropout=mlp_dropout)
+        self.mlp_sib_d = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_sib, dropout=mlp_dropout)
+        self.mlp_sib_h = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_sib, dropout=mlp_dropout)
 
-        self.sib_attn = Triaffine(n_in=n_mlp_sib,
-                                  bias_x=True,
-                                  bias_y=True)
+        self.sib_attn = Triaffine(n_in=n_mlp_sib, bias_x=True, bias_y=True)
         self.crf = CRF2oDependency()
 
     def forward(self, words, feats):
