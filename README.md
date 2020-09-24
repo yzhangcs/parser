@@ -70,8 +70,8 @@ $ python setup.py install
 
 As a prerequisite, the following requirements should be satisfied:
 * `python`: 3.7
-* [`pytorch`](https://github.com/pytorch/pytorch): 1.4
-* [`transformers`](https://github.com/huggingface/transformers): 3.0
+* [`pytorch`](https://github.com/pytorch/pytorch): >= 1.4
+* [`transformers`](https://github.com/huggingface/transformers): >= 3.1
 
 ## Performance
 
