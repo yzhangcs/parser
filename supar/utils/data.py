@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from collections import namedtuple
+
 import torch
 import torch.distributed as dist
 from supar.utils.alg import kmeans
@@ -107,7 +109,7 @@ class DataLoader(torch.utils.data.DataLoader):
 
     def __iter__(self):
         for batch in super().__iter__():
-            yield [f.compose(d) for f, d in batch.items()]
+            yield namedtuple('Batch', [f.name for f in batch.keys()])(*[f.compose(d) for f, d in batch.items()])
 
 
 class Sampler(torch.utils.data.Sampler):
