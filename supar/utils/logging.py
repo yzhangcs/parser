@@ -38,7 +38,7 @@ def progress_bar(iterator,
                 ncols=ncols,
                 bar_format=bar_format,
                 ascii=True,
-                disable=(not is_master()),
+                disable=(not (logger.level == logging.INFO and is_master())),
                 leave=leave)
 
 
