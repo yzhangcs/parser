@@ -7,15 +7,15 @@ from torch.nn.modules.rnn import apply_permutation
 from torch.nn.utils.rnn import PackedSequence
 
 
-class BiLSTM(nn.Module):
+class LSTM(nn.Module):
     r"""
-    BiLSTM is an variant of the vanilla bidirectional LSTM adopted by Biaffine Parser
+    LSTM is an variant of the vanilla bidirectional LSTM adopted by Biaffine Parser
     with the only difference of the dropout strategy.
     It drops nodes in the LSTM layers (input and recurrent connections)
     and applies the same dropout mask at every recurrent timesteps.
 
-    APIs are roughly the same as :class:`~torch.nn.LSTM` except that we remove the ``bidirectional`` option
-    and only allows :class:`~torch.nn.utils.rnn.PackedSequence` as input.
+    APIs are roughly the same as :class:`~torch.nn.LSTM` except that we only allows
+    :class:`~torch.nn.utils.rnn.PackedSequence` as input.
 
     References:
         - Timothy Dozat and Christopher D. Manning. 2017.
@@ -28,6 +28,8 @@ class BiLSTM(nn.Module):
             The number of features in the hidden state `h`.
         num_layers (int):
             The number of recurrent layers. Default: 1.
+        bidirectional (bool):
+            If ``True``, becomes a bidirectional LSTM. Default: ``False``
         dropout (float):
             If non-zero, introduces a :class:`SharedDropout` layer on the outputs of each LSTM layer except the last layer.
             Default: 0.
@@ -36,20 +38,23 @@ class BiLSTM(nn.Module):
         https://openreview.net/forum?id=Hk95PK9le
     """
 
-    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0):
+    def __init__(self, input_size, hidden_size, num_layers=1, bidirectional=False, dropout=0):
         super().__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.bidirectional = bidirectional
         self.dropout = dropout
 
         self.f_cells = nn.ModuleList()
-        self.b_cells = nn.ModuleList()
+        if bidirectional:
+            self.b_cells = nn.ModuleList()
         for _ in range(self.num_layers):
             self.f_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
-            self.b_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
-            input_size = hidden_size * 2
+            if bidirectional:
+                self.b_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
+            input_size = hidden_size * (1 + self.bidirectional)
 
         self.reset_parameters()
 
@@ -57,6 +62,8 @@ class BiLSTM(nn.Module):
         s = f"{self.input_size}, {self.hidden_size}"
         if self.num_layers > 1:
             s += f", num_layers={self.num_layers}"
+        if self.bidirectional:
+            s += f", bidirectional={self.bidirectional}"
         if self.dropout > 0:
             s += f", dropout={self.dropout}"
 
@@ -114,9 +121,9 @@ class BiLSTM(nn.Module):
                 A packed variable length sequence.
             hx (~torch.Tensor, ~torch.Tensor):
                 A tuple composed of two tensors `h` and `c`.
-                `h` of shape ``[num_layers*2, batch_size, hidden_size]`` contains the initial hidden state
+                `h` of shape ``[num_layers*num_directions, batch_size, hidden_size]`` holds the initial hidden state
                 for each element in the batch.
-                `c` of shape ``[num_layers*2, batch_size, hidden_size]`` contains the initial cell state
+                `c` of shape ``[num_layers*num_directions, batch_size, hidden_size]`` holds the initial cell state
                 for each element in the batch.
                 If `hx` is not provided, both `h` and `c` default to zero.
                 Default: ``None``.
@@ -125,10 +132,10 @@ class BiLSTM(nn.Module):
             ~torch.nn.utils.rnn.PackedSequence, (~torch.Tensor, ~torch.Tensor):
                 The first is a packed variable length sequence.
                 The second is a tuple of tensors `h` and `c`.
-                `h` of shape ``[num_layers*2, batch_size, hidden_size]`` contains the hidden state for `t = seq_len`.
+                `h` of shape ``[num_layers*num_directions, batch_size, hidden_size]`` holds the hidden state for `t=seq_len`.
                 Like output, the layers can be separated using ``h.view(num_layers, 2, batch_size, hidden_size)``
                 and similarly for c.
-                `c` of shape ``[num_layers*2, batch_size, hidden_size]`` contains the cell state for `t = seq_len`.
+                `c` of shape ``[num_layers*num_directions, batch_size, hidden_size]`` holds the cell state for `t=seq_len`.
         """
         x, batch_sizes = sequence.data, sequence.batch_sizes.tolist()
         batch_size = batch_sizes[0]
@@ -147,18 +154,23 @@ class BiLSTM(nn.Module):
             if self.training:
                 mask = SharedDropout.get_mask(x[0], self.dropout)
                 x = [i * mask[:len(i)] for i in x]
-            x_f, (h_f, c_f) = self.layer_forward(x=x,
+            x_i, (h_i, c_i) = self.layer_forward(x=x,
                                                  hx=(h[i, 0], c[i, 0]),
                                                  cell=self.f_cells[i],
                                                  batch_sizes=batch_sizes)
-            x_b, (h_b, c_b) = self.layer_forward(x=x,
-                                                 hx=(h[i, 1], c[i, 1]),
-                                                 cell=self.b_cells[i],
-                                                 batch_sizes=batch_sizes,
-                                                 reverse=True)
-            x = torch.cat((x_f, x_b), -1)
-            h_n.append(torch.stack((h_f, h_b)))
-            c_n.append(torch.stack((c_f, c_b)))
+            if self.bidirectional:
+                x_b, (h_b, c_b) = self.layer_forward(x=x,
+                                                     hx=(h[i, 1], c[i, 1]),
+                                                     cell=self.b_cells[i],
+                                                     batch_sizes=batch_sizes,
+                                                     reverse=True)
+                x_i = torch.cat((x_i, x_b), -1)
+                h_i = torch.stack((h_i, h_b))
+                c_i = torch.stack((c_i, c_b))
+            x = x_i
+            h_n.append(h_i)
+            c_n.append(h_i)
+
         x = PackedSequence(x,
                            sequence.batch_sizes,
                            sequence.sorted_indices,

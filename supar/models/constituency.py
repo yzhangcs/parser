@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from supar.modules import MLP, BertEmbedding, Biaffine, BiLSTM, CharLSTM
+from supar.modules import LSTM, MLP, BertEmbedding, Biaffine, CharLSTM
 from supar.modules.dropout import IndependentDropout, SharedDropout
 from supar.modules.treecrf import CRFConstituency
 from supar.utils import Config
@@ -123,10 +123,11 @@ class CRFConstituencyModel(nn.Module):
         self.embed_dropout = IndependentDropout(p=embed_dropout)
 
         # the lstm layer
-        self.lstm = BiLSTM(input_size=n_embed+n_feat_embed,
-                           hidden_size=n_lstm_hidden,
-                           num_layers=n_lstm_layers,
-                           dropout=lstm_dropout)
+        self.lstm = LSTM(input_size=n_embed+n_feat_embed,
+                         hidden_size=n_lstm_hidden,
+                         num_layers=n_lstm_layers,
+                         bidirectional=True,
+                         dropout=lstm_dropout)
         self.lstm_dropout = SharedDropout(p=lstm_dropout)
 
         # the MLP layers
