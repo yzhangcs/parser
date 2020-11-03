@@ -46,6 +46,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
         self.bidirectional = bidirectional
         self.dropout = dropout
+        self.num_directions = 1 + self.bidirectional
 
         self.f_cells = nn.ModuleList()
         if bidirectional:
@@ -54,7 +55,7 @@ class LSTM(nn.Module):
             self.f_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
             if bidirectional:
                 self.b_cells.append(nn.LSTMCell(input_size=input_size, hidden_size=hidden_size))
-            input_size = hidden_size * (1 + self.bidirectional)
+            input_size = hidden_size * self.num_directions
 
         self.reset_parameters()
 
@@ -146,8 +147,8 @@ class LSTM(nn.Module):
             h, c = ih, ih
         else:
             h, c = self.permute_hidden(hx, sequence.sorted_indices)
-        h = h.view(self.num_layers, 2, batch_size, self.hidden_size)
-        c = c.view(self.num_layers, 2, batch_size, self.hidden_size)
+        h = h.view(self.num_layers, self.num_directions, batch_size, self.hidden_size)
+        c = c.view(self.num_layers, self.num_directions, batch_size, self.hidden_size)
 
         for i in range(self.num_layers):
             x = torch.split(x, batch_sizes)
