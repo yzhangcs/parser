@@ -134,7 +134,7 @@ class LSTM(nn.Module):
                 The first is a packed variable length sequence.
                 The second is a tuple of tensors `h` and `c`.
                 `h` of shape ``[num_layers*num_directions, batch_size, hidden_size]`` holds the hidden state for `t=seq_len`.
-                Like output, the layers can be separated using ``h.view(num_layers, 2, batch_size, hidden_size)``
+                Like output, the layers can be separated using ``h.view(num_layers, num_directions, batch_size, hidden_size)``
                 and similarly for c.
                 `c` of shape ``[num_layers*num_directions, batch_size, hidden_size]`` holds the cell state for `t=seq_len`.
         """
@@ -143,7 +143,7 @@ class LSTM(nn.Module):
         h_n, c_n = [], []
 
         if hx is None:
-            ih = x.new_zeros(self.num_layers * 2, batch_size, self.hidden_size)
+            ih = x.new_zeros(self.num_layers * self.num_directions, batch_size, self.hidden_size)
             h, c = ih, ih
         else:
             h, c = self.permute_hidden(hx, sequence.sorted_indices)
