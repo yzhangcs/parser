@@ -1,4 +1,4 @@
-supar.parsers
+Parsers
 ==================
 
 .. currentmodule:: supar.parsers

@@ -1,4 +1,4 @@
-supar.models
+Models
 ==================
 
 .. currentmodule:: supar.models
