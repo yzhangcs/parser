@@ -1,4 +1,4 @@
-supar.utils
+Utils
 ==================
 
 .. currentmodule:: supar.utils

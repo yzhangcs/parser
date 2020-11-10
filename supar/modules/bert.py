@@ -11,6 +11,7 @@ class BertEmbedding(nn.Module):
     A module that directly utilizes the pretrained models in `transformers`_ to produce BERT representations.
     While mainly tailored to provide input preparation and post-processing for the BERT model,
     it is also compatiable with other pretrained language models like XLNet, RoBERTa and ELECTRA, etc.
+
     Args:
         model (str):
             Path or name of the pretrained models registered in `transformers`_, e.g., ``'bert-base-cased'``.
@@ -31,6 +32,7 @@ class BertEmbedding(nn.Module):
         requires_grad (bool):
             If ``True``, the model parameters will be updated together with the downstream task.
             Default: ``False``.
+
     .. _transformers:
         https://github.com/huggingface/transformers
     """

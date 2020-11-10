@@ -1,4 +1,4 @@
-supar.modules
+Modules
 ==================
 
 .. currentmodule:: supar.modules

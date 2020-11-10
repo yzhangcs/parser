@@ -3,19 +3,19 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-supar
+SuPar
 =================================
-The :mod:`supar` package provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser as the basic architecture.
+The :mod:`SuPar` package provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser as the basic architecture.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents
 
    self
-   supar.parsers <parsers>
-   supar.models <models>
-   supar.modules <modules>
-   supar.utils <utils>
+   parsers
+   models
+   modules
+   utils
 
 Indices and tables
 ==================
