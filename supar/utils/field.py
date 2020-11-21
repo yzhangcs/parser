@@ -321,26 +321,18 @@ class ChartField(Field):
     Field dealing with constituency trees.
 
     This field receives sequences of binarized trees factorized in pre-order,
-    and returns two tensors representing the bracketing trees and labels on each constituent respectively.
+    and returns charts filled with labels on each constituent.
 
     Examples:
         >>> sequence = [(0, 5, 'S'), (0, 4, 'S|<>'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP|<>'),
                         (2, 4, 'S+VP'), (2, 3, 'VP|<>'), (3, 4, 'NP'), (4, 5, 'S|<>')]
-        >>> spans, labels = field.transform([sequence])[0]  # this example field is built from ptb
-        >>> spans
-        tensor([[False,  True, False, False,  True,  True],
-                [False, False,  True, False,  True, False],
-                [False, False, False,  True,  True, False],
-                [False, False, False, False,  True, False],
-                [False, False, False, False, False,  True],
-                [False, False, False, False, False, False]])
-        >>> labels
-        tensor([[  0,  37,   0,   0, 107,  79],
-                [  0,   0, 120,   0, 112,   0],
-                [  0,   0,   0, 120,  86,   0],
-                [  0,   0,   0,   0,  37,   0],
-                [  0,   0,   0,   0,   0, 107],
-                [  0,   0,   0,   0,   0,   0]])
+        >>> field.transform([sequence])[0]
+        tensor([[ -1,  37,  -1,  -1, 107,  79],
+                [ -1,  -1, 120,  -1, 112,  -1],
+                [ -1,  -1,  -1, 120,  86,  -1],
+                [ -1,  -1,  -1,  -1,  37,  -1],
+                [ -1,  -1,  -1,  -1,  -1, 107],
+                [ -1,  -1,  -1,  -1,  -1,  -1]])
     """
 
     def build(self, dataset, min_freq=1):
@@ -351,20 +343,12 @@ class ChartField(Field):
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
     def transform(self, sequences):
-        sequences = [self.preprocess(seq) for seq in sequences]
-        spans, labels = [], []
-
+        charts = []
         for sequence in sequences:
+            sequence = self.preprocess(sequence)
             seq_len = sequence[0][1] + 1
-            span_chart = torch.full((seq_len, seq_len), self.pad_index, dtype=torch.bool)
-            label_chart = torch.full((seq_len, seq_len), self.pad_index, dtype=torch.long)
+            chart = torch.full((seq_len, seq_len), -1, dtype=torch.long)
             for i, j, label in sequence:
-                span_chart[i, j] = 1
-                label_chart[i, j] = self.vocab[label]
-            spans.append(span_chart)
-            labels.append(label_chart)
-
-        return list(zip(spans, labels))
-
-    def compose(self, sequences):
-        return [pad(i).to(self.device) for i in zip(*sequences)]
+                chart[i, j] = self.vocab[label]
+            charts.append(chart)
+        return charts
