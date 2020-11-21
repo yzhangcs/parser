@@ -39,11 +39,7 @@ class CharLSTM(nn.Module):
                             bidirectional=True)
 
     def __repr__(self):
-        s = f"{self.n_chars}, {self.n_embed}, "
-        s += f"n_out={self.n_out}, "
-        s += f"pad_index={self.pad_index}"
-
-        return f"{self.__class__.__name__}({s})"
+        return f"{self.__class__.__name__}({self.n_chars}, {self.n_embed}, n_out={self.n_out}, pad_index={self.pad_index})"
 
     def forward(self, x):
         r"""
