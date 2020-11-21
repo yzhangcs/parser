@@ -206,17 +206,15 @@ class CRFConstituencyModel(nn.Module):
 
         return s_span, s_label
 
-    def loss(self, s_span, s_label, spans, labels, mask, mbr=True):
+    def loss(self, s_span, s_label, charts, mask, mbr=True):
         r"""
         Args:
             s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Scores of all spans
             s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
                 Scores of all labels on each span.
-            spans (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
-                The tensor of gold-standard spans. ``True`` denotes there exist a span.
-            labels (~torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
-                The tensor of gold-standard labels.
+            charts (~torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
+                The tensor of gold-standard labels, in which positions without labels are filled with -1.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 The mask for covering the unpadded tokens in each chart.
             mbr (bool):
@@ -228,9 +226,9 @@ class CRFConstituencyModel(nn.Module):
                 original span scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
-        span_mask = spans & mask
-        span_loss, span_probs = self.crf(s_span, mask, spans, mbr)
-        label_loss = self.criterion(s_label[span_mask], labels[span_mask])
+        span_mask = charts.ge(0) & mask
+        span_loss, span_probs = self.crf(s_span, mask, span_mask, mbr)
+        label_loss = self.criterion(s_label[span_mask], charts[span_mask])
         loss = span_loss + label_loss
 
         return loss, span_probs
@@ -252,5 +250,4 @@ class CRFConstituencyModel(nn.Module):
 
         span_preds = cky(s_span, mask)
         label_preds = s_label.argmax(-1).tolist()
-        return [[(i, j, labels[i][j]) for i, j in spans]
-                for spans, labels in zip(span_preds, label_preds)]
+        return [[(i, j, labels[i][j]) for i, j in spans] for spans, labels in zip(span_preds, label_preds)]
