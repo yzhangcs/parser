@@ -104,6 +104,22 @@ class Field(RawField):
 
         return s
 
+    def __getstate__(self):
+        state = self.__dict__
+        if self.tokenize is None:
+            state['tokenize_args'] = None
+        elif self.tokenize.__module__.startswith('transformers'):
+            state['tokenize_args'] = (self.tokenize.__module__, self.tokenize.__self__.name_or_path)
+            state['tokenize'] = None
+        return state
+
+    def __setstate__(self, state):
+        tokenize_args = state.pop('tokenize_args', None)
+        if tokenize_args is not None and tokenize_args[0].startswith('transformers'):
+            from transformers import AutoTokenizer
+            state['tokenize'] = AutoTokenizer.from_pretrained(tokenize_args[1]).tokenize
+        self.__dict__.update(state)
+
     @property
     def pad_index(self):
         if self.pad is None:
