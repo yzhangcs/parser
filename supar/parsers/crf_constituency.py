@@ -10,7 +10,7 @@ from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import bos, eos, pad, unk
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
-from supar.utils.metric import BracketMetric
+from supar.utils.metric import SpanMetric
 from supar.utils.transform import Tree
 
 logger = get_logger(__name__)
@@ -153,7 +153,7 @@ class CRFConstituencyParser(Parser):
     def _evaluate(self, loader):
         self.model.eval()
 
-        total_loss, metric = 0, BracketMetric()
+        total_loss, metric = 0, SpanMetric()
 
         for words, feats, trees, charts in loader:
             batch_size, seq_len = words.shape
