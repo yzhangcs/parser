@@ -334,15 +334,16 @@ class SubwordField(Field):
 
 class ChartField(Field):
     r"""
-    Field dealing with constituency trees.
-
-    This field receives sequences of binarized trees factorized in pre-order,
-    and returns charts filled with labels on each constituent.
+    Field dealing with chart inputs.
 
     Examples:
-        >>> sequence = [(0, 5, 'S'), (0, 4, 'S|<>'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP|<>'),
-                        (2, 4, 'S+VP'), (2, 3, 'VP|<>'), (3, 4, 'NP'), (4, 5, 'S|<>')]
-        >>> field.transform([sequence])[0]
+        >>> chart = [[    None,    'NP',    None,    None,  'S|<>',     'S'],
+                     [    None,    None, 'VP|<>',    None,    'VP',    None],
+                     [    None,    None,    None, 'VP|<>',  'S+VP',    None],
+                     [    None,    None,    None,    None,    'NP',    None],
+                     [    None,    None,    None,    None,    None,  'S|<>'],
+                     [    None,    None,    None,    None,    None,    None]]
+        >>> field.transform([chart])[0]
         tensor([[ -1,  37,  -1,  -1, 107,  79],
                 [ -1,  -1, 120,  -1, 112,  -1],
                 [ -1,  -1,  -1, 120,  86,  -1],
@@ -352,19 +353,14 @@ class ChartField(Field):
     """
 
     def build(self, dataset, min_freq=1):
-        counter = Counter(label
-                          for seq in getattr(dataset, self.name)
-                          for i, j, label in self.preprocess(seq))
+        counter = Counter(i
+                          for chart in getattr(dataset, self.name)
+                          for row in self.preprocess(chart)
+                          for i in row if i is not None)
 
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
-    def transform(self, sequences):
-        charts = []
-        for sequence in sequences:
-            sequence = self.preprocess(sequence)
-            seq_len = sequence[0][1] + 1
-            chart = torch.full((seq_len, seq_len), -1, dtype=torch.long)
-            for i, j, label in sequence:
-                chart[i, j] = self.vocab[label]
-            charts.append(chart)
+    def transform(self, charts):
+        charts = [self.preprocess(chart) for chart in charts]
+        charts = [torch.tensor([[self.vocab[i] if i is not None else -1 for i in row] for row in chart]) for chart in charts]
         return charts

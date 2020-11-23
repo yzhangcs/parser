@@ -673,12 +673,11 @@ class TreeSentence(Sentence):
     def __init__(self, transform, tree):
         super().__init__(transform)
 
-        # the values contain words, pos tags, raw trees, and spans
-        # the tree is first left-binarized before factorized
-        # spans are the factorization of tree traversed in pre-order
-        self.values = [*zip(*tree.pos()),
-                       tree,
-                       Tree.factorize(Tree.binarize(tree)[0])]
+        words, tags = zip(*tree.pos())
+        chart = [[None]*(len(words)+1) for _ in range(len(words)+1)]
+        for i, j, label in Tree.factorize(Tree.binarize(tree)[0]):
+            chart[i][j] = label
+        self.values = [words, tags, tree, chart]
 
     def __repr__(self):
         return self.values[-2].pformat(1000000)
