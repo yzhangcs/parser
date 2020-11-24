@@ -6,8 +6,8 @@ from supar.modules.dropout import SharedDropout
 
 class MLP(nn.Module):
     r"""
-    Applies a linear transformation together with :class:`~torch.nn.LeakyReLU` activation to the incoming tensor:
-    :math:`y = \mathrm{LeakyReLU}(x A^T + b)`
+    Applies a linear transformation together with a non-linear activation to the incoming tensor:
+    :math:`y = \mathrm{Activation}(x A^T + b)`
 
     Args:
         n_in (~torch.Tensor):
@@ -16,15 +16,17 @@ class MLP(nn.Module):
             The size of each output feature.
         dropout (float):
             If non-zero, introduce a :class:`SharedDropout` layer on the output with this dropout ratio. Default: 0.
+        activation (bool):
+            Whether to use activations. Default: True.
     """
 
-    def __init__(self, n_in, n_out, dropout=0):
+    def __init__(self, n_in, n_out, dropout=0, activation=True):
         super().__init__()
 
         self.n_in = n_in
         self.n_out = n_out
         self.linear = nn.Linear(n_in, n_out)
-        self.activation = nn.LeakyReLU(negative_slope=0.1)
+        self.activation = nn.LeakyReLU(negative_slope=0.1) if activation else nn.Identity()
         self.dropout = SharedDropout(p=dropout)
 
         self.reset_parameters()
