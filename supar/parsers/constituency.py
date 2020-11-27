@@ -12,6 +12,8 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import SpanMetric
 from supar.utils.transform import Tree
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 logger = get_logger(__name__)
 
@@ -199,13 +201,22 @@ class CRFConstituencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+    def build(cls, path,
+              optimizer_args={'lr': 2e-3, 'betas': (.9, .9), 'eps': 1e-12},
+              scheduler_args={'gamma': .75**(1/5000)},
+              min_freq=2,
+              fix_len=20,
+              **kwargs):
         r"""
         Build a brand-new Parser, including initialization of all data fields and model parameters.
 
         Args:
             path (str):
                 The path of the model to be saved.
+            optimizer_args (dict):
+                Arguments for creating an optimizer.
+            scheduler_args (dict):
+                Arguments for creating a scheduler.
             min_freq (str):
                 The minimum frequency needed to include a token in the vocabulary. Default: 2.
             fix_len (int):
@@ -263,6 +274,11 @@ class CRFConstituencyParser(Parser):
             'eos_index': WORD.eos_index,
             'feat_pad_index': FEAT.pad_index
         })
+
+        logger.info("Building the model")
         model = cls.MODEL(**args)
         model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform)
+        optimizer = Adam(model.parameters(), **optimizer_args)
+        scheduler = ExponentialLR(optimizer, **scheduler_args)
+
+        return cls(args, model, transform, optimizer, scheduler)
