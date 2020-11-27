@@ -14,6 +14,8 @@ from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 logger = get_logger(__name__)
 
@@ -168,9 +170,7 @@ class BiaffineDependencyParser(Parser):
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
             loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
-                                                     self.args.tree,
-                                                     self.args.proj)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
@@ -194,9 +194,7 @@ class BiaffineDependencyParser(Parser):
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
             s_arc, s_rel = self.model(words, feats)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
-                                                     self.args.tree,
-                                                     self.args.proj)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -211,13 +209,21 @@ class BiaffineDependencyParser(Parser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+    def build(cls, path,
+              optimizer_args={'lr': 2e-3, 'betas': (.9, .9), 'eps': 1e-12},
+              scheduler_args={'gamma': .75**(1/5000)},
+              min_freq=2,
+              fix_len=20, **kwargs):
         r"""
         Build a brand-new Parser, including initialization of all data fields and model parameters.
 
         Args:
             path (str):
                 The path of the model to be saved.
+            optimizer_args (dict):
+                Arguments for creating an optimizer.
+            scheduler_args (dict):
+                Arguments for creating a scheduler.
             min_freq (str):
                 The minimum frequency needed to include a token in the vocabulary. Default: 2.
             fix_len (int):
@@ -273,9 +279,15 @@ class BiaffineDependencyParser(Parser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index,
         })
+
+        logger.info("Building the model")
         model = cls.MODEL(**args)
         model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform)
+
+        optimizer = Adam(model.parameters(), **optimizer_args)
+        scheduler = ExponentialLR(optimizer, **scheduler_args)
+
+        return cls(args, model, transform, optimizer, scheduler)
 
 
 class CRFNPDependencyParser(BiaffineDependencyParser):
@@ -584,9 +596,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask,
-                                          self.args.mbr,
-                                          self.args.partial)
+            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
             loss.backward()
             nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
@@ -612,12 +622,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask,
-                                          self.args.mbr,
-                                          self.args.partial)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
-                                                     self.args.tree,
-                                                     self.args.proj)
+            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
@@ -643,9 +649,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             s_arc, s_rel = self.model(words, feats)
             if self.args.mbr:
                 s_arc = self.model.crf(s_arc, mask, mbr=True)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask,
-                                                     self.args.tree,
-                                                     self.args.proj)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -780,9 +784,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
-                                          self.args.mbr,
-                                          self.args.partial)
+            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
             loss.backward()
             nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
@@ -808,13 +810,8 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
-                                          self.args.mbr,
-                                          self.args.partial)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
-                                                     self.args.tree,
-                                                     self.args.mbr,
-                                                     self.args.proj)
+            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
@@ -840,10 +837,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             s_arc, s_sib, s_rel = self.model(words, feats)
             if self.args.mbr:
                 s_arc = self.model.crf((s_arc, s_sib), mask, mbr=True)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask,
-                                                     self.args.tree,
-                                                     self.args.mbr,
-                                                     self.args.proj)
+            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
             arcs.extend(arc_preds[mask].split(lens))
             rels.extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -858,13 +852,21 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         return preds
 
     @classmethod
-    def build(cls, path, min_freq=2, fix_len=20, **kwargs):
+    def build(cls, path,
+              optimizer_args={'lr': 2e-3, 'betas': (.9, .9), 'eps': 1e-12},
+              scheduler_args={'gamma': .75**(1/5000)},
+              min_freq=2,
+              fix_len=20, **kwargs):
         r"""
         Build a brand-new Parser, including initialization of all data fields and model parameters.
 
         Args:
             path (str):
                 The path of the model to be saved.
+            optimizer_args (dict):
+                Arguments for creating an optimizer.
+            scheduler_args (dict):
+                Arguments for creating a scheduler.
             min_freq (str):
                 The minimum frequency needed to include a token in the vocabulary. Default: 2.
             fix_len (int):
@@ -921,6 +923,12 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index
         })
+
+        logger.info("Building the model")
         model = cls.MODEL(**args)
         model = model.load_pretrained(WORD.embed).to(args.device)
-        return cls(args, model, transform)
+
+        optimizer = Adam(model.parameters(), **optimizer_args)
+        scheduler = ExponentialLR(optimizer, **scheduler_args)
+
+        return cls(args, model, transform, optimizer, scheduler)
