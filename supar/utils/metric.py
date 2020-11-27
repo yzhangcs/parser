@@ -24,7 +24,7 @@ class Metric(object):
 
 class AttachmentMetric(Metric):
 
-    def __init__(self, eps=1e-8):
+    def __init__(self, eps=1e-12):
         super().__init__()
 
         self.eps = eps
@@ -79,7 +79,7 @@ class AttachmentMetric(Metric):
 
 class SpanMetric(Metric):
 
-    def __init__(self, eps=1e-8):
+    def __init__(self, eps=1e-12):
         super().__init__()
 
         self.n = 0.0
@@ -154,7 +154,7 @@ class SpanMetric(Metric):
 
 class ChartMetric(Metric):
 
-    def __init__(self, eps=1e-5):
+    def __init__(self, eps=1e-12):
         super(ChartMetric, self).__init__()
 
         self.tp = 0.0
