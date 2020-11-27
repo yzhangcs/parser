@@ -25,6 +25,16 @@ class Transform(object):
     def __init__(self):
         self.training = True
 
+    def __repr__(self):
+        s = '\n'
+        for i, field in enumerate(self):
+            if not isinstance(field, Iterable):
+                field = [field]
+            for f in field:
+                if f is not None:
+                    s += f"  {f}\n"
+        return f"{self.__class__.__name__}({s})"
+
     def __call__(self, sentences):
         pairs = dict()
         for field in self:
@@ -174,11 +184,11 @@ class CoNLL(Transform):
 
     @property
     def src(self):
-        return self.FORM, self.CPOS
+        return self.FORM, self.LEMMA, self.CPOS, self.POS, self.FEATS
 
     @property
     def tgt(self):
-        return self.HEAD, self.DEPREL
+        return self.HEAD, self.DEPREL, self.PHEAD, self.PDEPREL
 
     @classmethod
     def get_arcs(cls, sequence):
@@ -201,6 +211,34 @@ class CoNLL(Transform):
                         sibs[j] = i
                     break
         return sibs[1:]
+
+    @classmethod
+    def get_edges(cls, sequence):
+        edges = [[0]*(len(sequence)+1) for _ in range(len(sequence)+1)]
+        for i, s in enumerate(sequence, 1):
+            if s != '_':
+                for pair in s.split('|'):
+                    edges[i][int(pair.split(':')[0])] = 1
+        return edges
+
+    @classmethod
+    def get_labels(cls, sequence):
+        labels = [[None]*(len(sequence)+1) for _ in range(len(sequence)+1)]
+        for i, s in enumerate(sequence, 1):
+            if s != '_':
+                for pair in s.split('|'):
+                    edge, label = pair.split(':')
+                    labels[i][int(edge)] = label
+        return labels
+
+    @classmethod
+    def build_relations(cls, chart):
+        sequence = ['_'] * len(chart)
+        for i, row in enumerate(chart):
+            pairs = [(j, label) for j, label in enumerate(row) if label is not None]
+            if len(pairs) > 0:
+                sequence[i] = '|'.join(f"{head}:{label}" for head, label in pairs)
+        return sequence
 
     @classmethod
     def toconll(cls, tokens):

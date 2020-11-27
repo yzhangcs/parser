@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from .parsers import (BiaffineDependencyParser, CRF2oDependencyParser,
+from .parsers import (BiaffineDependencyParser,
+                      BiaffineSemanticDependencyParser, CRF2oDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser,
                       CRFNPDependencyParser, Parser)
 
@@ -9,6 +10,7 @@ __all__ = ['BiaffineDependencyParser',
            'CRFDependencyParser',
            'CRF2oDependencyParser',
            'CRFConstituencyParser',
+           'BiaffineSemanticDependencyParser',
            'Parser']
 __version__ = '1.0.0'
 
@@ -16,7 +18,8 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFNPDependencyParser,
                                              CRFDependencyParser,
                                              CRF2oDependencyParser,
-                                             CRFConstituencyParser]}
+                                             CRFConstituencyParser,
+                                             BiaffineSemanticDependencyParser]}
 
 PRETRAINED = {
     'biaffine-dep-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.biaffine.dependency.char.zip',
