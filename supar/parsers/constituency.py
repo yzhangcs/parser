@@ -274,10 +274,12 @@ class CRFConstituencyParser(Parser):
             'eos_index': WORD.eos_index,
             'feat_pad_index': FEAT.pad_index
         })
+        logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args)
-        model.load_pretrained(WORD.embed).to(args.device)
+        model = cls.MODEL(**args).load_pretrained(WORD.embed).to(args.device)
+        logger.info(f"{model}\n")
+
         optimizer = Adam(model.parameters(), **optimizer_args)
         scheduler = ExponentialLR(optimizer, **scheduler_args)
 
