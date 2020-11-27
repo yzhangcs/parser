@@ -279,10 +279,11 @@ class BiaffineDependencyParser(Parser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index,
         })
+        logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args)
-        model.load_pretrained(WORD.embed).to(args.device)
+        model = cls.MODEL(**args).load_pretrained(WORD.embed).to(args.device)
+        logger.info(f"{model}\n")
 
         optimizer = Adam(model.parameters(), **optimizer_args)
         scheduler = ExponentialLR(optimizer, **scheduler_args)
@@ -923,10 +924,11 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             'bos_index': WORD.bos_index,
             'feat_pad_index': FEAT.pad_index
         })
+        logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args)
-        model = model.load_pretrained(WORD.embed).to(args.device)
+        model = cls.MODEL(**args).load_pretrained(WORD.embed).to(args.device)
+        logger.info(f"{model}\n")
 
         optimizer = Adam(model.parameters(), **optimizer_args)
         scheduler = ExponentialLR(optimizer, **scheduler_args)
