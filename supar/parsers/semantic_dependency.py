@@ -36,10 +36,9 @@ class BiaffineSemanticDependencyParser(Parser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if self.args.feat in ('char', 'bert'):
-            self.WORD, self.FEAT = self.transform.FORM
-        else:
-            self.WORD, self.FEAT = self.transform.FORM, self.transform.POS
+        self.WORD, self.CHAR, self.BERT = self.transform.FORM
+        self.LEMMA = self.transform.LEMMA
+        self.TAG = self.transform.POS
         self.EDGE, self.LABEL = self.transform.PHEAD
 
     def train(self, train, dev, test, buckets=32, batch_size=5000, verbose=True, **kwargs):
@@ -108,7 +107,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         bar, metric = progress_bar(loader), ChartMetric()
 
-        for words, feats, edges, labels in bar:
+        for words, *feats, edges, labels in bar:
             self.optimizer.zero_grad()
 
             mask = words.ne(self.WORD.pad_index)
@@ -132,7 +131,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         total_loss, metric = 0, ChartMetric()
 
-        for words, feats, edges, labels in loader:
+        for words, *feats, edges, labels in loader:
             mask = words.ne(self.WORD.pad_index)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -153,7 +152,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         preds = {}
         charts, probs = [], []
-        for words, feats in progress_bar(loader):
+        for words, *feats in progress_bar(loader):
             mask = words.ne(self.WORD.pad_index)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -211,38 +210,46 @@ class BiaffineSemanticDependencyParser(Parser):
 
         logger.info("Building the fields")
         WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
-        if args.feat == 'char':
-            FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
-        elif args.feat == 'bert':
+        TAG, CHAR, LEMMA, BERT = None, None, None, None
+        if 'tag' in args.feat:
+            TAG = Field('tags', bos=bos)
+        if 'char' in args.feat:
+            CHAR = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
+        if 'lemma' in args.feat:
+            LEMMA = Field('lemmas', pad=pad, unk=unk, bos=bos, lower=True)
+        if 'bert' in args.feat:
             from transformers import AutoTokenizer
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
-            FEAT = SubwordField('bert',
+            BERT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,
                                 bos=tokenizer.bos_token or tokenizer.cls_token,
                                 fix_len=args.fix_len,
                                 tokenize=tokenizer.tokenize)
-            FEAT.vocab = tokenizer.get_vocab()
-        else:
-            FEAT = Field('tags', bos=bos)
+            BERT.vocab = tokenizer.get_vocab()
         EDGE = ChartField('edges', use_vocab=False, fn=CoNLL.get_edges)
         LABEL = ChartField('labels', fn=CoNLL.get_labels)
-        if args.feat in ('char', 'bert'):
-            transform = CoNLL(FORM=(WORD, FEAT), PHEAD=(EDGE, LABEL))
-        else:
-            transform = CoNLL(FORM=WORD, POS=FEAT, PHEAD=(EDGE, LABEL))
+        transform = CoNLL(FORM=(WORD, CHAR, BERT), LEMMA=LEMMA, POS=TAG, PHEAD=(EDGE, LABEL))
 
         train = Dataset(transform, args.train)
         WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
-        FEAT.build(train)
+        if TAG is not None:
+            TAG.build(train)
+        if CHAR is not None:
+            CHAR.build(train)
+        if LEMMA is not None:
+            LEMMA.build(train)
         LABEL.build(train)
         args.update({
             'n_words': WORD.vocab.n_init,
-            'n_feats': len(FEAT.vocab),
             'n_labels': len(LABEL.vocab),
+            'n_tags': len(TAG.vocab) if TAG is not None else None,
+            'n_chars': len(CHAR.vocab) if CHAR is not None else None,
+            'char_pad_index': CHAR.pad_index if CHAR is not None else None,
+            'n_lemmas': len(LEMMA.vocab) if LEMMA is not None else None,
+            'bert_pad_index': BERT.pad_index if BERT is not None else None,
             'pad_index': WORD.pad_index,
-            'unk_index': WORD.unk_index,
-            'feat_pad_index': FEAT.pad_index
+            'unk_index': WORD.unk_index
         })
         logger.info(f"{transform}")
 
