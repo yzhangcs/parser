@@ -19,16 +19,21 @@ class BiaffineSemanticDependencyModel(nn.Module):
     Args:
         n_words (int):
             The size of the word vocabulary.
-        n_feats (int):
-            The size of the feat vocabulary.
         n_labels (int):
             The number of labels in the treebank.
+        n_tags (int):
+            The number of POS tags, needed if POS tag embeddings are used. Default: ``None``.
+        n_chars (int):
+            The number of characters, needed if character-level representations are used. Default: ``None``.
+        n_lemmas (int):
+            The number of lemmas, needed if lemma embeddings are used. Default: ``None``.
         feat (str):
-            Specifies which type of additional feature to use: ``'char'`` | ``'bert'`` | ``'tag'``.
-            ``'char'``: Character-level representations extracted by CharLSTM.
-            ``'bert'``: BERT representations, other pretrained langugae models like XLNet are also feasible.
+            Additional features to use，separated by commas.
             ``'tag'``: POS tag embeddings.
-            Default: ``'char'``.
+            ``'char'``: Character-level representations extracted by CharLSTM.
+            ``'lemma'``: Lemma embeddings.
+            ``'bert'``: BERT representations, other pretrained langugae models like XLNet are also feasible.
+            Default: ``'tag,char,lemma'``.
         n_embed (int):
             The size of word embeddings. Default: 100.
         n_embed_proj (int):
@@ -37,6 +42,8 @@ class BiaffineSemanticDependencyModel(nn.Module):
             The size of feature representations. Default: 100.
         n_char_embed (int):
             The size of character embeddings serving as inputs of CharLSTM, required if ``feat='char'``. Default: 50.
+        char_pad_index (int):
+            The index of the padding token in the character vocabulary. Default: 0.
         bert (str):
             Specifies which kind of language model to use, e.g., ``'bert-base-cased'`` and ``'xlnet-base-cased'``.
             This is required if ``feat='bert'``. The full list can be found in `transformers`_.
@@ -47,6 +54,8 @@ class BiaffineSemanticDependencyModel(nn.Module):
             Default: 4.
         mix_dropout (float):
             The dropout ratio of BERT layers. Required if ``feat='bert'``. Default: .0.
+        bert_pad_index (int):
+            The index of the padding token in the BERT vocabulary. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .2.
         n_lstm_hidden (int):
@@ -63,8 +72,8 @@ class BiaffineSemanticDependencyModel(nn.Module):
             The dropout ratio of edge MLP layers. Default: .25.
         label_mlp_dropout (float):
             The dropout ratio of label MLP layers. Default: .33.
-        feat_pad_index (int):
-            The index of the padding token in the feat vocabulary. Default: 0.
+        interpolation (int):
+            Constant to even out the label/edge loss. Default: .1.
         pad_index (int):
             The index of the padding token in the word vocabulary. Default: 0.
         unk_index (int):
@@ -78,16 +87,20 @@ class BiaffineSemanticDependencyModel(nn.Module):
 
     def __init__(self,
                  n_words,
-                 n_feats,
                  n_labels,
-                 feat='char',
+                 n_tags=None,
+                 n_chars=None,
+                 n_lemmas=None,
+                 feat='tag,char,lemma',
                  n_embed=100,
                  n_embed_proj=125,
                  n_feat_embed=100,
                  n_char_embed=50,
+                 char_pad_index=0,
                  bert=None,
                  n_bert_layers=4,
                  mix_dropout=.0,
+                 bert_pad_index=0,
                  embed_dropout=.2,
                  n_lstm_hidden=600,
                  n_lstm_layers=3,
@@ -96,10 +109,9 @@ class BiaffineSemanticDependencyModel(nn.Module):
                  n_mlp_label=600,
                  edge_mlp_dropout=.25,
                  label_mlp_dropout=.33,
-                 feat_pad_index=0,
+                 interpolation=0.1,
                  pad_index=0,
                  unk_index=1,
-                 interpolation=0.1,
                  **kwargs):
         super().__init__()
 
@@ -109,27 +121,31 @@ class BiaffineSemanticDependencyModel(nn.Module):
                                        embedding_dim=n_embed)
         self.embed_proj = nn.Linear(n_embed, n_embed_proj)
 
-        if feat == 'char':
-            self.feat_embed = CharLSTM(n_chars=n_feats,
+        self.n_input = n_embed + n_embed_proj
+        if 'tag' in feat:
+            self.tag_embed = nn.Embedding(num_embeddings=n_tags,
+                                          embedding_dim=n_feat_embed)
+            self.n_input += n_feat_embed
+        if 'char' in feat:
+            self.char_embed = CharLSTM(n_chars=n_chars,
                                        n_embed=n_char_embed,
                                        n_out=n_feat_embed,
-                                       pad_index=feat_pad_index)
-        elif feat == 'bert':
-            self.feat_embed = BertEmbedding(model=bert,
+                                       pad_index=char_pad_index)
+            self.n_input += n_feat_embed
+        if 'lemma' in feat:
+            self.lemma_embed = nn.Embedding(num_embeddings=n_lemmas,
+                                            embedding_dim=n_feat_embed)
+            self.n_input += n_feat_embed
+        if 'bert' in feat:
+            self.bert_embed = BertEmbedding(model=bert,
                                             n_layers=n_bert_layers,
-                                            n_out=n_feat_embed,
-                                            pad_index=feat_pad_index,
+                                            pad_index=bert_pad_index,
                                             dropout=mix_dropout)
-            self.n_feat_embed = self.feat_embed.n_out
-        elif feat == 'tag':
-            self.feat_embed = nn.Embedding(num_embeddings=n_feats,
-                                           embedding_dim=n_feat_embed)
-        else:
-            raise RuntimeError("The feat type should be in ['char', 'bert', 'tag'].")
+            self.n_input += self.bert_embed.n_out
         self.embed_dropout = IndependentDropout(p=embed_dropout)
 
         # the lstm layer
-        self.lstm = LSTM(input_size=n_embed+n_feat_embed+n_embed_proj,
+        self.lstm = LSTM(input_size=self.n_input,
                          hidden_size=n_lstm_hidden,
                          num_layers=n_lstm_layers,
                          bidirectional=True,
@@ -146,9 +162,9 @@ class BiaffineSemanticDependencyModel(nn.Module):
         self.edge_attn = Biaffine(n_in=n_mlp_edge, n_out=2, bias_x=True, bias_y=True)
         self.label_attn = Biaffine(n_in=n_mlp_label, n_out=n_labels, bias_x=True, bias_y=True)
         self.criterion = nn.CrossEntropyLoss()
+        self.interpolation = interpolation
         self.pad_index = pad_index
         self.unk_index = unk_index
-        self.interpolation = interpolation
 
     def load_pretrained(self, embed=None):
         if embed is not None:
@@ -160,10 +176,10 @@ class BiaffineSemanticDependencyModel(nn.Module):
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Word indices.
-            feats (~torch.LongTensor):
-                Feat indices.
-                If feat is ``'char'`` or ``'bert'``, the size of feats should be ``[batch_size, seq_len, fix_len]``.
-                if ``'tag'``, the size is ``[batch_size, seq_len]``.
+            feats (list[~torch.LongTensor]):
+                A list of feat indices.
+                The size of indices is ``[batch_size, seq_len, fix_len]`` if feat is ``'char'`` or ``'bert'``,
+                or ``[batch_size, seq_len]`` otherwise.
 
         Returns:
             ~torch.Tensor, ~torch.Tensor:
@@ -172,7 +188,7 @@ class BiaffineSemanticDependencyModel(nn.Module):
                 scores of all possible labels on each edge.
         """
 
-        batch_size, seq_len = words.shape
+        _, seq_len = words.shape
         # get the mask and lengths of given batch
         mask = words.ne(self.pad_index)
         ext_words = words
@@ -186,8 +202,16 @@ class BiaffineSemanticDependencyModel(nn.Module):
         if hasattr(self, 'pretrained'):
             word_embed = torch.cat((word_embed, self.embed_proj(self.pretrained(words))), -1)
 
-        feat_embed = self.feat_embed(feats)
-        word_embed, feat_embed = self.embed_dropout(word_embed, feat_embed)
+        feat_embeds = []
+        if 'tag' in self.args.feat:
+            feat_embeds.append(self.tag_embed(feats.pop()))
+        if 'char' in self.args.feat:
+            feat_embeds.append(self.char_embed(feats.pop(0)))
+        if 'bert' in self.args.feat:
+            feat_embeds.append(self.bert_embed(feats.pop(0)))
+        if 'lemma' in self.args.feat:
+            feat_embeds.append(self.lemma_embed(feats.pop(0)))
+        word_embed, feat_embed = self.embed_dropout(word_embed, torch.cat(feat_embeds, -1))
         # concatenate the word and feat representations
         embed = torch.cat((word_embed, feat_embed), -1)
 
