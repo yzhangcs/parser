@@ -17,10 +17,10 @@ class Config(object):
                      **kwargs})
 
     def __repr__(self):
-        s = line = "-" * 15 + "-+-" + "-" * 25 + "\n"
-        s += f"{'Param':15} | {'Value':^25}\n" + line
+        s = line = "-" * 20 + "-+-" + "-" * 30 + "\n"
+        s += f"{'Param':20} | {'Value':^30}\n" + line
         for name, value in vars(self).items():
-            s += f"{name:15} | {str(value):^25}\n"
+            s += f"{name:20} | {str(value):^30}\n"
         s += line
 
         return s

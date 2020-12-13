@@ -536,14 +536,78 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         https://www.aclweb.org/anthology/2020.acl-main.302/
     """
 
-    def __init__(self, n_lstm_hidden=400, n_mlp_sib=100, mlp_dropout=.33, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self,
+                 n_words,
+                 n_feats,
+                 n_rels,
+                 feat='char',
+                 n_embed=100,
+                 n_feat_embed=100,
+                 n_char_embed=50,
+                 bert=None,
+                 n_bert_layers=4,
+                 mix_dropout=.0,
+                 embed_dropout=.33,
+                 n_lstm_hidden=400,
+                 n_lstm_layers=3,
+                 lstm_dropout=.33,
+                 n_mlp_arc=500,
+                 n_mlp_sib=100,
+                 n_mlp_rel=100,
+                 mlp_dropout=.33,
+                 feat_pad_index=0,
+                 pad_index=0,
+                 unk_index=1,
+                 **kwargs):
+        super().__init__(**Config().update(locals()))
 
+        # the embedding layer
+        self.word_embed = nn.Embedding(num_embeddings=n_words,
+                                       embedding_dim=n_embed)
+        if feat == 'char':
+            self.feat_embed = CharLSTM(n_chars=n_feats,
+                                       n_embed=n_char_embed,
+                                       n_out=n_feat_embed,
+                                       pad_index=feat_pad_index)
+        elif feat == 'bert':
+            self.feat_embed = BertEmbedding(model=bert,
+                                            n_layers=n_bert_layers,
+                                            n_out=n_feat_embed,
+                                            pad_index=feat_pad_index,
+                                            dropout=mix_dropout)
+            self.n_feat_embed = self.feat_embed.n_out
+        elif feat == 'tag':
+            self.feat_embed = nn.Embedding(num_embeddings=n_feats,
+                                           embedding_dim=n_feat_embed)
+        else:
+            raise RuntimeError("The feat type should be in ['char', 'bert', 'tag'].")
+        self.embed_dropout = IndependentDropout(p=embed_dropout)
+
+        # the lstm layer
+        self.lstm = LSTM(input_size=n_embed+n_feat_embed,
+                         hidden_size=n_lstm_hidden,
+                         num_layers=n_lstm_layers,
+                         bidirectional=True,
+                         dropout=lstm_dropout)
+        self.lstm_dropout = SharedDropout(p=lstm_dropout)
+
+        # the MLP layers
+        self.mlp_arc_d = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_arc, dropout=mlp_dropout)
+        self.mlp_arc_h = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_arc, dropout=mlp_dropout)
         self.mlp_sib_s = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_sib, dropout=mlp_dropout)
         self.mlp_sib_d = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_sib, dropout=mlp_dropout)
         self.mlp_sib_h = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_sib, dropout=mlp_dropout)
+        self.mlp_rel_d = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_rel, dropout=mlp_dropout)
+        self.mlp_rel_h = MLP(n_in=n_lstm_hidden*2, n_out=n_mlp_rel, dropout=mlp_dropout)
 
+        # the Biaffine layers
+        self.arc_attn = Biaffine(n_in=n_mlp_arc, bias_x=True, bias_y=False)
         self.sib_attn = Triaffine(n_in=n_mlp_sib, bias_x=True, bias_y=True)
+        self.rel_attn = Biaffine(n_in=n_mlp_rel, n_out=n_rels, bias_x=True, bias_y=True)
+        self.criterion = nn.CrossEntropyLoss()
+        self.pad_index = pad_index
+        self.unk_index = unk_index
+
         self.crf = CRF2oDependency()
 
     def forward(self, words, feats):

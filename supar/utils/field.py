@@ -82,8 +82,7 @@ class Field(RawField):
         self.tokenize = tokenize
         self.fn = fn
 
-        self.specials = [token for token in [pad, unk, bos, eos]
-                         if token is not None]
+        self.specials = [token for token in [pad, unk, bos, eos] if token is not None]
 
     def __repr__(self):
         s, params = f"({self.name}): {self.__class__.__name__}(", []
