@@ -62,3 +62,12 @@ TreeCRF
 
 .. autoclass:: CRFConstituency
     :members:
+
+VariationalInference
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: LBPSemanticDependency
+    :members:
+
+.. autoclass:: MFVISemanticDependency
+    :members:
