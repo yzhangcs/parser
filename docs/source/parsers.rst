@@ -38,3 +38,15 @@ CRFConstituencyParser
 
 .. autoclass:: CRFConstituencyParser
     :members:
+
+BiaffineSemanticDependencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: BiaffineSemanticDependencyParser
+    :members:
+
+VISemanticDependencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: VISemanticDependencyParser
+    :members:

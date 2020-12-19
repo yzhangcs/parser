@@ -33,3 +33,15 @@ CRFConstituencyModel
 
 .. autoclass:: CRFConstituencyModel
     :members:
+
+BiaffineSemanticDependencyModel
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: BiaffineSemanticDependencyModel
+    :members:
+
+VISemanticDependencyModel
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: VISemanticDependencyModel
+    :members:
