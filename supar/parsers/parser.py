@@ -54,9 +54,9 @@ class Parser(object):
             logger.info(f"Epoch {epoch} / {args.epochs}:")
             self._train(train.loader)
             loss, dev_metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':6} loss: {loss:.4f} - {dev_metric}")
+            logger.info(f"{'dev:':5} loss: {loss:.4f} - {dev_metric}")
             loss, test_metric = self._evaluate(test.loader)
-            logger.info(f"{'test:':6} loss: {loss:.4f} - {test_metric}")
+            logger.info(f"{'test:':5} loss: {loss:.4f} - {test_metric}")
 
             t = datetime.now() - start
             # save the model if it is the best so far
@@ -73,8 +73,8 @@ class Parser(object):
         loss, metric = self.load(**args)._evaluate(test.loader)
 
         logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:':6} {best_metric}")
-        logger.info(f"{'test:':6} {metric}")
+        logger.info(f"{'dev:':5} {best_metric}")
+        logger.info(f"{'test:':5} {metric}")
         logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
 
     def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):

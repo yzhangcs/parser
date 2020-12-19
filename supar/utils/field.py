@@ -363,5 +363,9 @@ class ChartField(Field):
         charts = [self.preprocess(chart) for chart in charts]
         if self.use_vocab:
             charts = [[[self.vocab[i] if i is not None else -1 for i in row] for row in chart] for chart in charts]
+        if self.bos:
+            charts = [[[self.bos_index]*len(chart[0])] + chart for chart in charts]
+        if self.eos:
+            charts = [chart + [[self.eos_index]*len(chart[0])] for chart in charts]
         charts = [torch.tensor(chart) for chart in charts]
         return charts

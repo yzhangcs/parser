@@ -3,7 +3,8 @@
 from .parsers import (BiaffineDependencyParser,
                       BiaffineSemanticDependencyParser, CRF2oDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser,
-                      CRFNPDependencyParser, Parser)
+                      CRFNPDependencyParser, Parser,
+                      VISemanticDependencyParser)
 
 __all__ = ['BiaffineDependencyParser',
            'CRFNPDependencyParser',
@@ -11,7 +12,9 @@ __all__ = ['BiaffineDependencyParser',
            'CRF2oDependencyParser',
            'CRFConstituencyParser',
            'BiaffineSemanticDependencyParser',
+           'VISemanticDependencyParser',
            'Parser']
+
 __version__ = '1.0.0'
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
@@ -19,7 +22,8 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFDependencyParser,
                                              CRF2oDependencyParser,
                                              CRFConstituencyParser,
-                                             BiaffineSemanticDependencyParser]}
+                                             BiaffineSemanticDependencyParser,
+                                             VISemanticDependencyParser]}
 
 PRETRAINED = {
     'biaffine-dep-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.biaffine.dependency.char.zip',
