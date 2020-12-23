@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='supar',
-    version='1.0.0',
+    version='1.0.0+dev20201223',
     author='Yu Zhang',
     author_email='yzhang.cs@outlook.com',
     description='Syntactic Parsing Models',
@@ -32,6 +32,6 @@ setup(
             'crf-constituency=supar.cmds.crf_constituency:main'
         ]
     },
-    python_requires='>=3.7',
+    python_requires='>=3.6',
     zip_safe=False
 )
