@@ -54,7 +54,7 @@ class CharLSTM(nn.Module):
         # [batch_size, seq_len, fix_len]
         mask = x.ne(self.pad_index)
         # [batch_size, seq_len]
-        lens = mask.sum(-1)
+        lens = mask.sum(-1).cpu()
         char_mask = lens.gt(0)
 
         # [n, fix_len, n_embed]
