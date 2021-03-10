@@ -501,12 +501,12 @@ class Tree(Transform):
 
         Examples:
             >>> print(Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP'))
-            (TOP (_ She) (_ enjoys) (_ playing) (_ tennis) (_ .))
+            (TOP ( (_ She)) ( (_ enjoys)) ( (_ playing)) ( (_ tennis)) ( (_ .)))
         """
 
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
-        tree = ' '.join([f"({pos} {word})" for word, pos in tokens])
+        tree = ' '.join([f"( ({pos} {word}))" for word, pos in tokens])
         return nltk.Tree.fromstring(f"({root} {tree})")
 
     @classmethod

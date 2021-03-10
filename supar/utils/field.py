@@ -104,7 +104,7 @@ class Field(RawField):
         return s
 
     def __getstate__(self):
-        state = self.__dict__
+        state = dict(self.__dict__)
         if self.tokenize is None:
             state['tokenize_args'] = None
         elif self.tokenize.__module__.startswith('transformers'):
