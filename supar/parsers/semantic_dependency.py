@@ -404,7 +404,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
             s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-            s_edge = self.model.lbp((s_edge, s_sib, s_cop, s_grd), mask)
+            s_edge = self.model.vi((s_edge, s_sib, s_cop, s_grd), mask)
             edge_preds, label_preds = self.model.decode(s_edge, s_label)
             chart_preds = label_preds.masked_fill(~(edge_preds.gt(0) & mask), -1)
             charts.extend(chart[1:i, :i].tolist() for i, chart in zip(lens, chart_preds.unbind()))
