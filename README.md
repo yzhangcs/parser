@@ -2,7 +2,7 @@
 
 [![build](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
 [![docs](https://readthedocs.org/projects/parser/badge/?version=latest)](https://parser.readthedocs.io/en/latest)
-[![release](https://img.shields.io/github/v/release/yzhangcs/parser)](https://yzhangcs/parser/releases)
+[![release](https://img.shields.io/github/v/release/yzhangcs/parser)](https://github.com/yzhangcs/parser/releases)
 [![downloads](https://pepy.tech/badge/supar)](https://pepy.tech/project/supar)
 [![LICENSE](https://img.shields.io/github/license/yzhangcs/parser)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
