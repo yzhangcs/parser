@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='supar',
-    version='1.0.0-a1',
+    version='1.0.1-a1',
     author='Yu Zhang',
     author_email='yzhang.cs@outlook.com',
     description='Syntactic Parsing Models',
