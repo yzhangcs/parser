@@ -106,7 +106,7 @@ class Sentence(object):
 
     def __getattr__(self, name):
         if name in self.__dict__:
-            return self.__dict__[name]        
+            return self.__dict__[name]
         elif name in self.maps:
             return self.values[self.maps[name]]
         else:
