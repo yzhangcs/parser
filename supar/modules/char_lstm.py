@@ -29,10 +29,8 @@ class CharLSTM(nn.Module):
         self.n_out = n_out
         self.pad_index = pad_index
 
-        # the embedding layer
         self.embed = nn.Embedding(num_embeddings=n_chars,
                                   embedding_dim=n_embed)
-        # the lstm layer
         self.lstm = nn.LSTM(input_size=n_embed,
                             hidden_size=n_out//2,
                             batch_first=True,
@@ -54,12 +52,12 @@ class CharLSTM(nn.Module):
         # [batch_size, seq_len, fix_len]
         mask = x.ne(self.pad_index)
         # [batch_size, seq_len]
-        lens = mask.sum(-1).cpu()
+        lens = mask.sum(-1)
         char_mask = lens.gt(0)
 
         # [n, fix_len, n_embed]
         x = self.embed(x[char_mask])
-        x = pack_padded_sequence(x, lens[char_mask], True, False)
+        x = pack_padded_sequence(x, lens[char_mask].tolist(), True, False)
         x, (h, _) = self.lstm(x)
         # [n, fix_len, n_out]
         h = torch.cat(torch.unbind(h), -1)
