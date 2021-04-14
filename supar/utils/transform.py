@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import os
 from collections.abc import Iterable
 
 import nltk
 from supar.utils.logging import get_logger, progress_bar
+from supar.utils.tokenizer import Tokenizer
 
 logger = get_logger(__name__)
 
@@ -343,7 +345,7 @@ class CoNLL(Transform):
             return False
         return next(tarjan(sequence), None) is None
 
-    def load(self, data, proj=False, max_len=None, **kwargs):
+    def load(self, data, lang='en', proj=False, max_len=None, **kwargs):
         r"""
         Loads the data in CoNLL-X format.
         Also supports for loading data from CoNLL-U file with comments and non-integer IDs.
@@ -351,6 +353,10 @@ class CoNLL(Transform):
         Args:
             data (list[list] or str):
                 A list of instances or a filename.
+            lang (str):
+                Language code (e.g., 'en') or language name (e.g., 'English') for the text to tokenize.
+                ``None`` if tokenization is not required.
+                Default: ``en``.
             proj (bool):
                 If ``True``, discards all non-projective sentences. Default: ``False``.
             max_len (int):
@@ -360,11 +366,15 @@ class CoNLL(Transform):
             A list of :class:`CoNLLSentence` instances.
         """
 
-        if isinstance(data, str):
+        if isinstance(data, str) and os.path.exists(data):
             with open(data, 'r') as f:
                 lines = [line.strip() for line in f]
         else:
-            data = [data] if isinstance(data[0], str) else data
+            if lang is not None:
+                tokenizer = Tokenizer(lang)
+                data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
+            else:
+                data = [data] if isinstance(data[0], str) else data
             lines = '\n'.join([self.toconll(i) for i in data]).split('\n')
 
         i, start, sentences = 0, 0, []
@@ -680,23 +690,31 @@ class Tree(Transform):
             return [tree]
         return nltk.Tree(root, track(iter(sequence)))
 
-    def load(self, data, max_len=None, **kwargs):
+    def load(self, data, lang='en', max_len=None, **kwargs):
         r"""
         Args:
             data (list[list] or str):
                 A list of instances or a filename.
+            lang (str):
+                Language code (e.g., 'en') or language name (e.g., 'English') for the text to tokenize.
+                ``None`` if tokenization is not required.
+                Default: ``en``.
             max_len (int):
                 Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
             A list of :class:`TreeSentence` instances.
         """
-        if isinstance(data, str):
+        if isinstance(data, str) and os.path.exists(data):
             with open(data, 'r') as f:
                 trees = [nltk.Tree.fromstring(string) for string in f]
             self.root = trees[0].label()
         else:
-            data = [data] if isinstance(data[0], str) else data
+            if lang is not None:
+                tokenizer = Tokenizer(lang)
+                data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
+            else:
+                data = [data] if isinstance(data[0], str) else data
             trees = [self.totree(i, self.root) for i in data]
 
         i, sentences = 0, []
