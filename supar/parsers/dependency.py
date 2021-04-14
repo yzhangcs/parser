@@ -102,7 +102,7 @@ class BiaffineDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, batch_size=5000,
+    def predict(self, data, pred=None, lang='en', buckets=8, batch_size=5000,
                 prob=False, tree=True, proj=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -110,6 +110,10 @@ class BiaffineDependencyParser(Parser):
                 The data for prediction, both a list of instances and filename are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
+            lang (str):
+                Language code (e.g., 'en') or language name (e.g., 'English') for the text to tokenize.
+                ``None`` if tokenization is not required.
+                Default: ``en``.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
@@ -248,14 +252,15 @@ class BiaffineDependencyParser(Parser):
         if args.feat == 'char':
             FEAT = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
         elif args.feat == 'bert':
-            from transformers import AutoTokenizer
+            from transformers import AutoTokenizer, GPT2Tokenizer, GPT2TokenizerFast
             tokenizer = AutoTokenizer.from_pretrained(args.bert)
             FEAT = SubwordField('bert',
                                 pad=tokenizer.pad_token,
                                 unk=tokenizer.unk_token,
                                 bos=tokenizer.bos_token or tokenizer.cls_token,
                                 fix_len=args.fix_len,
-                                tokenize=tokenizer.tokenize)
+                                tokenize=tokenizer.tokenize,
+                                fn=lambda x: ' '+x if isinstance(tokenizer, (GPT2Tokenizer, GPT2TokenizerFast)) else None)
             FEAT.vocab = tokenizer.get_vocab()
         else:
             FEAT = Field('tags', bos=bos)
@@ -372,7 +377,7 @@ class CRFNPDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang='en', buckets=8, batch_size=5000, prob=False,
                 mbr=True, tree=True, proj=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -380,6 +385,10 @@ class CRFNPDependencyParser(BiaffineDependencyParser):
                 The data for prediction, both a list of instances and filename are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
+            lang (str):
+                Language code (e.g., 'en') or language name (e.g., 'English') for the text to tokenize.
+                ``None`` if tokenization is not required.
+                Default: ``en``.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
@@ -554,7 +563,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang='en', buckets=8, batch_size=5000, prob=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -562,6 +571,10 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 The data for prediction, both a list of instances and filename are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
+            lang (str):
+                Language code (e.g., 'en') or language name (e.g., 'English') for the text to tokenize.
+                ``None`` if tokenization is not required.
+                Default: ``en``.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
@@ -742,7 +755,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang='en', buckets=8, batch_size=5000, prob=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -750,6 +763,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 The data for prediction, both a list of instances and filename are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
+            lang (str):
+                Language code (e.g., 'en') or language name (e.g., 'English') for the text to tokenize.
+                ``None`` if tokenization is not required.
+                Default: ``en``.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
             batch_size (int):
