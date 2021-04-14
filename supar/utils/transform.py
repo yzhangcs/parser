@@ -487,7 +487,7 @@ class Tree(Transform):
         return self.CHART,
 
     @classmethod
-    def totree(cls, tokens, root=''):
+    def totree(cls, tokens, root='', special_tokens={'(': '-LRB-', ')': '-RRB-'}):
         r"""
         Converts a list of tokens to a :class:`nltk.tree.Tree`.
         Missing fields are filled with underscores.
@@ -497,6 +497,9 @@ class Tree(Transform):
                 This can be either a list of words or word/pos pairs.
             root (str):
                 The root label of the tree. Default: ''.
+            special_tokens (dict):
+                A dict for normalizing some special tokens to avoid tree construction crash.
+                Default: {'(': '-LRB-', ')': '-RRB-'}.
 
         Returns:
             A :class:`nltk.tree.Tree` object.
@@ -508,8 +511,15 @@ class Tree(Transform):
 
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
-        tree = ' '.join([f"( ({pos} {word}))" for word, pos in tokens])
-        return nltk.Tree.fromstring(f"({root} {tree})")
+        mapped = []
+        for i, (word, pos) in enumerate(tokens):
+            if word in special_tokens:
+                tokens[i] = (special_tokens[word], pos)
+                mapped.append((i, word))
+        tree = nltk.Tree.fromstring(f"({root} {' '.join([f'( ({pos} {word}))' for word, pos in tokens])})")
+        for i, word in mapped:
+            tree[i][0][0] = word
+        return tree
 
     @classmethod
     def binarize(cls, tree):
