@@ -6,8 +6,7 @@ import torch.nn as nn
 
 class SharedDropout(nn.Module):
     r"""
-    SharedDropout differs from the vanilla dropout strategy in that
-    the dropout mask is shared across one dimension.
+    SharedDropout differs from the vanilla dropout strategy in that the dropout mask is shared across one dimension.
 
     Args:
         p (float):

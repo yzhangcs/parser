@@ -15,7 +15,7 @@ class MLP(nn.Module):
         n_out (~torch.Tensor):
             The size of each output feature.
         dropout (float):
-            If non-zero, introduce a :class:`SharedDropout` layer on the output with this dropout ratio. Default: 0.
+            If non-zero, introduces a :class:`SharedDropout` layer on the output with this dropout ratio. Default: 0.
         activation (bool):
             Whether to use activations. Default: True.
     """
