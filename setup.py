@@ -4,10 +4,10 @@ from setuptools import find_packages, setup
 
 setup(
     name='supar',
-    version='1.0.1',
+    version='1.1.0',
     author='Yu Zhang',
     author_email='yzhang.cs@outlook.com',
-    description='Syntactic Parsing Models',
+    description='Syntactic/Semantic Parsing Models',
     long_description=open('README.md', 'r').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/yzhangcs/parser',
@@ -20,25 +20,24 @@ setup(
         'Topic :: Text Processing :: Linguistic'
     ],
     setup_requires=[
-        'setuptools>=18.0',
+        'setuptools>=56.0',
     ],
     install_requires=[
-        'torch>=1.7.0',
-        'transformers>=3.1.0',
+        'torch>=1.7.1',
+        'transformers>=4.0.0',
         'nltk',
         'stanza',
         'dill'],
     entry_points={
         'console_scripts': [
-            'biaffine-dependency=supar.cmds.biaffine_dependency:main',
-            'crfnp-dependency=supar.cmds.crfnp_dependency:main',
-            'crf-dependency=supar.cmds.crf_dependency:main',
-            'crf2o-dependency=supar.cmds.crf2o_dependency:main',
-            'crf-constituency=supar.cmds.crf_constituency:main',
-            'biaffine-semantic-dependency=supar.cmds.biaffine_semantic_dependency:main',
-            'vi-semantic-dependency=supar.cmds.vi_semantic_dependency:main'
+            'biaffine-dep=supar.cmds.biaffine_dep:main',
+            'crf-dep=supar.cmds.crf_dep:main',
+            'crf2o-dep=supar.cmds.crf2o_dep:main',
+            'crf-con=supar.cmds.crf_con:main',
+            'biaffine-sdp=supar.cmds.biaffine_sdp:main',
+            'vi-sdp=supar.cmds.vi_sdp:main'
         ]
     },
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     zip_safe=False
 )

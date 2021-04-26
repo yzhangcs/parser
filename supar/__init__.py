@@ -2,42 +2,51 @@
 
 from .parsers import (BiaffineDependencyParser,
                       BiaffineSemanticDependencyParser, CRF2oDependencyParser,
-                      CRFConstituencyParser, CRFDependencyParser,
-                      CRFNPDependencyParser, Parser,
+                      CRFConstituencyParser, CRFDependencyParser, Parser,
+                      VIConstituencyParser, VIDependencyParser,
                       VISemanticDependencyParser)
 
 __all__ = ['BiaffineDependencyParser',
-           'CRFNPDependencyParser',
            'CRFDependencyParser',
            'CRF2oDependencyParser',
+           'VIDependencyParser',
            'CRFConstituencyParser',
+           'VIConstituencyParser',
            'BiaffineSemanticDependencyParser',
            'VISemanticDependencyParser',
            'Parser']
 
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
-                                             CRFNPDependencyParser,
                                              CRFDependencyParser,
                                              CRF2oDependencyParser,
+                                             VIDependencyParser,
                                              CRFConstituencyParser,
+                                             VIConstituencyParser,
                                              BiaffineSemanticDependencyParser,
                                              VISemanticDependencyParser]}
 
-PRETRAINED = {
-    'biaffine-dep-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.biaffine.dependency.char.zip',
-    'biaffine-dep-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.biaffine.dependency.char.zip',
-    'biaffine-dep-bert-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.biaffine.dependency.bert.zip',
-    'biaffine-dep-bert-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.biaffine.dependency.bert.zip',
-    'crfnp-dep-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.crfnp.dependency.char.zip',
-    'crfnp-dep-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.crfnp.dependency.char.zip',
-    'crf-dep-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.crf.dependency.char.zip',
-    'crf-dep-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.crf.dependency.char.zip',
-    'crf2o-dep-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.crf2o.dependency.char.zip',
-    'crf2o-dep-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.crf2o.dependency.char.zip',
-    'crf-con-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.crf.constituency.char.zip',
-    'crf-con-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.crf.constituency.char.zip',
-    'crf-con-bert-en': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ptb.crf.constituency.bert.zip',
-    'crf-con-bert-zh': 'https://github.com/yzhangcs/parser/releases/download/v1.0.0/ctb7.crf.constituency.bert.zip'
+SRC = 'https://github.com/yzhangcs/parser/releases/download'
+NAME = {
+    'biaffine-dep-en': 'ptb.biaffine.dep.lstm.char',
+    'biaffine-dep-zh': 'ctb7.biaffine.dep.lstm.char',
+    'crf2o-dep-en': 'ptb.crf2o.dep.lstm.char',
+    'crf2o-dep-zh': 'ctb7.crf2o.dep.lstm.char',
+    'biaffine-dep-roberta-en': 'ptb.biaffine.dep.roberta',
+    'biaffine-dep-electra-zh': 'ctb7.biaffine.dep.electra',
+    'biaffine-dep-xlmr': 'ud.biaffine.dep.xlmr',
+    'crf-con-en': 'ptb.crf.con.lstm.char',
+    'crf-con-zh': 'ctb7.crf.con.lstm.char',
+    'crf-con-roberta-en': 'ptb.crf.con.roberta',
+    'crf-con-electra-zh': 'ctb7.crf.con.electra',
+    'crf-con-xlmr': 'spmrl.crf.con.xlmr',
+    'biaffine-sdp-en': 'dm.biaffine.sdp.lstm.tag-char-lemma',
+    'biaffine-sdp-zh': 'semeval16.biaffine.sdp.lstm.tag-char-lemma',
+    'vi-sdp-en': 'dm.vi.sdp.lstm.tag-char-lemma',
+    'vi-sdp-zh': 'semeval16.vi.sdp.lstm.tag-char-lemma',
+    'biaffine-sdp-roberta-en': 'dm.biaffine.sdp.roberta',
+    'biaffine-sdp-electra-zh': 'semeval16.biaffine.sdp.electra'
 }
+MODEL = {n: f'{SRC}/v{__version__}/{m}.zip' for n, m in NAME.items()}
+CONFIG = {n: f'{SRC}/v{__version__}/{m}.ini' for n, m in NAME.items()}
