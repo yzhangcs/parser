@@ -16,8 +16,9 @@ dist
 exp
 results
 
-# log files
+# log and config files
 *.log
+*.ini
 
 # pycache
 __pycache__
