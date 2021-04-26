@@ -1,1 +1,4 @@
-sphinx>=3.0
+sphinx
+sphinx-astrorefs
+sphinx-book-theme
+sphinxcontrib-bibtex
