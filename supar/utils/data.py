@@ -9,25 +9,22 @@ from supar.utils.alg import kmeans
 
 class Dataset(torch.utils.data.Dataset):
     r"""
-    Dataset that is compatible with :class:`torch.utils.data.Dataset`.
-    This serves as a wrapper for manipulating all data fields
-    with the operating behaviours defined in :class:`Transform`.
+    Dataset that is compatible with :class:`torch.utils.data.Dataset`, serving as a wrapper for manipulating all data fields
+    with the operating behaviours defined in :class:`~supar.utils.transform.Transform`.
     The data fields of all the instantiated sentences can be accessed as an attribute of the dataset.
 
     Args:
         transform (Transform):
-            An instance of :class:`Transform` and its derivations.
-            The instance holds a series of loading and processing behaviours with regard to the specfic data format.
+            An instance of :class:`~supar.utils.transform.Transform` or its derivations.
+            The instance holds a series of loading and processing behaviours with regard to the specific data format.
         data (list[list] or str):
-            A list of instances or a filename.
-            This will be passed into :meth:`transform.load`.
+            A list of instances or a filename that will be passed into :meth:`transform.load`.
         kwargs (dict):
-            Keyword arguments that will be passed into :meth:`transform.load` together with `data`
-            to control the loading behaviour.
+            Together with `data`, kwargs will be passed into :meth:`transform.load` to control the loading behaviour.
 
     Attributes:
         transform (Transform):
-            An instance of :class:`Transform`.
+            An instance of :class:`~supar.utils.transform.Transform`.
         sentences (list[Sentence]):
             A list of sentences loaded from the data.
             Each sentence includes fields obeying the data format defined in ``transform``.
@@ -54,10 +51,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.sentences)
 
     def __getitem__(self, index):
-        if not hasattr(self, 'fields'):
-            raise RuntimeError("The fields are not numericalized. Please build the dataset first.")
-        for d in self.fields.values():
-            yield d[index]
+        return self.sentences[index]
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -67,9 +61,7 @@ class Dataset(torch.utils.data.Dataset):
     def __setattr__(self, name, value):
         if 'sentences' in self.__dict__ and name in self.sentences[0]:
             # restore the order of sequences in the buckets
-            indices = torch.tensor([i
-                                    for bucket in self.buckets.values()
-                                    for i in bucket]).argsort()
+            indices = torch.tensor([i for bucket in self.buckets.values() for i in bucket]).argsort()
             for index, sentence in zip(indices, self.sentences):
                 setattr(sentence, name, value[index])
         else:
@@ -83,19 +75,17 @@ class Dataset(torch.utils.data.Dataset):
         self.__dict__.update(state)
 
     def collate_fn(self, batch):
-        return {f: d for f, d in zip(self.fields.keys(), zip(*batch))}
+        if not hasattr(self, 'fields'):
+            raise RuntimeError("The fields are not numericalized yet. Please build the dataset first.")
+        return {f: [s.transformed[f.name] for s in batch] for f in self.fields}
 
     def build(self, batch_size, n_buckets=1, shuffle=False, distributed=False):
         # numericalize all fields
         self.fields = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.lengths = [len(i) for i in self.fields[next(iter(self.fields))]]
-        self.buckets = dict(zip(*kmeans(self.lengths, n_buckets)))
+        self.buckets = dict(zip(*kmeans([len(s.transformed[self.fields[0].name]) for s in self], n_buckets)))
         self.loader = DataLoader(dataset=self,
-                                 batch_sampler=Sampler(buckets=self.buckets,
-                                                       batch_size=batch_size,
-                                                       shuffle=shuffle,
-                                                       distributed=distributed),
+                                 batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
                                  collate_fn=self.collate_fn)
 
 
@@ -109,7 +99,7 @@ class DataLoader(torch.utils.data.DataLoader):
 
     def __iter__(self):
         for batch in super().__iter__():
-            yield namedtuple('Batch', [f.name for f in batch.keys()])(*[f.compose(d) for f, d in batch.items()])
+            yield namedtuple('Batch', (f.name for f in batch.keys()))(*[f.compose(d) for f, d in batch.items()])
 
 
 class Sampler(torch.utils.data.Sampler):
@@ -148,15 +138,14 @@ class Sampler(torch.utils.data.Sampler):
         g.manual_seed(self.epoch)
         range_fn = torch.arange
         # if `shuffle=True`, shuffle both the buckets and samples in each bucket
-        # for distributed training, make sure each process genertes the same random sequence at each epoch
+        # for distributed training, make sure each process generates the same random sequence at each epoch
         if self.shuffle:
             def range_fn(x):
                 return torch.randperm(x, generator=g)
         total, count = 0, 0
         # TODO: more elegant way to deal with uneven data, which we directly discard right now
         for i in range_fn(len(self.buckets)).tolist():
-            split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
-                           for j in range(self.chunks[i])]
+            split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1 for j in range(self.chunks[i])]
             # DON'T use `torch.chunk` which may return wrong number of chunks
             for batch in range_fn(len(self.buckets[i])).split(split_sizes):
                 if count == self.samples:
