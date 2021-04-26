@@ -3,24 +3,254 @@
 [![build](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
 [![docs](https://readthedocs.org/projects/parser/badge/?version=latest)](https://parser.readthedocs.io/en/latest)
 [![release](https://img.shields.io/github/v/release/yzhangcs/parser)](https://github.com/yzhangcs/parser/releases)
-[![downloads](https://pepy.tech/badge/supar)](https://pepy.tech/project/supar)
+[![downloads](https://img.shields.io/github/downloads/yzhangcs/parser/total)](https://pypistats.org/packages/supar)
 [![LICENSE](https://img.shields.io/github/license/yzhangcs/parser)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
-`SuPar` provides a collection of state-of-the-art syntactic parsing models with Biaffine Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine)) as the basic architecture:
-* Biaffine Dependency Parser ([Dozat and Manning, 2017](#dozat-2017-biaffine))
-* CRFNP Dependency Parser ([Koo et al., 2007](#koo-2007-structured); [Ma and Hovy, 2017](#ma-2017-neural))
-* CRF Dependency Parser ([Zhang et al., 2020a](#zhang-2020-efficient))
-* CRF2o Dependency Parser ([Zhang et al, 2020a](#zhang-2020-efficient))
-* CRF Constituency Parser ([Zhang et al, 2020b](#zhang-2020-fast))
+A Python package that includes many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages), as well as highly-parallelized implementations of several well-known and effective structured prediction algorithms.
 
-You can load released pretrained models for the above parsers and obtain dependency/constituency parsing trees very conveniently, as detailed in [Usage](#Usage).
+* Dependency Parser
+  * Biaffine ([Dozat and Manning, 2017](https://parser.readthedocs.io/en/latest/refs.html#dozat-2017-biaffine))
+  * CRF/MatrixTree ([Koo et al., 2007](https://parser.readthedocs.io/en/latest/refs.html#koo-2007-structured); [Ma and Hovy, 2017](https://parser.readthedocs.io/en/latest/refs.html#ma-2017-neural))
+  * CRF2o ([Zhang et al., 2020a](https://parser.readthedocs.io/en/latest/refs.html#zhang-2020-efficient))
+* Constituency Parser
+  * CRF ([Zhang et al., 2020b](https://parser.readthedocs.io/en/latest/refs.html#zhang-2020-fast))
+* Semantic Dependency Parser
+  * Biaffine ([Dozat and Manning, 2018](https://parser.readthedocs.io/en/latest/refs.html#wang-2019-second))
+  * MFVI/LBP ([Wang et al, 2019](https://parser.readthedocs.io/en/latest/refs.html#wang-2019-second))
 
-The implementations of several popular and well-known algorithms, like MST (ChuLiu/Edmonds), Eisner, CKY, MatrixTree, TreeCRF, are also integrated in this package.
+## Installation
 
-Besides POS Tag embeddings used by the vanilla Biaffine Parser as auxiliary inputs to the encoder, optionally, `SuPar` also allows to utilize CharLSTM/BERT layers to produce character/subword-level features.
-Among them, CharLSTM is taken as the default option, which avoids additional requirements for generating POS tags, as well as the inefficiency of BERT.
-The BERT module in `SuPar` extracts BERT representations from the pretrained model in [`transformers`](https://github.com/huggingface/transformers).
-It is also compatiable with other language models like XLNet, RoBERTa and ELECTRA, etc.
+`SuPar` can be installed via pip:
+```sh
+$ pip install -U supar
+```
+Or installing from source is also permitted:
+```sh
+$ git clone https://github.com/yzhangcs/parser && cd parser
+$ python setup.py install
+```
+
+As a prerequisite, the following requirements should be satisfied:
+* `python`: >= 3.7
+* [`pytorch`](https://github.com/pytorch/pytorch): >= 1.7
+* [`transformers`](https://github.com/huggingface/transformers): >= 4.0
+
+## Performance
+
+`SuPar` provides pretrained models for English, Chinese and 17 other languages.
+The tables below list the performance and parsing speed of pretrained models for different tasks.
+All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz and Nvidia GeForce GTX 1080 Ti GPU.
+
+### Dependency Parsing
+
+English and Chinese dependency parsing models are trained on PTB and CTB7 respectively.
+For each parser, we provide pretrained models that take BiLSTM as encoder.
+We also provide models finetuned on pretrained language models from [Huggingface Transformers](https://github.com/huggingface/transformers).
+We use [`robert-large`](https://huggingface.co/roberta-large) for English and [`hfl/chinese-electra-180g-large-discriminator`](https://huggingface.co/hfl/chinese-electra-180g-large-discriminator) for Chinese.
+During evaluation, punctuation is ignored in all metrics for PTB.
+
+| Name                      |  UAS  |   LAS | Sents/s |
+| ------------------------- | :---: | ----: | :-----: |
+| `biaffine-dep-en`         | 96.01 | 94.41 | 1831.91 |
+| `crf2o-dep-en`            | 96.07 | 94.51 | 531.59  |
+| `biaffine-dep-roberta-en` | 97.33 | 95.86 | 271.80  |
+| `biaffine-dep-zh`         | 88.64 | 85.47 | 1180.57 |
+| `crf2o-dep-zh`            | 89.22 | 86.15 | 237.40  |
+| `biaffine-dep-electra-zh` | 92.45 | 89.55 | 160.56  |
+
+The multilingual dependency parsing model, named `biaffine-dep-xlmr`, is trained on merged 12 selected treebanks from Universal Dependencies (UD) v2.3 dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
+The following table lists results of each treebank.
+Languages are represented by [ISO 639-1 Language Codes](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
+
+| Language |  UAS  |  LAS  | Sents/s |
+| -------- | :---: | :---: | ------: |
+| `bg`     | 96.95 | 94.24 |  343.96 |
+| `ca`     | 95.57 | 94.20 |  184.88 |
+| `cs`     | 95.79 | 93.83 |  245.68 |
+| `de`     | 89.74 | 85.59 |  283.53 |
+| `en`     | 93.37 | 91.27 |  269.16 |
+| `es`     | 94.78 | 93.29 |  192.00 |
+| `fr`     | 94.56 | 91.90 |  219.35 |
+| `it`     | 96.29 | 94.47 |  254.82 |
+| `nl`     | 96.04 | 93.76 |  268.57 |
+| `no`     | 95.64 | 94.45 |  318.00 |
+| `ro`     | 94.59 | 89.79 |  216.45 |
+| `ru`     | 96.37 | 95.24 |  243.56 |
+
+### Constituency Parsing
+
+We use PTB and CTB7 datasets to train English and Chinese constituency parsing models.
+Below are the results.
+
+| Name                 |   P   |   R   | F<sub>1 | Sents/s |
+| -------------------- | :---: | :---: | :-----: | ------: |
+| `crf-con-en`         | 94.16 | 93.98 |  94.07  |  841.88 |
+| `crf-con-roberta-en` | 96.42 | 96.13 |  96.28  |  233.34 |
+| `crf-con-zh`         | 88.82 | 88.42 |  88.62  |  590.05 |
+| `crf-con-electra-zh` | 92.18 | 91.66 |  91.92  |  140.45 |
+
+The multilingual model `crf-con-xlmr` is trained on SPMRL dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
+We follow instructions of [Benepar](https://github.com/nikitakit/self-attentive-parser) to preprocess the data.
+For simplicity, we then directly merge train/dev/test treebanks of all languages in SPMRL into big ones to train the model.
+The results of each treebank are as follows.
+
+| Language |   P   |   R   | F<sub>1 | Sents/s |
+| -------- | :---: | :---: | :-----: | ------: |
+| `eu`     | 93.40 | 94.19 |  93.79  |  266.96 |
+| `fr`     | 88.77 | 88.84 |  88.81  |  149.34 |
+| `de`     | 93.68 | 92.18 |  92.92  |  200.31 |
+| `he`     | 94.65 | 95.20 |  94.93  |  172.50 |
+| `hu`     | 96.70 | 96.81 |  96.76  |  186.58 |
+| `ko`     | 91.75 | 92.46 |  92.11  |  234.86 |
+| `pl`     | 97.33 | 97.27 |  97.30  |  310.86 |
+| `sv`     | 92.51 | 92.50 |  92.50  |  235.49 |
+
+### Semantic Dependency Parsing
+
+English semantic dependency parsing models are trained on [DM data introduced in SemEval-2014 task 8](https://catalog.ldc.upenn.edu/LDC2016T10), while Chinese models are trained on [NEWS domain data of corpora from SemEval-2016 Task 9](https://github.com/HIT-SCIR/SemEval-2016).
+Our data preprocessing steps follow [Second_Order_SDP](https://github.com/wangxinyu0922/Second_Order_SDP).
+
+| Name                      |   P   |   R   | F<sub>1 | Sents/s |
+| ------------------------- | :---: | :---: | :-----: | ------: |
+| `biaffine-sdp-en`         | 94.35 | 93.12 |  93.73  | 1067.06 |
+| `vi-sdp-en`               | 94.36 | 93.52 |  93.94  |  821.73 |
+| `biaffine-sdp-roberta-en` | 95.07 | 95.22 |  95.15  |  269.05 |
+| `biaffine-sdp-zh`         | 72.93 | 66.29 |  69.45  |  523.36 |
+| `vi-sdp-zh`               | 72.05 | 67.97 |  69.95  |  411.94 |
+| `biaffine-sdp-electra-zh` | 71.49 | 70.08 |  70.78  |  143.04 |
+
+## Usage
+
+`SuPar` allows you to download the pretrained model and parse sentences with a few lines of code:
+```py
+>>> from supar import Parser
+>>> parser = Parser.load('biaffine-dep-en')
+>>> dataset = parser.predict('I saw Sarah with a telescope.', lang='en', prob=True, verbose=False)
+```
+By default, we use [`stanza`](https://github.com/stanfordnlp/stanza) internally to tokenize plain texts for parsing.
+You only need to specify the language code `lang` for tokenization.
+
+The call to `parser.predict` will return an instance of `supar.utils.Dataset` containing the predicted results.
+You can either access each sentence held in `dataset` or an individual field of all results.
+Probabilities can be returned along with the results if `prob=True`.
+```py
+>>> dataset[0]
+1       I       _       _       _       _       2       nsubj   _       _
+2       saw     _       _       _       _       0       root    _       _
+3       Sarah   _       _       _       _       2       dobj    _       _
+4       with    _       _       _       _       2       prep    _       _
+5       a       _       _       _       _       6       det     _       _
+6       telescope       _       _       _       _       4       pobj    _       _
+7       .       _       _       _       _       2       punct   _       _
+
+>>> print(f"arcs:  {dataset.arcs[0]}\n"
+          f"rels:  {dataset.rels[0]}\n"
+          f"probs: {dataset.probs[0].gather(1,torch.tensor(dataset.arcs[0]).unsqueeze(1)).squeeze(-1)}")
+arcs:  [2, 0, 2, 2, 6, 4, 2]
+rels:  ['nsubj', 'root', 'dobj', 'prep', 'det', 'pobj', 'punct']
+probs: tensor([1.0000, 0.9999, 0.9966, 0.8944, 1.0000, 1.0000, 0.9999])
+```
+
+`SuPar` also supports parsing from tokenized sentences or from file.
+For semantic dependency parsing, lemmas and POS tags are needed.
+
+```py
+>>> import os
+>>> import tempfile
+>>> Parser.load('biaffine-dep-en').predict(['I','saw','Sarah','with','a','telescope','.'], verbose=False)[0]
+1       I       _       _       _       _       2       nsubj   _       _
+2       saw     _       _       _       _       0       root    _       _
+3       Sarah   _       _       _       _       2       dobj    _       _
+4       with    _       _       _       _       2       prep    _       _
+5       a       _       _       _       _       6       det     _       _
+6       telescope       _       _       _       _       4       pobj    _       _
+7       .       _       _       _       _       2       punct   _       _
+
+>>> path = os.path.join(tempfile.mkdtemp(), 'data.conllx')
+>>> with open(path, 'w') as f:
+...     f.write('''# text = But I found the location wonderful and the neighbors very kind.
+1\tBut\t_\t_\t_\t_\t_\t_\t_\t_
+2\tI\t_\t_\t_\t_\t_\t_\t_\t_
+3\tfound\t_\t_\t_\t_\t_\t_\t_\t_
+4\tthe\t_\t_\t_\t_\t_\t_\t_\t_
+5\tlocation\t_\t_\t_\t_\t_\t_\t_\t_
+6\twonderful\t_\t_\t_\t_\t_\t_\t_\t_
+7\tand\t_\t_\t_\t_\t_\t_\t_\t_
+7.1\tfound\t_\t_\t_\t_\t_\t_\t_\t_
+8\tthe\t_\t_\t_\t_\t_\t_\t_\t_
+9\tneighbors\t_\t_\t_\t_\t_\t_\t_\t_
+10\tvery\t_\t_\t_\t_\t_\t_\t_\t_
+11\tkind\t_\t_\t_\t_\t_\t_\t_\t_
+12\t.\t_\t_\t_\t_\t_\t_\t_\t_
+
+''')
+...
+>>> Parser.load('biaffine-dep-en').predict(path, pred='pred.conllx', verbose=False)[0]
+# text = But I found the location wonderful and the neighbors very kind.
+1       But     _       _       _       _       3       cc      _       _
+2       I       _       _       _       _       3       nsubj   _       _
+3       found   _       _       _       _       0       root    _       _
+4       the     _       _       _       _       5       det     _       _
+5       location        _       _       _       _       6       nsubj   _       _
+6       wonderful       _       _       _       _       3       xcomp   _       _
+7       and     _       _       _       _       6       cc      _       _
+7.1     found   _       _       _       _       _       _       _       _
+8       the     _       _       _       _       9       det     _       _
+9       neighbors       _       _       _       _       11      dep     _       _
+10      very    _       _       _       _       11      advmod  _       _
+11      kind    _       _       _       _       6       conj    _       _
+12      .       _       _       _       _       3       punct   _       _
+
+>>> Parser.load('crf-con-en').predict(['I','saw','Sarah','with','a','telescope','.'], verbose=False)[0]
+(TOP (S (NP (_ I)) (VP (_ saw) (NP (_ Sarah)) (PP (_ with) (NP (_ a) (_ telescope)))) (_ .)))
+>>> Parser.load('biaffine-sdp-en').predict([[('I','I','PRP'), ('saw','see','VBD'),
+                                             ('Sarah','Sarah','NNP'), ('with','with','IN'),
+                                             ('a','a','DT'), ('telescope','telescope','NN'),
+                                             ('.','_','.')]],
+                                           verbose=False)[0]
+1       I       I       PRP     _       _       _       _       2:ARG1  _
+2       saw     see     VBD     _       _       _       _       0:root|4:ARG1   _
+3       Sarah   Sarah   NNP     _       _       _       _       2:ARG2  _
+4       with    with    IN      _       _       _       _       _       _
+5       a       a       DT      _       _       _       _       _       _
+6       telescope       telescope       NN      _       _       _       _       4:ARG2|5:BV     _
+7       .       _       .       _       _       _       _       _       _
+
+```
+
+### Training
+
+To train a model from scratch, it is preferred to use the command-line option, which is more flexible and customizable.
+Below is an example of training Biaffine Dependency Parser:
+```sh
+$ python -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-en -p model -f char
+```
+
+Alternatively, `SuPar` provides some equivalent command entry points registered in [`setup.py`](setup.py):
+`biaffine-dep`, `crf2o-dep`, `crf-con` and `biaffine-sdp`, etc.
+```sh
+$ biaffine-dep train -b -d 0 -c biaffine-dep-en -p model -f char
+```
+
+To accommodate large models, distributed training is also supported:
+```sh
+$ python -m torch.distributed.launch --nproc_per_node=4 --master_port=10000  \
+    -m supar.cmds.biaffine_dep train -b -c biaffine-dep-en -d 0,1,2,3 -p model -f char
+```
+You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
+
+### Evaluation
+
+The evaluation process resembles prediction:
+```py
+>>> loss, metric = Parser.load('biaffine-dep-en').evaluate('ptb/test.conllx', verbose=False)
+>>> print(loss, metric)
+0.24214034126355097 UCM: 60.51% LCM: 50.37% UAS: 96.01% LAS: 94.41%
+```
+
+See [EXAMPLES](EXAMPLES.md) for more instructions on training and evaluation.
+
+## Citation
 
 The CRF models for Dependency/Constituency parsing are our recent works published in ACL 2020 and IJCAI 2020 respectively.
 If you are interested in them, please cite:
@@ -44,373 +274,3 @@ If you are interested in them, please cite:
   pages     = {4046--4053}
 }
 ```
-
-## Contents
-
-* [Contents](#contents)
-* [Installation](#installation)
-* [Performance](#performance)
-* [Usage](#usage)
-  * [Training](#training)
-  * [Evaluation](#evaluation)
-* [TODO](#todo)
-* [References](#references)
-
-## Installation
-
-`SuPar` can be installed via pip:
-```sh
-$ pip install -U supar
-```
-Or installing from source is also permitted:
-```sh
-$ git clone https://github.com/yzhangcs/parser && cd parser
-$ python setup.py install
-```
-
-As a prerequisite, the following requirements should be satisfied:
-* `python`: 3.7
-* [`pytorch`](https://github.com/pytorch/pytorch): >= 1.4
-* [`transformers`](https://github.com/huggingface/transformers): >= 3.1
-
-## Performance
-
-Currently, `SuPar` provides pretrained models for English and Chinese.
-English models are trained on Penn Treebank (PTB) with 39,832 training sentences, while Chinese models are trained on Penn Chinese Treebank version 7 (CTB7) with 46,572 training sentences.
-
-The performance and parsing speed of these models are listed in the following table.
-Notably, punctuation is ignored in all evaluation metrics for PTB, but reserved for CTB7.
-
-<table>
-  <thead>
-    <tr>
-      <th>Dataset</th>
-      <th align="center">Type</th>
-      <th align="center">Name</th>
-      <th align="center">Metric</th>
-      <th align="center" colspan=2>Performance</th>
-      <th align="right">Speed (Sents/s)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td rowspan=7>PTB</td>
-      <td rowspan=5>Dependency</td>
-      <td><code>biaffine-dep-en</code></td>
-      <td align="center">UAS/LAS</td>
-      <td align="center">96.03</td><td align="center">94.37</td>
-      <td align="right">1826.77</td>
-    </tr>
-    <tr>
-      <td><code>biaffine-dep-bert-en</code></td>
-      <td align="center">UAS/LAS</td>
-      <td align="center">96.69</td><td align="center">95.15</td>
-      <td align="right">646.66</td>
-    </tr>
-    <tr>
-      <td><code>crfnp-dep-en</code></td>
-      <td align="center">UAS/LAS</td>
-      <td align="center">96.01</td><td align="center">94.42</td>
-      <td align="right">2197.15</td>
-    </tr>
-    <tr>
-      <td><code>crf-dep-en</code></td>
-      <td align="center">UAS/LAS</td>
-      <td align="center">96.12</td><td align="center">94.50</td>
-      <td align="right">652.41</td>
-    </tr>
-    <tr>
-      <td><code>crf2o-dep-en</a></code></td>
-      <td align="center">UAS/LAS</td>
-      <td align="center">96.14</td><td align="center">94.55</td>
-      <td align="right">465.64</td>
-    </tr>
-    <tr>
-      <td rowspan=2>Constituency</td>
-      <td><code>crf-con-en</a></code></td>
-      <td align="center">F<sub>1</sub></td>
-      <td align="center" colspan=2>94.18</td><td align="right">923.74</td>
-    </tr>
-    <tr>
-      <td><code>crf-con-bert-en</a></code></td>
-      <td align="center">F<sub>1</sub></td>
-      <td align="center" colspan=2>95.26</td><td align="right">503.99</td>
-    </tr>
-  </tbody>
-  <tbody>
-    <tr>
-      <td rowspan=7>CTB7</td>
-      <td rowspan=5>Dependency</td>
-      <td><code>biaffine-dep-zh</code></td>
-      <td align="center">UAS/LAS</td>
-      <td>88.77</td><td>85.63</td><td align="right">1155.50</td>
-    </tr>
-    <tr>
-      <td><code>biaffine-dep-bert-zh</code></td>
-      <td align="center">UAS/LAS</td>
-      <td>91.81</td><td>88.94</td><td align="right">395.28</td>
-    </tr>
-    <tr>
-      <td><code>crfnp-dep-zh</code></td>
-      <td align="center">UAS/LAS</td>
-      <td>88.78</td><td>85.64</td><td align="right">1323.75</td>
-    </tr>
-    <tr>
-      <td><code>crf-dep-zh</code></td>
-      <td align="center">UAS/LAS</td>
-      <td>88.98</td><td>85.84</td><td align="right">354.65</td>
-    </tr>
-    <tr>
-      <td><code>crf2o-dep-zh</code></td>
-      <td align="center">UAS/LAS</td>
-      <td>89.35</td><td>86.25</td><td align="right">217.09</td>
-    </tr>
-    <tr>
-      <td rowspan=2>Constituency</td>
-      <td><code>crf-con-zh</code></td>
-      <td align="center">F<sub>1</sub></td>
-      <td align="center" colspan=2>88.67</td>
-      <td align="right">639.27</td>
-    </tr>
-    <tr>
-      <td><code>crf-con-bert-zh</code></td>
-      <td align="center">F<sub>1</sub></td>
-      <td align="center" colspan=2>91.40</td>
-      <td align="right">300.15</td>
-    </tr>
-  </tbody>
-</table>
-
-All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz and Nvidia GeForce GTX 1080 Ti GPU.
-
-## Usage
-
-`SuPar` is very easy to use. You can download the pretrained model and run syntactic parsing over sentences with a few lines of code:
-```py
->>> from supar import Parser
->>> parser = Parser.load('biaffine-dep-en')
->>> dataset = parser.predict([['She', 'enjoys', 'playing', 'tennis', '.']], prob=True, verbose=False)
-100%|####################################| 1/1 00:00<00:00, 85.15it/s
-```
-The call to `parser.predict` will return an instance of `supar.utils.Dataset` containing the predicted syntactic trees.
-For dependency parsing, you can either access each sentence held in `dataset` or an individual field of all the trees.
-```py
->>> print(dataset.sentences[0])
-1       She     _       _       _       _       2       nsubj   _       _
-2       enjoys  _       _       _       _       0       root    _       _
-3       playing _       _       _       _       2       xcomp   _       _
-4       tennis  _       _       _       _       3       dobj    _       _
-5       .       _       _       _       _       2       punct   _       _
-
->>> print(f"arcs:  {dataset.arcs[0]}\n"
-          f"rels:  {dataset.rels[0]}\n"
-          f"probs: {dataset.probs[0].gather(1,torch.tensor(dataset.arcs[0]).unsqueeze(1)).squeeze(-1)}")
-arcs:  [2, 0, 2, 3, 2]
-rels:  ['nsubj', 'root', 'xcomp', 'dobj', 'punct']
-probs: tensor([1.0000, 0.9999, 0.9642, 0.9686, 0.9996])
-```
-Probabilities can be returned along with the results if `prob=True`.
-As for CRF parsers, marginals are available if `mbr=True`, i.e., using MBR decoding.
-
-Note that `SuPar` requires pre-tokenized sentences as inputs.
-If you'd like to parse un-tokenized raw texts, you can call `nltk.word_tokenize` to do the tokenization first:
-```py
->>> import nltk
->>> text = nltk.word_tokenize('She enjoys playing tennis.')
->>> print(parser.predict([text], verbose=False).sentences[0])
-100%|####################################| 1/1 00:00<00:00, 74.20it/s
-1       She     _       _       _       _       2       nsubj   _       _
-2       enjoys  _       _       _       _       0       root    _       _
-3       playing _       _       _       _       2       xcomp   _       _
-4       tennis  _       _       _       _       3       dobj    _       _
-5       .       _       _       _       _       2       punct   _       _
-
-```
-
-If there are a plenty of sentences to parse, `SuPar` also supports for loading them from file, and save to the `pred` file if specified.
-```py
->>> dataset = parser.predict('data/ptb/test.conllx', pred='pred.conllx')
-2020-07-25 18:13:50 INFO Loading the data
-2020-07-25 18:13:52 INFO
-Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
-2020-07-25 18:13:52 INFO Making predictions on the dataset
-100%|####################################| 13/13 00:01<00:00, 10.58it/s
-2020-07-25 18:13:53 INFO Saving predicted results to pred.conllx
-2020-07-25 18:13:54 INFO 0:00:01.335261s elapsed, 1809.38 Sents/s
-```
-
-Please make sure the file is in CoNLL-X format. If some fields are missing, you can use underscores as placeholders.
-An interface is provided for the transformation from text to CoNLL-X format string.
-```py
->>> from supar.utils import CoNLL
->>> print(CoNLL.toconll(['She', 'enjoys', 'playing', 'tennis', '.']))
-1       She     _       _       _       _       _       _       _       _
-2       enjoys  _       _       _       _       _       _       _       _
-3       playing _       _       _       _       _       _       _       _
-4       tennis  _       _       _       _       _       _       _       _
-5       .       _       _       _       _       _       _       _       _
-
-```
-
-For Universial Dependencies (UD), the CoNLL-U file is also allowed, while comment lines in the file can be reserved before prediction and recovered during post-processing.
-```py
->>> import os
->>> import tempfile
->>> text = '''# text = But I found the location wonderful and the neighbors very kind.
-1\tBut\t_\t_\t_\t_\t_\t_\t_\t_
-2\tI\t_\t_\t_\t_\t_\t_\t_\t_
-3\tfound\t_\t_\t_\t_\t_\t_\t_\t_
-4\tthe\t_\t_\t_\t_\t_\t_\t_\t_
-5\tlocation\t_\t_\t_\t_\t_\t_\t_\t_
-6\twonderful\t_\t_\t_\t_\t_\t_\t_\t_
-7\tand\t_\t_\t_\t_\t_\t_\t_\t_
-7.1\tfound\t_\t_\t_\t_\t_\t_\t_\t_
-8\tthe\t_\t_\t_\t_\t_\t_\t_\t_
-9\tneighbors\t_\t_\t_\t_\t_\t_\t_\t_
-10\tvery\t_\t_\t_\t_\t_\t_\t_\t_
-11\tkind\t_\t_\t_\t_\t_\t_\t_\t_
-12\t.\t_\t_\t_\t_\t_\t_\t_\t_
-
-'''
->>> path = os.path.join(tempfile.mkdtemp(), 'data.conllx')
->>> with open(path, 'w') as f:
-...     f.write(text)
-...
->>> print(parser.predict(path, verbose=False).sentences[0])
-100%|####################################| 1/1 00:00<00:00, 68.60it/s
-# text = But I found the location wonderful and the neighbors very kind.
-1       But     _       _       _       _       3       cc      _       _
-2       I       _       _       _       _       3       nsubj   _       _
-3       found   _       _       _       _       0       root    _       _
-4       the     _       _       _       _       5       det     _       _
-5       location        _       _       _       _       6       nsubj   _       _
-6       wonderful       _       _       _       _       3       xcomp   _       _
-7       and     _       _       _       _       6       cc      _       _
-7.1     found   _       _       _       _       _       _       _       _
-8       the     _       _       _       _       9       det     _       _
-9       neighbors       _       _       _       _       11      dep     _       _
-10      very    _       _       _       _       11      advmod  _       _
-11      kind    _       _       _       _       6       conj    _       _
-12      .       _       _       _       _       3       punct   _       _
-
-```
-
-Constituency trees can be parsed in a similar manner.
-The returned `dataset` holds all predicted trees represented using `nltk.Tree` objects.
-```py
->>> parser = Parser.load('crf-con-en')
->>> dataset = parser.predict([['She', 'enjoys', 'playing', 'tennis', '.']], verbose=False)
-100%|####################################| 1/1 00:00<00:00, 75.86it/s
->>> print(f"trees:\n{dataset.trees[0]}")
-trees:
-(TOP
-  (S
-    (NP (_ She))
-    (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
-    (_ .)))
->>> dataset = parser.predict('data/ptb/test.pid', pred='pred.pid')
-2020-07-25 18:21:28 INFO Loading the data
-2020-07-25 18:21:33 INFO
-Dataset(n_sentences=2416, n_batches=13, n_buckets=8)
-2020-07-25 18:21:33 INFO Making predictions on the dataset
-100%|####################################| 13/13 00:02<00:00,  5.30it/s
-2020-07-25 18:21:36 INFO Saving predicted results to pred.pid
-2020-07-25 18:21:36 INFO 0:00:02.455740s elapsed, 983.82 Sents/s
-```
-
-Analogous to dependency parsing, a sentence can be transformed to an empty `nltk.Tree` conveniently:
-```py
->>> from supar.utils import Tree
->>> print(Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], root='TOP'))
-(TOP (_ She) (_ enjoys) (_ playing) (_ tennis) (_ .))
-```
-
-### Training
-
-To train a model from scratch, it is preferred to use the command-line option, which is more flexible and customizable.
-Here are some training examples:
-```sh
-# Biaffine Dependency Parser
-# some common and default arguments are stored in config.ini
-$ python -m supar.cmds.biaffine_dependency train -b -d 0  \
-    -c config.ini  \
-    -p exp/ptb.biaffine.dependency.char/model  \
-    -f char
-# to use BERT, `-f` and `--bert` (default to bert-base-cased) should be specified
-# if you'd like to use XLNet, you can type `--bert xlnet-base-cased`
-$ python -m supar.cmds.biaffine_dependency train -b -d 0  \
-    -p exp/ptb.biaffine.dependency.bert/model  \
-    -f bert  \
-    --bert bert-base-cased
-
-# CRF Dependency Parser
-# for CRF dependency parsers, you should use `--proj` to discard all non-projective training instances
-# optionally, you can use `--mbr` to perform MBR decoding
-$ python -m supar.cmds.crf_dependency train -b -d 0  \
-    -p exp/ptb.crf.dependency.char/model  \
-    -f char  \
-    --mbr  \
-    --proj
-
-# CRF Constituency Parser
-# the training of CRF constituency parser behaves like dependency parsers
-$ python -m supar.cmds.crf_constituency train -b -d 0  \
-    -p exp/ptb.crf.constituency.char/model -f char  \
-    --mbr
-```
-
-For more instructions on training, please type `python -m supar.cmds.<parser> train -h`.
-
-Alternatively, `SuPar` provides some equivalent command entry points registered in `setup.py`:
-`biaffine-dependency`, `crfnp-dependency`, `crf-dependency`, `crf2o-dependency` and `crf-constituency`.
-```sh
-$ biaffine-dependency train -b -d 0 -c config.ini -p exp/ptb.biaffine.dependency.char/model -f char
-```
-
-To accommodate large models, distributed training is also supported:
-```sh
-$ python -m torch.distributed.launch --nproc_per_node=4 --master_port=10000  \
-    -m supar.cmds.biaffine_dependency train -b -d 0,1,2,3  \
-    -p exp/ptb.biaffine.dependency.char/model  \
-    -f char
-```
-You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
-
-### Evaluation
-
-The evaluation process resembles prediction:
-```py
->>> parser = Parser.load('biaffine-dep-en')
->>> loss, metric = parser.evaluate('data/ptb/test.conllx')
-2020-07-25 20:59:17 INFO Loading the data
-2020-07-25 20:59:19 INFO
-Dataset(n_sentences=2416, n_batches=11, n_buckets=8)
-2020-07-25 20:59:19 INFO Evaluating the dataset
-2020-07-25 20:59:20 INFO loss: 0.2326 - UCM: 61.34% LCM: 50.21% UAS: 96.03% LAS: 94.37%
-2020-07-25 20:59:20 INFO 0:00:01.253601s elapsed, 1927.25 Sents/s
-```
-
-## TODO
-
-- [ ] [GNN Parser](#ji-2019-graph)
-- [ ] [Second-Order Parser with Mean Field Variational Inference](#wang-2019-second)
-- [ ] [Stack Pointer](#ma-2018-stackptr)
-
-## References
-
-* <a id="dozat-2017-biaffine"></a>
-Timothy Dozat and Christopher D. Manning. 2017. [Deep Biaffine Attention for Neural Dependency Parsing](https://openreview.net/forum?id=Hk95PK9le).
-* <a id="ji-2019-graph"></a>
-Tao Ji, Yuanbin Wu and Man Lan. 2019. [Graph-based Dependency Parsing with Graph Neural Networks](https://www.aclweb.org/anthology/P19-1237/).
-* <a id="koo-2007-structured"></a>
-Terry Koo, Amir Globerson, Xavier Carreras and Michael Collins. 2007. [Structured Prediction Models via the Matrix-Tree Theorem](https://www.aclweb.org/anthology/D07-1015/).
-* <a id="ma-2017-neural"></a>
-Xuezhe Ma and Eduard Hovy. 2017. [Neural Probabilistic Model for Non-projective MST Parsing](https://www.aclweb.org/anthology/I17-1007/).
-* <a id="ma-2018-stackptr"></a>
-Xuezhe Ma, Zecong Hu, Jingzhou Liu, Nanyun Peng, Graham Neubig and Eduard Hovy. 2018. [Stack-Pointer Networks for Dependency Parsing](https://www.aclweb.org/anthology/P18-1130/).
-* <a id="wang-2019-second"></a>
-Xinyu Wang, Jingxian Huang, and Kewei Tu. 2019. [Second-Order Semantic Dependency Parsing with End-to-End Neural Networks](https://www.aclweb.org/anthology/P19-1454/).
-* <a id="zhang-2020-fast"></a>
-Yu Zhang, Houquan Zhou and Zhenghua Li. 2020. [Fast and Accurate Neural CRF Constituency Parsing](https://www.ijcai.org/Proceedings/2020/560/).
-* <a id="zhang-2020-efficient"></a>
-Yu Zhang, Zhenghua Li and Min Zhang. 2020. [Efficient Second-Order TreeCRF for Neural Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.302/).
