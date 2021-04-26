@@ -63,6 +63,9 @@ class Vocab(object):
         state['stoi'] = stoi
         self.__dict__.update(state)
 
+    def items(self):
+        return self.stoi.items()
+
     def extend(self, tokens):
         self.itos.extend(sorted(set(tokens).difference(self.stoi)))
         self.stoi.update({token: i for i, token in enumerate(self.itos)})
