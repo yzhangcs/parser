@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
-from .constituency import CRFConstituencyParser
-from .dependency import (BiaffineDependencyParser, CRF2oDependencyParser,
-                         CRFDependencyParser, CRFNPDependencyParser)
+from .con import CRFConstituencyParser, VIConstituencyParser
+from .dep import (BiaffineDependencyParser, CRF2oDependencyParser,
+                  CRFDependencyParser, VIDependencyParser)
 from .parser import Parser
-from .semantic_dependency import (BiaffineSemanticDependencyParser,
-                                  VISemanticDependencyParser)
+from .sdp import BiaffineSemanticDependencyParser, VISemanticDependencyParser
 
 __all__ = ['BiaffineDependencyParser',
-           'CRFNPDependencyParser',
            'CRFDependencyParser',
            'CRF2oDependencyParser',
+           'VIDependencyParser',
            'CRFConstituencyParser',
+           'VIConstituencyParser',
            'BiaffineSemanticDependencyParser',
            'VISemanticDependencyParser',
            'Parser']

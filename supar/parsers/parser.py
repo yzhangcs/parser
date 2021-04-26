@@ -9,10 +9,13 @@ import torch
 import torch.distributed as dist
 from supar.utils import Config, Dataset
 from supar.utils.field import Field
+from supar.utils.fn import download
 from supar.utils.logging import init_logger, logger
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import is_master
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 
 
 class Parser(object):
@@ -20,14 +23,13 @@ class Parser(object):
     NAME = None
     MODEL = None
 
-    def __init__(self, args, model, transform, optimizer=None, scheduler=None):
+    def __init__(self, args, model, transform):
         self.args = args
         self.model = model
         self.transform = transform
-        self.optimizer = optimizer
-        self.scheduler = scheduler
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, clip=5.0, epochs=5000, patience=100, **kwargs):
+    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+              clip=5.0, epochs=5000, patience=100, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
 
@@ -38,10 +40,22 @@ class Parser(object):
         train = Dataset(self.transform, args.train, **args)
         dev = Dataset(self.transform, args.dev)
         test = Dataset(self.transform, args.test)
-        train.build(args.batch_size, args.buckets, True, dist.is_initialized())
+        train.build(args.batch_size//args.update_steps, args.buckets, True, dist.is_initialized())
         dev.build(args.batch_size, args.buckets)
         test.build(args.batch_size, args.buckets)
         logger.info(f"\n{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
+
+        if args.encoder == 'lstm':
+            self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
+            self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
+        else:
+            from transformers import AdamW, get_linear_schedule_with_warmup
+            steps = len(train.loader) * epochs // args.update_steps
+            self.optimizer = AdamW(
+                [{'params': c.parameters(), 'lr': args.lr * (1 if n == 'encoder' else args.lr_rate)}
+                 for n, c in self.model.named_children()],
+                args.lr)
+            self.scheduler = get_linear_schedule_with_warmup(self.optimizer, int(steps*args.warmup), steps)
 
         if dist.is_initialized():
             self.model = DDP(self.model, device_ids=[args.local_rank], find_unused_parameters=True)
@@ -60,7 +74,6 @@ class Parser(object):
             logger.info(f"{'test:':5} loss: {loss:.4f} - {test_metric}")
 
             t = datetime.now() - start
-            # save the model if it is the best so far
             if dev_metric > best_metric:
                 best_e, best_metric = epoch, dev_metric
                 if is_master():
@@ -97,7 +110,7 @@ class Parser(object):
 
         return loss, metric
 
-    def predict(self, data, pred=None, lang='en', buckets=8, batch_size=5000, prob=False, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
 
@@ -140,31 +153,10 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, **kwargs):
-        r"""
-        Loads a parser with data fields and pretrained model parameters.
-
-        Args:
-            path (str):
-                - a string with the shortcut name of a pretrained parser defined in ``supar.PRETRAINED``
-                  to load from cache or download, e.g., ``'crf-dep-en'``.
-                - a path to a directory containing a pre-trained parser, e.g., `./<path>/model`.
-            kwargs (dict):
-                A dict holding the unconsumed arguments that can be used to update the configurations and initiate the model.
-
-        Examples:
-            >>> from supar import Parser
-            >>> parser = Parser.load('biaffine-dep-en')
-            >>> parser = Parser.load('./ptb.biaffine.dependency.char')
-        """
-
+    def load(cls, path, reload=False, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-        if os.path.exists(path):
-            state = torch.load(path)
-        else:
-            state = torch.hub.load_state_dict_from_url(supar.PRETRAINED[path] if path in supar.PRETRAINED else path)
+        state = torch.load(path if os.path.exists(path) else download(supar.MODEL.get(path, path), reload=reload))
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args'].update(args)
         model = cls.MODEL(**args)
