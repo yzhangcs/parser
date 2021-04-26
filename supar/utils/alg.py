@@ -86,7 +86,7 @@ def tarjan(sequence):
             List of head indices.
 
     Yields:
-        A list of indices that make up a SCC. All self-loops are ignored.
+        A list of indices making up a SCC. All self-loops are ignored.
 
     Examples:
         >>> next(tarjan([2, 5, 0, 3, 1]))  # (1 -> 5 -> 2 -> 1) is a cycle
@@ -135,18 +135,13 @@ def tarjan(sequence):
 
 def chuliu_edmonds(s):
     r"""
-    ChuLiu/Edmonds algorithm for non-projective decoding.
+    ChuLiu/Edmonds algorithm for non-projective decoding :cite:`mcdonald-etal-2005-non`.
 
     Some code is borrowed from `tdozat's implementation`_.
-    Descriptions of notations and formulas can be found in
-    `Non-projective Dependency Parsing using Spanning Tree Algorithms`_.
+    Descriptions of notations and formulas can be found in :cite:`mcdonald-etal-2005-non`.
 
     Notes:
         The algorithm does not guarantee to parse a single-root tree.
-
-    References:
-        - Ryan McDonald, Fernando Pereira, Kiril Ribarov and Jan Hajic. 2005.
-          `Non-projective Dependency Parsing using Spanning Tree Algorithms`_.
 
     Args:
         s (~torch.Tensor): ``[seq_len, seq_len]``.
@@ -158,8 +153,6 @@ def chuliu_edmonds(s):
 
     .. _tdozat's implementation:
         https://github.com/tdozat/Parser-v3
-    .. _Non-projective Dependency Parsing using Spanning Tree Algorithms:
-        https://www.aclweb.org/anthology/H05-1066/
     """
 
     s[0, 1:] = float('-inf')
@@ -234,7 +227,7 @@ def chuliu_edmonds(s):
 
 def mst(scores, mask, multiroot=False):
     r"""
-    MST algorithm for decoding non-pojective trees.
+    MST algorithm for decoding non-projective trees.
     This is a wrapper for ChuLiu/Edmonds algorithm.
 
     The algorithm first runs ChuLiu/Edmonds to parse a tree and then have a check of multi-roots,
@@ -248,7 +241,7 @@ def mst(scores, mask, multiroot=False):
         mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
             The mask to avoid parsing over padding tokens.
             The first column serving as pseudo words for roots should be ``False``.
-        muliroot (bool):
+        multiroot (bool):
             Ensures to parse a single-root tree If ``False``.
 
     Returns:
@@ -291,13 +284,9 @@ def mst(scores, mask, multiroot=False):
     return pad(preds, total_length=seq_len).to(mask.device)
 
 
-def eisner(scores, mask):
+def eisner(scores, mask, multiroot=False):
     r"""
-    First-order Eisner algorithm for projective decoding.
-
-    References:
-        - Ryan McDonald, Koby Crammer and Fernando Pereira. 2005.
-          `Online Large-Margin Training of Dependency Parsers`_.
+    First-order Eisner algorithm for projective decoding :cite:`mcdonald-etal-2005-online`.
 
     Args:
         scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
@@ -305,6 +294,8 @@ def eisner(scores, mask):
         mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
             The mask to avoid parsing over padding tokens.
             The first column serving as pseudo words for roots should be ``False``.
+        multiroot (bool):
+            Ensures to parse a single-root tree If ``False``.
 
     Returns:
         ~torch.Tensor:
@@ -318,9 +309,6 @@ def eisner(scores, mask):
         >>> mask = torch.tensor([[False,  True,  True,  True]])
         >>> eisner(scores, mask)
         tensor([[0, 2, 0, 2]])
-
-    .. _Online Large-Margin Training of Dependency Parsers:
-        https://www.aclweb.org/anthology/P05-1012/
     """
 
     lens = mask.sum(1)
@@ -357,7 +345,8 @@ def eisner(scores, mask):
         cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
         cr_span, cr_path = cr.permute(2, 0, 1).max(-1)
         s_c.diagonal(w).copy_(cr_span)
-        s_c[0, w][lens.ne(w)] = float('-inf')
+        if not multiroot:
+            s_c[0, w][lens.ne(w)] = float('-inf')
         p_c.diagonal(w).copy_(cr_path + starts + 1)
 
     def backtrack(p_i, p_c, heads, i, j, complete):
@@ -384,23 +373,21 @@ def eisner(scores, mask):
     return pad(preds, total_length=seq_len).to(mask.device)
 
 
-def eisner2o(scores, mask):
+def eisner2o(scores, mask, multiroot=False):
     r"""
-    Second-order Eisner algorithm for projective decoding.
+    Second-order Eisner algorithm for projective decoding :cite:`mcdonald-pereira-2006-online`.
     This is an extension of the first-order one that further incorporates sibling scores into tree scoring.
-
-    References:
-        - Ryan McDonald and Fernando Pereira. 2006.
-          `Online Learning of Approximate Dependency Parsing Algorithms`_.
 
     Args:
         scores (~torch.Tensor, ~torch.Tensor):
-            A tuple of two tensors representing the first-order and second-order scores repectively.
+            A tuple of two tensors representing the first-order and second-order scores respectively.
             The first (``[batch_size, seq_len, seq_len]``) holds scores of all dependent-head pairs.
             The second (``[batch_size, seq_len, seq_len, seq_len]``) holds scores of all dependent-head-sibling triples.
         mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
             The mask to avoid parsing over padding tokens.
             The first column serving as pseudo words for roots should be ``False``.
+        multiroot (bool):
+            Ensures to parse a single-root tree If ``False``.
 
     Returns:
         ~torch.Tensor:
@@ -430,9 +417,6 @@ def eisner2o(scores, mask):
         >>> mask = torch.tensor([[False,  True,  True,  True]])
         >>> eisner2o((s_arc, s_sib), mask)
         tensor([[0, 2, 0, 2]])
-
-    .. _Online Learning of Approximate Dependency Parsing Algorithms:
-        https://www.aclweb.org/anthology/E06-1011/
     """
 
     # the end position of each sentence in a batch
@@ -502,8 +486,8 @@ def eisner2o(scores, mask):
         cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
         cr_span, cr_path = cr.permute(2, 0, 1).max(-1)
         s_c.diagonal(w).copy_(cr_span)
-        # disable multi words to modify the root
-        s_c[0, w][lens.ne(w)] = float('-inf')
+        if not multiroot:
+            s_c[0, w][lens.ne(w)] = float('-inf')
         p_c.diagonal(w).copy_(cr_path + starts + 1)
 
     def backtrack(p_i, p_s, p_c, heads, i, j, flag):
@@ -541,11 +525,7 @@ def eisner2o(scores, mask):
 
 def cky(scores, mask):
     r"""
-    The implementation of `Cocke-Kasami-Younger`_ (CKY) algorithm to parse constituency trees.
-
-    References:
-        - Yu Zhang, Houquan Zhou and Zhenghua Li. 2020.
-          `Fast and Accurate Neural CRF Constituency Parsing`_.
+    The implementation of `Cocke-Kasami-Younger`_ (CKY) algorithm to parse constituency trees :cite:`zhang-etal-2020-fast`.
 
     Args:
         scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
@@ -571,41 +551,43 @@ def cky(scores, mask):
 
     .. _Cocke-Kasami-Younger:
         https://en.wikipedia.org/wiki/CYK_algorithm
-    .. _Fast and Accurate Neural CRF Constituency Parsing:
-        https://www.ijcai.org/Proceedings/2020/560/
     """
 
     lens = mask[:, 0].sum(-1)
-    scores = scores.permute(1, 2, 0)
-    seq_len, seq_len, batch_size = scores.shape
+    scores = scores.permute(1, 2, 3, 0)
+    seq_len, seq_len, n_labels, batch_size = scores.shape
     s = scores.new_zeros(seq_len, seq_len, batch_size)
-    p = scores.new_zeros(seq_len, seq_len, batch_size).long()
+    p_s = scores.new_zeros(seq_len, seq_len, batch_size).long()
+    p_l = scores.new_zeros(seq_len, seq_len, batch_size).long()
 
     for w in range(1, seq_len):
         n = seq_len - w
-        starts = p.new_tensor(range(n)).unsqueeze(0)
+        starts = p_s.new_tensor(range(n)).unsqueeze(0)
+        s_l, p = scores.diagonal(w).max(0)
+        p_l.diagonal(w).copy_(p)
 
         if w == 1:
-            s.diagonal(w).copy_(scores.diagonal(w))
+            s.diagonal(w).copy_(s_l)
             continue
         # [n, w, batch_size]
-        s_span = stripe(s, n, w-1, (0, 1)) + stripe(s, n, w-1, (1, w), 0)
+        s_s = stripe(s, n, w-1, (0, 1)) + stripe(s, n, w-1, (1, w), 0)
         # [batch_size, n, w]
-        s_span = s_span.permute(2, 0, 1)
+        s_s = s_s.permute(2, 0, 1)
         # [batch_size, n]
-        s_span, p_span = s_span.max(-1)
-        s.diagonal(w).copy_(s_span + scores.diagonal(w))
-        p.diagonal(w).copy_(p_span + starts + 1)
+        s_s, p = s_s.max(-1)
+        s.diagonal(w).copy_(s_s + s_l)
+        p_s.diagonal(w).copy_(p + starts + 1)
 
-    def backtrack(p, i, j):
+    def backtrack(p_s, p_l, i, j):
         if j == i + 1:
-            return [(i, j)]
-        split = p[i][j]
-        ltree = backtrack(p, i, split)
-        rtree = backtrack(p, split, j)
-        return [(i, j)] + ltree + rtree
+            return [(i, j, p_l[i][j])]
+        split, label = p_s[i][j], p_l[i][j]
+        ltree = backtrack(p_s, p_l, i, split)
+        rtree = backtrack(p_s, p_l, split, j)
+        return [(i, j, label)] + ltree + rtree
 
-    p = p.permute(2, 0, 1).tolist()
-    trees = [backtrack(p[i], 0, length) for i, length in enumerate(lens.tolist())]
+    p_s = p_s.permute(2, 0, 1).tolist()
+    p_l = p_l.permute(2, 0, 1).tolist()
+    trees = [backtrack(p_s[i], p_l[i], 0, length) for i, length in enumerate(lens.tolist())]
 
     return trees

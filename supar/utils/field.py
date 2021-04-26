@@ -42,7 +42,7 @@ class Field(RawField):
     r"""
     Defines a datatype together with instructions for converting to :class:`~torch.Tensor`.
     :class:`Field` models common text processing datatypes that can be represented by tensors.
-    It holds a :class:`Vocab` object that defines the set of possible values
+    It holds a :class:`~supar.utils.vocab.Vocab` object that defines the set of possible values
     for elements of the field and their corresponding numerical representations.
     The :class:`Field` object also holds other parameters relating to how a datatype
     should be numericalized, such as a tokenization method.
@@ -62,7 +62,8 @@ class Field(RawField):
         lower (bool):
             Whether to lowercase the text in this field. Default: ``False``.
         use_vocab (bool):
-            Whether to use a :class:`Vocab` object. If ``False``, the data in this field should already be numerical.
+            Whether to use a :class:`~supar.utils.vocab.Vocab` object.
+            If ``False``, the data in this field should already be numerical.
             Default: ``True``.
         tokenize (function):
             The function used to tokenize strings using this field into sequential examples. Default: ``None``.
@@ -177,12 +178,13 @@ class Field(RawField):
 
     def build(self, dataset, min_freq=1, embed=None):
         r"""
-        Constructs a :class:`Vocab` object for this field from the dataset.
+        Constructs a :class:`~supar.utils.vocab.Vocab` object for this field from the dataset.
         If the vocabulary has already existed, this function will have no effect.
 
         Args:
             dataset (Dataset):
-                A :class:`Dataset` object. One of the attributes should be named after the name of this field.
+                A :class:`~supar.utils.data.Dataset` object.
+                One of the attributes should be named after the name of this field.
             min_freq (int):
                 The minimum frequency needed to include a token in the vocabulary. Default: 1.
             embed (Embedding):
@@ -338,7 +340,7 @@ class ChartField(Field):
     Examples:
         >>> chart = [[    None,    'NP',    None,    None,  'S|<>',     'S'],
                      [    None,    None, 'VP|<>',    None,    'VP',    None],
-                     [    None,    None,    None, 'VP|<>',  'S+VP',    None],
+                     [    None,    None,    None, 'VP|<>', 'S::VP',    None],
                      [    None,    None,    None,    None,    'NP',    None],
                      [    None,    None,    None,    None,    None,  'S|<>'],
                      [    None,    None,    None,    None,    None,    None]]
