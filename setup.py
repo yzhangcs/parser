@@ -38,6 +38,6 @@ setup(
             'vi-sdp=supar.cmds.vi_sdp:main'
         ]
     },
-    python_requires='>=3.7',
+    python_requires='>=3.6',
     zip_safe=False
 )
