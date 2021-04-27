@@ -31,7 +31,7 @@ $ python setup.py install
 ```
 
 As a prerequisite, the following requirements should be satisfied:
-* `python`: >= 3.7
+* `python`: >= 3.6
 * [`pytorch`](https://github.com/pytorch/pytorch): >= 1.7
 * [`transformers`](https://github.com/huggingface/transformers): >= 4.0
 
@@ -45,7 +45,7 @@ All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.2
 
 English and Chinese dependency parsing models are trained on PTB and CTB7 respectively.
 For each parser, we provide pretrained models that take BiLSTM as encoder.
-We also provide models finetuned on pretrained language models from [Huggingface Transformers](https://github.com/huggingface/transformers).
+We also provide models trained by finetuning pretrained language models from [Huggingface Transformers](https://github.com/huggingface/transformers).
 We use [`robert-large`](https://huggingface.co/roberta-large) for English and [`hfl/chinese-electra-180g-large-discriminator`](https://huggingface.co/hfl/chinese-electra-180g-large-discriminator) for Chinese.
 During evaluation, punctuation is ignored in all metrics for PTB.
 
