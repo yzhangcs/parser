@@ -15,7 +15,7 @@ $ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-en -p model
     --dev ptb/dev.conllx  \
     --test ptb/test.conllx  \
     --embed glove.6B.100d.txt  \
-    --unk
+    --unk unk
 # crf2o
 $ python -u -m supar.cmds.crf2o_dep train -b -d 0 -c crf2o-dep-en -p model -f char  \
     --train ptb/train.conllx  \
