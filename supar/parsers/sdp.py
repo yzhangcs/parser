@@ -454,7 +454,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
             preds['labels'].extend(chart[1:i, :i].tolist() for i, chart in zip(lens, label_preds))
             if self.args.prob:
-                preds['probs'].extend([prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.softmax(-1).unbind())])
+                preds['probs'].extend([prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())])
         preds['labels'] = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row] for row in chart])
                            for chart in preds['labels']]
 
