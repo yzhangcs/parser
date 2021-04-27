@@ -30,7 +30,7 @@ The option `-c` controls where to load predefined configs, you can either specif
 For CRF models, you need to specify `--proj` to remove non-projective trees.
 Specifying `--mbr` to perform MBR decoding often leads to consistent improvement.
 
-The model finetuned on [`robert-large`](https://huggingface.co/roberta-large) achieves nearly state-of-the-art performance in English dependency parsing.
+The model trained by finetuning [`robert-large`](https://huggingface.co/roberta-large) achieves nearly state-of-the-art performance in English dependency parsing.
 Here we provide some recommended hyper-parameters (not the best, but good enough).
 You are allowed to set values of registered/unregistered parameters in bash to suppress default configs in the file.
 ```sh
@@ -46,7 +46,7 @@ $ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-roberta-en 
     --epochs=10  \
     --update-steps=4
 ```
-The pretrained multilingual model `biaffine-dep-xlmr` takes [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large) as backbone architecture and finetunes on it.
+The pretrained multilingual model `biaffine-dep-xlmr` takes [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large) as backbone architecture and finetunes it.
 The training command is as following:
 ```sh
 $ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-xlmr -p model  \
