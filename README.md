@@ -152,7 +152,7 @@ probs: tensor([1.0000, 0.9999, 0.9966, 0.8944, 1.0000, 1.0000, 0.9999])
 ```
 
 `SuPar` also supports parsing from tokenized sentences or from file.
-For semantic dependency parsing, lemmas and POS tags are needed.
+For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are needed.
 
 ```py
 >>> import os
