@@ -153,10 +153,14 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, reload=False, **kwargs):
+    def load(cls, path, reload=False, src=None, **kwargs):
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        state = torch.load(path if os.path.exists(path) else download(supar.MODEL.get(path, path), reload=reload))
+        if src is not None:
+            links = {n: f"{supar.SRC[src]}/v{supar.__version__}/{m}.zip" for n, m in supar.NAME.items()}
+        else:
+            links = supar.MODEL
+        state = torch.load(path if os.path.exists(path) else download(links.get(path, path), reload=reload))
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args'].update(args)
         model = cls.MODEL(**args)

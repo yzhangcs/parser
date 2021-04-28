@@ -27,7 +27,8 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              BiaffineSemanticDependencyParser,
                                              VISemanticDependencyParser]}
 
-SRC = 'https://github.com/yzhangcs/parser/releases/download'
+SRC = {'github': 'https://github.com/yzhangcs/parser/releases/download',
+       'hlt': 'http://hlt.suda.edu.cn/LA/yzhang/supar'}
 NAME = {
     'biaffine-dep-en': 'ptb.biaffine.dep.lstm.char',
     'biaffine-dep-zh': 'ctb7.biaffine.dep.lstm.char',
@@ -48,5 +49,5 @@ NAME = {
     'biaffine-sdp-roberta-en': 'dm.biaffine.sdp.roberta',
     'biaffine-sdp-electra-zh': 'semeval16.biaffine.sdp.electra'
 }
-MODEL = {n: f'{SRC}/v{__version__}/{m}.zip' for n, m in NAME.items()}
-CONFIG = {n: f'{SRC}/v{__version__}/{m}.ini' for n, m in NAME.items()}
+MODEL = {n: f"{SRC['github']}/v{__version__}/{m}.zip" for n, m in NAME.items()}
+CONFIG = {n: f"{SRC['github']}/v{__version__}/{m}.ini" for n, m in NAME.items()}
