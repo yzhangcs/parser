@@ -46,8 +46,8 @@ NAME = {
     'biaffine-sdp-zh': 'semeval16.biaffine.sdp.lstm.tag-char-lemma',
     'vi-sdp-en': 'dm.vi.sdp.lstm.tag-char-lemma',
     'vi-sdp-zh': 'semeval16.vi.sdp.lstm.tag-char-lemma',
-    'biaffine-sdp-roberta-en': 'dm.biaffine.sdp.roberta',
-    'biaffine-sdp-electra-zh': 'semeval16.biaffine.sdp.electra'
+    'vi-sdp-roberta-en': 'dm.vi.sdp.roberta',
+    'vi-sdp-electra-zh': 'semeval16.vi.sdp.electra'
 }
 MODEL = {n: f"{SRC['github']}/v{__version__}/{m}.zip" for n, m in NAME.items()}
 CONFIG = {n: f"{SRC['github']}/v{__version__}/{m}.ini" for n, m in NAME.items()}
