@@ -129,7 +129,7 @@ class CRFConstituencyParser(Parser):
         return super().predict(**Config().update(locals()))
 
     @classmethod
-    def load(cls, path, reload=False, **kwargs):
+    def load(cls, path, reload=False, src=None, **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -140,6 +140,11 @@ class CRFConstituencyParser(Parser):
                 - a local path to a pretrained model, e.g., ``./<path>/model``.
             reload (bool):
                 Whether to discard the existing cache and force a fresh download. Default: ``False``.
+            src (str):
+                Specifies where to download the model.
+                ``'github'``: github release page.
+                ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
+                Default: None.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -149,7 +154,7 @@ class CRFConstituencyParser(Parser):
             >>> parser = Parser.load('./ptb.crf.con.lstm.char')
         """
 
-        return super().load(path, reload, **kwargs)
+        return super().load(path, reload, src, **kwargs)
 
     def _train(self, loader):
         self.model.train()
@@ -411,7 +416,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         return super().predict(**Config().update(locals()))
 
     @classmethod
-    def load(cls, path, reload=False, **kwargs):
+    def load(cls, path, reload=False, src=None, **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -422,6 +427,11 @@ class VIConstituencyParser(CRFConstituencyParser):
                 - a local path to a pretrained model, e.g., ``./<path>/model``.
             reload (bool):
                 Whether to discard the existing cache and force a fresh download. Default: ``False``.
+            src (str):
+                Specifies where to download the model.
+                ``'github'``: github release page.
+                ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
+                Default: None.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -431,7 +441,7 @@ class VIConstituencyParser(CRFConstituencyParser):
             >>> parser = Parser.load('./ptb.vi.con.lstm.char')
         """
 
-        return super().load(path, reload, **kwargs)
+        return super().load(path, reload, src, **kwargs)
 
     def _train(self, loader):
         self.model.train()
