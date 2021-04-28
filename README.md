@@ -110,14 +110,14 @@ The results of each treebank are as follows.
 English semantic dependency parsing models are trained on [DM data introduced in SemEval-2014 task 8](https://catalog.ldc.upenn.edu/LDC2016T10), while Chinese models are trained on [NEWS domain data of corpora from SemEval-2016 Task 9](https://github.com/HIT-SCIR/SemEval-2016).
 Our data preprocessing steps follow [Second_Order_SDP](https://github.com/wangxinyu0922/Second_Order_SDP).
 
-| Name                      |   P   |   R   | F<sub>1 | Sents/s |
-| ------------------------- | :---: | :---: | :-----: | ------: |
-| `biaffine-sdp-en`         | 94.35 | 93.12 |  93.73  | 1067.06 |
-| `vi-sdp-en`               | 94.36 | 93.52 |  93.94  |  821.73 |
-| `biaffine-sdp-roberta-en` | 95.07 | 95.22 |  95.15  |  269.05 |
-| `biaffine-sdp-zh`         | 72.93 | 66.29 |  69.45  |  523.36 |
-| `vi-sdp-zh`               | 72.05 | 67.97 |  69.95  |  411.94 |
-| `biaffine-sdp-electra-zh` | 71.49 | 70.08 |  70.78  |  143.04 |
+| Name                |   P   |   R   | F<sub>1 | Sents/s |
+| ------------------- | :---: | :---: | :-----: | ------: |
+| `biaffine-sdp-en`   | 94.35 | 93.12 |  93.73  | 1067.06 |
+| `vi-sdp-en`         | 94.36 | 93.52 |  93.94  |  821.73 |
+| `vi-sdp-roberta-en` | 95.18 | 95.20 |  95.19  |  264.13 |
+| `biaffine-sdp-zh`   | 72.93 | 66.29 |  69.45  |  523.36 |
+| `vi-sdp-zh`         | 72.05 | 67.97 |  69.95  |  411.94 |
+| `vi-sdp-electra-zh` | 73.29 | 70.53 |  71.89  |  139.52 |
 
 ## Usage
 

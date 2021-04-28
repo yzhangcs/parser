@@ -12,7 +12,6 @@ def parse(parser):
     parser.add_argument('--device', '-d', default='-1', help='ID of GPU to use')
     parser.add_argument('--seed', '-s', default=1, type=int, help='seed for generating random numbers')
     parser.add_argument('--threads', '-t', default=16, type=int, help='max num of threads')
-    parser.add_argument('--batch-size', default=5000, type=int, help='batch size')
     parser.add_argument("--local_rank", type=int, default=-1, help='node rank for distributed training')
     args, unknown = parser.parse_known_args()
     args, unknown = parser.parse_known_args(unknown, args)
