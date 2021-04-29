@@ -157,7 +157,8 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 ```py
 >>> import os
 >>> import tempfile
->>> Parser.load('biaffine-dep-en').predict(['I','saw','Sarah','with','a','telescope','.'], verbose=False)[0]
+>>> dep = Parser.load('biaffine-dep-en')
+>>> dep.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0]
 1       I       _       _       _       _       2       nsubj   _       _
 2       saw     _       _       _       _       0       root    _       _
 3       Sarah   _       _       _       _       2       dobj    _       _
@@ -185,7 +186,7 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 
 ''')
 ...
->>> Parser.load('biaffine-dep-en').predict(path, pred='pred.conllx', verbose=False)[0]
+>>> dep.predict(path, pred='pred.conllx', verbose=False)[0]
 # text = But I found the location wonderful and the neighbors very kind.
 1       But     _       _       _       _       3       cc      _       _
 2       I       _       _       _       _       3       nsubj   _       _
@@ -201,13 +202,26 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 11      kind    _       _       _       _       6       conj    _       _
 12      .       _       _       _       _       3       punct   _       _
 
->>> Parser.load('crf-con-en').predict(['I','saw','Sarah','with','a','telescope','.'], verbose=False)[0]
-(TOP (S (NP (_ I)) (VP (_ saw) (NP (_ Sarah)) (PP (_ with) (NP (_ a) (_ telescope)))) (_ .)))
->>> Parser.load('biaffine-sdp-en').predict([[('I','I','PRP'), ('saw','see','VBD'),
-                                             ('Sarah','Sarah','NNP'), ('with','with','IN'),
-                                             ('a','a','DT'), ('telescope','telescope','NN'),
-                                             ('.','_','.')]],
-                                           verbose=False)[0]
+>>> con = Parser.load('crf-con-en')
+>>> con.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0].pretty_print()
+              TOP                       
+               |                         
+               S                        
+  _____________|______________________   
+ |             VP                     | 
+ |    _________|____                  |  
+ |   |    |         PP                | 
+ |   |    |     ____|___              |  
+ NP  |    NP   |        NP            | 
+ |   |    |    |     ___|______       |  
+ _   _    _    _    _          _      _ 
+ |   |    |    |    |          |      |  
+ I  saw Sarah with  a      telescope  . 
+
+>>> sdp = Parser.load('biaffine-sdp-en')
+>>> sdp.predict([[('I','I','PRP'), ('saw','see','VBD'), ('Sarah','Sarah','NNP'), ('with','with','IN'),
+                  ('a','a','DT'), ('telescope','telescope','NN'), ('.','_','.')]],
+                verbose=False)[0]
 1       I       I       PRP     _       _       _       _       2:ARG1  _
 2       saw     see     VBD     _       _       _       _       0:root|4:ARG1   _
 3       Sarah   Sarah   NNP     _       _       _       _       2:ARG2  _
