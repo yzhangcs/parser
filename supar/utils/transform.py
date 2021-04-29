@@ -762,3 +762,6 @@ class TreeSentence(Sentence):
 
     def __repr__(self):
         return self.values[-2].pformat(1000000)
+
+    def pretty_print(self):
+        self.values[-2].pretty_print()
