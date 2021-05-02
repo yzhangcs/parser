@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
+import torch.autograd as autograd
 from supar.utils.fn import pad, stripe
 
 
@@ -284,6 +285,7 @@ def mst(scores, mask, multiroot=False):
     return pad(preds, total_length=seq_len).to(mask.device)
 
 
+@torch.enable_grad()
 def eisner(scores, mask, multiroot=False):
     r"""
     First-order Eisner algorithm for projective decoding :cite:`mcdonald-etal-2005-online`.
@@ -313,66 +315,43 @@ def eisner(scores, mask, multiroot=False):
 
     lens = mask.sum(1)
     batch_size, seq_len, _ = scores.shape
-    scores = scores.permute(2, 1, 0)
-    s_i = torch.full_like(scores, float('-inf'))
-    s_c = torch.full_like(scores, float('-inf'))
-    p_i = scores.new_zeros(seq_len, seq_len, batch_size).long()
-    p_c = scores.new_zeros(seq_len, seq_len, batch_size).long()
+    scores = scores.permute(2, 1, 0).requires_grad_()
+    s_i = torch.full_like(scores, -1e30)
+    s_c = torch.full_like(scores, -1e30)
     s_c.diagonal().fill_(0)
 
     for w in range(1, seq_len):
         n = seq_len - w
-        starts = p_i.new_tensor(range(n)).unsqueeze(0)
         # ilr = C(i->r) + C(j->r+1)
         ilr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
         # [batch_size, n, w]
         il = ir = ilr.permute(2, 0, 1)
         # I(j->i) = max(C(i->r) + C(j->r+1) + s(j->i)), i <= r < j
-        il_span, il_path = il.max(-1)
+        il_span, _ = il.max(-1)
         s_i.diagonal(-w).copy_(il_span + scores.diagonal(-w))
-        p_i.diagonal(-w).copy_(il_path + starts)
         # I(i->j) = max(C(i->r) + C(j->r+1) + s(i->j)), i <= r < j
-        ir_span, ir_path = ir.max(-1)
+        ir_span, _ = ir.max(-1)
         s_i.diagonal(w).copy_(ir_span + scores.diagonal(w))
-        p_i.diagonal(w).copy_(ir_path + starts)
 
         # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
         cl = stripe(s_c, n, w, (0, 0), 0) + stripe(s_i, n, w, (w, 0))
-        cl_span, cl_path = cl.permute(2, 0, 1).max(-1)
+        cl_span, _ = cl.permute(2, 0, 1).max(-1)
         s_c.diagonal(-w).copy_(cl_span)
-        p_c.diagonal(-w).copy_(cl_path + starts)
         # C(i->j) = max(I(i->r) + C(r->j)), i < r <= j
         cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
-        cr_span, cr_path = cr.permute(2, 0, 1).max(-1)
+        cr_span, _ = cr.permute(2, 0, 1).max(-1)
         s_c.diagonal(w).copy_(cr_span)
         if not multiroot:
             s_c[0, w][lens.ne(w)] = float('-inf')
-        p_c.diagonal(w).copy_(cr_path + starts + 1)
 
-    def backtrack(p_i, p_c, heads, i, j, complete):
-        if i == j:
-            return
-        if complete:
-            r = p_c[i, j]
-            backtrack(p_i, p_c, heads, i, r, False)
-            backtrack(p_i, p_c, heads, r, j, True)
-        else:
-            r, heads[j] = p_i[i, j], i
-            i, j = sorted((i, j))
-            backtrack(p_i, p_c, heads, i, r, True)
-            backtrack(p_i, p_c, heads, j, r + 1, True)
+    logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
+    marginals, = autograd.grad(logZ, scores)
+    preds = lens.new_zeros(batch_size, seq_len).masked_scatter_(mask, marginals.permute(2, 1, 0).nonzero()[:, 2])
 
-    preds = []
-    p_c = p_c.permute(2, 0, 1).cpu()
-    p_i = p_i.permute(2, 0, 1).cpu()
-    for i, length in enumerate(lens.tolist()):
-        heads = p_c.new_zeros(length + 1, dtype=torch.long)
-        backtrack(p_i[i], p_c[i], heads, 0, length, True)
-        preds.append(heads.to(mask.device))
-
-    return pad(preds, total_length=seq_len).to(mask.device)
+    return preds
 
 
+@torch.enable_grad()
 def eisner2o(scores, mask, multiroot=False):
     r"""
     Second-order Eisner algorithm for projective decoding :cite:`mcdonald-pereira-2006-online`.
@@ -421,7 +400,7 @@ def eisner2o(scores, mask, multiroot=False):
 
     # the end position of each sentence in a batch
     lens = mask.sum(1)
-    s_arc, s_sib = scores
+    s_arc, s_sib = (s.requires_grad_() for s in scores)
     batch_size, seq_len, _ = s_arc.shape
     # [seq_len, seq_len, batch_size]
     s_arc = s_arc.permute(2, 1, 0)
@@ -430,16 +409,12 @@ def eisner2o(scores, mask, multiroot=False):
     s_i = torch.full_like(s_arc, float('-inf'))
     s_s = torch.full_like(s_arc, float('-inf'))
     s_c = torch.full_like(s_arc, float('-inf'))
-    p_i = s_arc.new_zeros(seq_len, seq_len, batch_size).long()
-    p_s = s_arc.new_zeros(seq_len, seq_len, batch_size).long()
-    p_c = s_arc.new_zeros(seq_len, seq_len, batch_size).long()
     s_c.diagonal().fill_(0)
 
     for w in range(1, seq_len):
         # n denotes the number of spans to iterate,
         # from span (0, w) to span (n, n+w) given width w
         n = seq_len - w
-        starts = p_i.new_tensor(range(n)).unsqueeze(0)
         # I(j->i) = max(I(j->r) + S(j->r, i)), i < r < j |
         #               C(j->j) + C(i->j-1))
         #           + s(j->i)
@@ -450,9 +425,8 @@ def eisner2o(scores, mask, multiroot=False):
         il0 = stripe(s_c, n, 1, (w, w)) + stripe(s_c, n, 1, (0, w - 1))
         # il0[0] are set to zeros since the scores of the complete spans starting from 0 are always -inf
         il[:, -1] = il0.index_fill_(0, lens.new_tensor(0), 0).squeeze(1)
-        il_span, il_path = il.permute(2, 0, 1).max(-1)
+        il_span, _ = il.permute(2, 0, 1).max(-1)
         s_i.diagonal(-w).copy_(il_span + s_arc.diagonal(-w))
-        p_i.diagonal(-w).copy_(il_path + starts + 1)
         # I(i->j) = max(I(i->r) + S(i->r, j), i < r < j |
         #               C(i->i) + C(j->i+1))
         #           + s(i->j)
@@ -463,66 +437,36 @@ def eisner2o(scores, mask, multiroot=False):
         # [n, 1, batch_size]
         ir0 = stripe(s_c, n, 1) + stripe(s_c, n, 1, (w, 1))
         ir[:, 0] = ir0.squeeze(1)
-        ir_span, ir_path = ir.permute(2, 0, 1).max(-1)
+        ir_span, _ = ir.permute(2, 0, 1).max(-1)
         s_i.diagonal(w).copy_(ir_span + s_arc.diagonal(w))
-        p_i.diagonal(w).copy_(ir_path + starts)
 
         # [n, w, batch_size]
         slr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
-        slr_span, slr_path = slr.permute(2, 0, 1).max(-1)
+        slr_span, _ = slr.permute(2, 0, 1).max(-1)
         # S(j, i) = max(C(i->r) + C(j->r+1)), i <= r < j
         s_s.diagonal(-w).copy_(slr_span)
-        p_s.diagonal(-w).copy_(slr_path + starts)
         # S(i, j) = max(C(i->r) + C(j->r+1)), i <= r < j
         s_s.diagonal(w).copy_(slr_span)
-        p_s.diagonal(w).copy_(slr_path + starts)
 
         # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
         cl = stripe(s_c, n, w, (0, 0), 0) + stripe(s_i, n, w, (w, 0))
-        cl_span, cl_path = cl.permute(2, 0, 1).max(-1)
+        cl_span, _ = cl.permute(2, 0, 1).max(-1)
         s_c.diagonal(-w).copy_(cl_span)
-        p_c.diagonal(-w).copy_(cl_path + starts)
         # C(i->j) = max(I(i->r) + C(r->j)), i < r <= j
         cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
-        cr_span, cr_path = cr.permute(2, 0, 1).max(-1)
+        cr_span, _ = cr.permute(2, 0, 1).max(-1)
         s_c.diagonal(w).copy_(cr_span)
         if not multiroot:
             s_c[0, w][lens.ne(w)] = float('-inf')
-        p_c.diagonal(w).copy_(cr_path + starts + 1)
 
-    def backtrack(p_i, p_s, p_c, heads, i, j, flag):
-        if i == j:
-            return
-        if flag == 'c':
-            r = p_c[i, j]
-            backtrack(p_i, p_s, p_c, heads, i, r, 'i')
-            backtrack(p_i, p_s, p_c, heads, r, j, 'c')
-        elif flag == 's':
-            r = p_s[i, j]
-            i, j = sorted((i, j))
-            backtrack(p_i, p_s, p_c, heads, i, r, 'c')
-            backtrack(p_i, p_s, p_c, heads, j, r + 1, 'c')
-        elif flag == 'i':
-            r, heads[j] = p_i[i, j], i
-            if r == i:
-                r = i + 1 if i < j else i - 1
-                backtrack(p_i, p_s, p_c, heads, j, r, 'c')
-            else:
-                backtrack(p_i, p_s, p_c, heads, i, r, 'i')
-                backtrack(p_i, p_s, p_c, heads, r, j, 's')
+    logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
+    marginals, = autograd.grad(logZ, s_arc)
+    preds = lens.new_zeros(batch_size, seq_len).masked_scatter_(mask, marginals.permute(2, 1, 0).nonzero()[:, 2])
 
-    preds = []
-    p_i = p_i.permute(2, 0, 1).cpu()
-    p_s = p_s.permute(2, 0, 1).cpu()
-    p_c = p_c.permute(2, 0, 1).cpu()
-    for i, length in enumerate(lens.tolist()):
-        heads = p_c.new_zeros(length + 1, dtype=torch.long)
-        backtrack(p_i[i], p_s[i], p_c[i], heads, 0, length, 'c')
-        preds.append(heads.to(mask.device))
-
-    return pad(preds, total_length=seq_len).to(mask.device)
+    return preds
 
 
+@torch.enable_grad()
 def cky(scores, mask):
     r"""
     The implementation of `Cocke-Kasami-Younger`_ (CKY) algorithm to parse constituency trees :cite:`zhang-etal-2020-fast`.
@@ -554,17 +498,13 @@ def cky(scores, mask):
     """
 
     lens = mask[:, 0].sum(-1)
-    scores = scores.permute(1, 2, 3, 0)
+    scores = scores.permute(1, 2, 3, 0).requires_grad_()
     seq_len, seq_len, n_labels, batch_size = scores.shape
     s = scores.new_zeros(seq_len, seq_len, batch_size)
-    p_s = scores.new_zeros(seq_len, seq_len, batch_size).long()
-    p_l = scores.new_zeros(seq_len, seq_len, batch_size).long()
 
     for w in range(1, seq_len):
         n = seq_len - w
-        starts = p_s.new_tensor(range(n)).unsqueeze(0)
-        s_l, p = scores.diagonal(w).max(0)
-        p_l.diagonal(w).copy_(p)
+        s_l, _ = scores.diagonal(w).max(0)
 
         if w == 1:
             s.diagonal(w).copy_(s_l)
@@ -574,20 +514,9 @@ def cky(scores, mask):
         # [batch_size, n, w]
         s_s = s_s.permute(2, 0, 1)
         # [batch_size, n]
-        s_s, p = s_s.max(-1)
+        s_s, _ = s_s.max(-1)
         s.diagonal(w).copy_(s_s + s_l)
-        p_s.diagonal(w).copy_(p + starts + 1)
 
-    def backtrack(p_s, p_l, i, j):
-        if j == i + 1:
-            return [(i, j, p_l[i][j])]
-        split, label = p_s[i][j], p_l[i][j]
-        ltree = backtrack(p_s, p_l, i, split)
-        rtree = backtrack(p_s, p_l, split, j)
-        return [(i, j, label)] + ltree + rtree
-
-    p_s = p_s.permute(2, 0, 1).tolist()
-    p_l = p_l.permute(2, 0, 1).tolist()
-    trees = [backtrack(p_s[i], p_l[i], 0, length) for i, length in enumerate(lens.tolist())]
-
-    return trees
+    logZ = s[0].gather(0, lens.unsqueeze(0)).sum()
+    marginals, = autograd.grad(logZ, scores)
+    return [sorted(i.nonzero().tolist(), key=lambda x:(x[0], -x[1])) for i in marginals.permute(3, 0, 1, 2)]
