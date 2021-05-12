@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-pad = '<pad>'
-unk = '<unk>'
-bos = '<bos>'
-eos = '<eos>'
+PAD = '<pad>'
+UNK = '<unk>'
+BOS = '<bos>'
+EOS = '<eos>'
