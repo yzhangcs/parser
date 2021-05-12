@@ -6,7 +6,6 @@ from collections.abc import Iterable
 import nltk
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
-from torch.distributions.utils import lazy_property
 
 logger = get_logger(__name__)
 
@@ -46,7 +45,7 @@ class Transform(object):
     def __getitem__(self, index):
         return getattr(self, self.fields[index])
 
-    @lazy_property
+    @property
     def flattened_fields(self):
         flattened = []
         for field in self:
@@ -138,7 +137,7 @@ class Sentence(object):
 class CoNLL(Transform):
     r"""
     The CoNLL object holds ten fields required for CoNLL-X data format :cite:`buchholz-marsi-2006-conll`.
-    Each field can be binded with one or more :class:`~supar.utils.field.Field` objects. For example,
+    Each field can be bound to one or more :class:`~supar.utils.field.Field` objects. For example,
     ``FORM`` can contain both :class:`~supar.utils.field.Field` and :class:`~supar.utils.field.SubwordField`
     to produce tensors for words and subwords.
 
@@ -611,7 +610,7 @@ class Tree(Transform):
             delete_labels (set[str]):
                 A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
-                If it is a non-terminal label, just delete the brackets (don't delete childrens).
+                If it is a non-terminal label, just delete the brackets (don't delete children).
                 In `EVALB`_, the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
                 Default: ``None``.
