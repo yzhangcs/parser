@@ -8,7 +8,7 @@ from supar.models import (BiaffineDependencyModel, CRF2oDependencyModel,
                           CRFDependencyModel, VIDependencyModel)
 from supar.parsers.parser import Parser
 from supar.utils import Config, Dataset, Embedding
-from supar.utils.common import bos, pad, unk
+from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger, progress_bar
@@ -272,11 +272,11 @@ class BiaffineDependencyParser(Parser):
                                 fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
             WORD.vocab = t.get_vocab()
         else:
-            WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
+            WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
             if 'tag' in args.feat:
-                TAG = Field('tags', bos=bos)
+                TAG = Field('tags', bos=BOS)
             if 'char' in args.feat:
-                CHAR = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
+                CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, fix_len=args.fix_len)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
@@ -290,8 +290,8 @@ class BiaffineDependencyParser(Parser):
                                     fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
                 BERT.vocab = t.get_vocab()
         TEXT = RawField('texts')
-        ARC = Field('arcs', bos=bos, use_vocab=False, fn=CoNLL.get_arcs)
-        REL = Field('rels', bos=bos)
+        ARC = Field('arcs', bos=BOS, use_vocab=False, fn=CoNLL.get_arcs)
+        REL = Field('rels', bos=BOS)
         transform = CoNLL(FORM=(WORD, TEXT, CHAR, BERT), CPOS=TAG, HEAD=ARC, DEPREL=REL)
 
         train = Dataset(transform, args.train)
@@ -795,11 +795,11 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                                 fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
             WORD.vocab = t.get_vocab()
         else:
-            WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
+            WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
             if 'tag' in args.feat:
-                TAG = Field('tags', bos=bos)
+                TAG = Field('tags', bos=BOS)
             if 'char' in args.feat:
-                CHAR = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
+                CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, fix_len=args.fix_len)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
@@ -813,9 +813,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                                     fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
                 BERT.vocab = t.get_vocab()
         TEXT = RawField('texts')
-        ARC = Field('arcs', bos=bos, use_vocab=False, fn=CoNLL.get_arcs)
-        SIB = ChartField('sibs', bos=bos, use_vocab=False, fn=CoNLL.get_sibs)
-        REL = Field('rels', bos=bos)
+        ARC = Field('arcs', bos=BOS, use_vocab=False, fn=CoNLL.get_arcs)
+        SIB = ChartField('sibs', bos=BOS, use_vocab=False, fn=CoNLL.get_sibs)
+        REL = Field('rels', bos=BOS)
         transform = CoNLL(FORM=(WORD, TEXT, CHAR, BERT), CPOS=TAG, HEAD=(ARC, SIB), DEPREL=REL)
 
         train = Dataset(transform, args.train)

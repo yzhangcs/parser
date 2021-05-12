@@ -8,7 +8,7 @@ from supar.models import (BiaffineSemanticDependencyModel,
                           VISemanticDependencyModel)
 from supar.parsers.parser import Parser
 from supar.utils import Config, Dataset, Embedding
-from supar.utils.common import bos, pad, unk
+from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import ChartMetric
@@ -223,7 +223,7 @@ class BiaffineSemanticDependencyParser(Parser):
             return parser
 
         logger.info("Building the fields")
-        WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
+        WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
         TAG, CHAR, LEMMA, BERT = None, None, None, None
         if args.encoder != 'lstm':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
@@ -238,13 +238,13 @@ class BiaffineSemanticDependencyParser(Parser):
                                 fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
             WORD.vocab = t.get_vocab()
         else:
-            WORD = Field('words', pad=pad, unk=unk, bos=bos, lower=True)
+            WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
             if 'tag' in args.feat:
-                TAG = Field('tags', bos=bos)
+                TAG = Field('tags', bos=BOS)
             if 'char' in args.feat:
-                CHAR = SubwordField('chars', pad=pad, unk=unk, bos=bos, fix_len=args.fix_len)
+                CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, fix_len=args.fix_len)
             if 'lemma' in args.feat:
-                LEMMA = Field('lemmas', pad=pad, unk=unk, bos=bos, lower=True)
+                LEMMA = Field('lemmas', pad=PAD, unk=UNK, bos=BOS, lower=True)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
