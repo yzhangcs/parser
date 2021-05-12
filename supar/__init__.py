@@ -49,5 +49,5 @@ NAME = {
     'vi-sdp-roberta-en': 'dm.vi.sdp.roberta',
     'vi-sdp-electra-zh': 'semeval16.vi.sdp.electra'
 }
-MODEL = {n: f"{SRC['github']}/v{__version__}/{m}.zip" for n, m in NAME.items()}
-CONFIG = {n: f"{SRC['github']}/v{__version__}/{m}.ini" for n, m in NAME.items()}
+MODEL = {n: f"{SRC['github']}/v1.1.0/{m}.zip" for n, m in NAME.items()}
+CONFIG = {n: f"{SRC['github']}/v1.1.0/{m}.ini" for n, m in NAME.items()}
