@@ -27,6 +27,7 @@ setup(
         'transformers>=4.0.0',
         'nltk',
         'stanza',
+        'opt_einsum',
         'dill'],
     entry_points={
         'console_scripts': [
