@@ -230,7 +230,7 @@ class VariationalLSTM(nn.Module):
                 c_i = torch.stack((c_i, c_b))
             x = x_i
             h_n.append(h_i)
-            c_n.append(h_i)
+            c_n.append(c_i)
 
         x = PackedSequence(x, sequence.batch_sizes, sequence.sorted_indices, sequence.unsorted_indices)
         hx = torch.cat(h_n, 0), torch.cat(c_n, 0)
