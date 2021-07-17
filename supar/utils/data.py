@@ -131,18 +131,15 @@ class Sampler(torch.utils.data.Sampler):
         self.rank = dist.get_rank() if distributed else 0
         self.replicas = dist.get_world_size() if distributed else 1
         self.samples = sum(self.chunks) // self.replicas
-        self.epoch = 0
+        self.epoch = 1
 
     def __iter__(self):
         g = torch.Generator()
         g.manual_seed(self.epoch)
-        range_fn = torch.arange
+        total, count = 0, 0
         # if `shuffle=True`, shuffle both the buckets and samples in each bucket
         # for distributed training, make sure each process generates the same random sequence at each epoch
-        if self.shuffle:
-            def range_fn(x):
-                return torch.randperm(x, generator=g)
-        total, count = 0, 0
+        range_fn = torch.arange if not self.shuffle else lambda x: torch.randperm(x, generator=g)
         # TODO: more elegant way to deal with uneven data, which we directly discard right now
         for i in range_fn(len(self.buckets)).tolist():
             split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1 for j in range(self.chunks[i])]
