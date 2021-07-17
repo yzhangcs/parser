@@ -29,7 +29,6 @@ class BiaffineDependencyParser(Parser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.WORD, self.TEXT, self.CHAR, self.BERT = self.transform.FORM
         self.TAG = self.transform.CPOS
         self.ARC, self.REL = self.transform.HEAD, self.transform.DEPREL
 
@@ -258,7 +257,7 @@ class BiaffineDependencyParser(Parser):
             return parser
 
         logger.info("Building the fields")
-        TAG, CHAR, BERT = None, None, None
+        TAG, CHAR, ELMO, BERT = None, None, None, None
         if args.encoder != 'lstm':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
@@ -277,6 +276,10 @@ class BiaffineDependencyParser(Parser):
                 TAG = Field('tags', bos=BOS)
             if 'char' in args.feat:
                 CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, fix_len=args.fix_len)
+            if 'elmo' in args.feat:
+                from allennlp.modules.elmo import batch_to_ids
+                ELMO = RawField('elmo')
+                ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
@@ -292,7 +295,7 @@ class BiaffineDependencyParser(Parser):
         TEXT = RawField('texts')
         ARC = Field('arcs', bos=BOS, use_vocab=False, fn=CoNLL.get_arcs)
         REL = Field('rels', bos=BOS)
-        transform = CoNLL(FORM=(WORD, TEXT, CHAR, BERT), CPOS=TAG, HEAD=ARC, DEPREL=REL)
+        transform = CoNLL(FORM=(WORD, TEXT, CHAR, ELMO, BERT), CPOS=TAG, HEAD=ARC, DEPREL=REL)
 
         train = Dataset(transform, args.train)
         if args.encoder == 'lstm':
@@ -781,7 +784,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             return parser
 
         logger.info("Building the fields")
-        TAG, CHAR, BERT = None, None, None
+        TAG, CHAR, ELMO, BERT = None, None, None, None
         if args.encoder != 'lstm':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
@@ -800,6 +803,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 TAG = Field('tags', bos=BOS)
             if 'char' in args.feat:
                 CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, fix_len=args.fix_len)
+            if 'elmo' in args.feat:
+                from allennlp.modules.elmo import batch_to_ids
+                ELMO = RawField('elmo')
+                ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
@@ -816,7 +823,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         ARC = Field('arcs', bos=BOS, use_vocab=False, fn=CoNLL.get_arcs)
         SIB = ChartField('sibs', bos=BOS, use_vocab=False, fn=CoNLL.get_sibs)
         REL = Field('rels', bos=BOS)
-        transform = CoNLL(FORM=(WORD, TEXT, CHAR, BERT), CPOS=TAG, HEAD=(ARC, SIB), DEPREL=REL)
+        transform = CoNLL(FORM=(WORD, TEXT, CHAR, ELMO, BERT), CPOS=TAG, HEAD=(ARC, SIB), DEPREL=REL)
 
         train = Dataset(transform, args.train)
         if args.encoder == 'lstm':

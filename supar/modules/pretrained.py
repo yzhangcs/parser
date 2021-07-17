@@ -8,9 +8,7 @@ from supar.utils.fn import pad
 
 class TransformerEmbedding(nn.Module):
     r"""
-    A module that directly utilizes the pretrained models in `transformers`_ to produce BERT representations.
-    While mainly tailored to provide input preparation and post-processing for the BERT model,
-    it is also compatible with other pretrained language models like XLNet, RoBERTa and ELECTRA, etc.
+    Bidirectional transformer embeddings of words from various transformer architectures :cite:`devlin-etal-2019-bert`.
 
     Args:
         model (str):
@@ -67,13 +65,13 @@ class TransformerEmbedding(nn.Module):
             s += f", dropout={self.dropout}"
         if self.requires_grad:
             s += f", requires_grad={self.requires_grad}"
-
         return f"{self.__class__.__name__}({s})"
 
     def forward(self, subwords):
         r"""
         Args:
             subwords (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+
         Returns:
             ~torch.Tensor:
                 BERT embeddings of shape ``[batch_size, seq_len, n_out]``.
@@ -111,3 +109,84 @@ class TransformerEmbedding(nn.Module):
         embed = self.projection(embed)
 
         return embed
+
+
+class ELMoEmbedding(nn.Module):
+    r"""
+    Contextual word embeddings using word-level bidirectional LM :cite:`peters-etal-2018-deep`.
+
+    Args:
+        model (str):
+            The name of the pretrained ELMo registered in `OPTION` and `WEIGHT`. Default: ``'original_5b'``.
+        bos_eos (tuple[bool]):
+            A tuple of two boolean values indicating whether to keep start/end boundaries of sentence outputs.
+            Default: ``(True, True)``.
+        n_out (int):
+            The requested size of the embeddings. If 0, uses the default size of ELMo outputs. Default: 0.
+        dropout (float):
+            The dropout to be applied to the ELMo representations. Default: 0.5.
+        requires_grad (bool):
+            If ``True``, the model parameters will be updated together with the downstream task. Default: ``False``.
+    """
+
+    OPTION = {
+        'small': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x1024_128_2048cnn_1xhighway/elmo_2x1024_128_2048cnn_1xhighway_options.json',  # noqa
+        'medium': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x2048_256_2048cnn_1xhighway/elmo_2x2048_256_2048cnn_1xhighway_options.json',  # noqa
+        'original': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json',  # noqa
+        'original_5b': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json',  # noqa
+    }
+    WEIGHT = {
+        'small': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x1024_128_2048cnn_1xhighway/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5',  # noqa
+        'medium': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x2048_256_2048cnn_1xhighway/elmo_2x2048_256_2048cnn_1xhighway_weights.hdf5',  # noqa
+        'original': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5',  # noqa
+        'original_5b': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5',  # noqa
+    }
+
+    def __init__(self, model='original_5b', bos_eos=(True, True), n_out=0, dropout=0.5, requires_grad=False):
+        super().__init__()
+
+        from allennlp.modules import Elmo
+
+        self.elmo = Elmo(options_file=self.OPTION[model],
+                         weight_file=self.WEIGHT[model],
+                         num_output_representations=1,
+                         dropout=dropout,
+                         requires_grad=requires_grad,
+                         keep_sentence_boundaries=True)
+
+        self.model = model
+        self.bos_eos = bos_eos
+        self.hidden_size = self.elmo.get_output_dim()
+        self.n_out = n_out or self.hidden_size
+        self.dropout = dropout
+        self.requires_grad = requires_grad
+
+        self.scalar_mix = ScalarMix(self.elmo._elmo_lstm.num_layers)
+        self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
+
+    def __repr__(self):
+        s = f"{self.model}, n_out={self.n_out}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
+        if self.requires_grad:
+            s += f", requires_grad={self.requires_grad}"
+        return f"{self.__class__.__name__}({s})"
+
+    def forward(self, chars):
+        r"""
+        Args:
+            chars (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+
+        Returns:
+            ~torch.Tensor:
+                ELMo embeddings of shape ``[batch_size, seq_len, n_out]``.
+        """
+
+        x = self.elmo._elmo_lstm(chars)['activations']
+        x = self.scalar_mix(x)
+        x = self.projection(x)
+        if not self.bos_eos[0]:
+            x = x[:, 1:]
+        if not self.bos_eos[1]:
+            x = x[:, :-1]
+        return x
