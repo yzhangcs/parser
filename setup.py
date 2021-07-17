@@ -25,10 +25,12 @@ setup(
     install_requires=[
         'torch>=1.7.1',
         'transformers>=4.0.0',
-        'allennlp',
         'nltk',
         'stanza',
         'dill'],
+    extras_require={
+        'elmo': ['allennlp']
+    },
     entry_points={
         'console_scripts': [
             'biaffine-dep=supar.cmds.biaffine_dep:main',
