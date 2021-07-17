@@ -2,7 +2,6 @@
 
 import torch
 import torch.nn as nn
-from opt_einsum import contract
 
 
 class Biaffine(nn.Module):
@@ -72,7 +71,7 @@ class Biaffine(nn.Module):
         if self.bias_y:
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
         # [batch_size, n_out, seq_len, seq_len]
-        s = contract('bxi,oij,byj->boxy', x, self.weight, y) / self.n_in ** self.scale
+        s = torch.einsum('bxi,oij,byj->boxy', x, self.weight, y) / self.n_in ** self.scale
         # remove dim 1 if n_out == 1
         s = s.squeeze(1)
 
@@ -146,9 +145,9 @@ class Triaffine(nn.Module):
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
-        w = contract('bzk,oikj->bozij', z, self.weight)
+        w = torch.einsum('bzk,oikj->bozij', z, self.weight)
         # [batch_size, n_out, seq_len, seq_len, seq_len]
-        s = contract('bxi,bozij,byj->bozxy', x, w, y) / self.n_in ** self.scale
+        s = torch.einsum('bxi,bozij,byj->bozxy', x, w, y) / self.n_in ** self.scale
         # remove dim 1 if n_out == 1
         s = s.squeeze(1)
 
