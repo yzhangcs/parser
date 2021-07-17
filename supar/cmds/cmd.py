@@ -21,15 +21,15 @@ def parse(parser):
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
     init_device(args.device, args.local_rank)
-    init_logger(logger, f"{args.path}.{args.mode}.log")
+    init_logger(logger, f"{args.path}.{args.mode}.log", 'a' if args.get('checkpoint') else 'w')
     logger.info('\n' + str(args))
 
     if args.mode == 'train':
-        parser = Parser.build(**args)
+        parser = Parser.load(**args) if args.checkpoint else Parser.build(**args)
         parser.train(**args)
     elif args.mode == 'evaluate':
-        parser = Parser.load(args.path)
+        parser = Parser.load(**args)
         parser.evaluate(**args)
     elif args.mode == 'predict':
-        parser = Parser.load(args.path)
+        parser = Parser.load(**args)
         parser.predict(**args)

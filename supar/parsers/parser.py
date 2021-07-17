@@ -9,7 +9,7 @@ import torch
 import torch.distributed as dist
 from supar.utils import Config, Dataset
 from supar.utils.field import Field
-from supar.utils.fn import download
+from supar.utils.fn import download, get_rng_state, set_rng_state
 from supar.utils.logging import init_logger, logger
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
@@ -34,15 +34,13 @@ class Parser(object):
         init_logger(logger, verbose=args.verbose)
 
         self.transform.train()
+        batch_size = batch_size // update_steps
         if dist.is_initialized():
-            args.batch_size = args.batch_size // dist.get_world_size()
+            batch_size = batch_size // dist.get_world_size()
         logger.info("Loading the data")
-        train = Dataset(self.transform, args.train, **args)
-        dev = Dataset(self.transform, args.dev)
-        test = Dataset(self.transform, args.test)
-        train.build(args.batch_size//args.update_steps, args.buckets, True, dist.is_initialized())
-        dev.build(args.batch_size, args.buckets)
-        test.build(args.batch_size, args.buckets)
+        train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized())
+        dev = Dataset(self.transform, args.dev).build(batch_size, buckets)
+        test = Dataset(self.transform, args.test).build(batch_size, buckets)
         logger.info(f"\n{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
 
         if args.encoder == 'lstm':
@@ -60,10 +58,16 @@ class Parser(object):
         if dist.is_initialized():
             self.model = DDP(self.model, device_ids=[args.local_rank], find_unused_parameters=True)
 
-        elapsed = timedelta()
-        best_e, best_metric = 1, Metric()
+        self.epoch, self.best_e, self.patience, self.best_metric, self.elapsed = 1, 1, patience, Metric(), timedelta()
+        if self.args.checkpoint:
+            self.optimizer.load_state_dict(self.checkpoint_state_dict.pop('optimizer_state_dict'))
+            self.scheduler.load_state_dict(self.checkpoint_state_dict.pop('scheduler_state_dict'))
+            set_rng_state(self.checkpoint_state_dict.pop('rng_state'))
+            for k, v in self.checkpoint_state_dict.items():
+                setattr(self, k, v)
+            train.loader.batch_sampler.epoch = self.epoch
 
-        for epoch in range(1, args.epochs + 1):
+        for epoch in range(self.epoch, args.epochs + 1):
             start = datetime.now()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
@@ -74,22 +78,26 @@ class Parser(object):
             logger.info(f"{'test:':5} loss: {loss:.4f} - {test_metric}")
 
             t = datetime.now() - start
-            if dev_metric > best_metric:
-                best_e, best_metric = epoch, dev_metric
+            self.epoch += 1
+            self.patience -= 1
+            self.elapsed += t
+
+            if dev_metric > self.best_metric:
+                self.best_e, self.patience, self.best_metric = epoch, patience, dev_metric
                 if is_master():
-                    self.save(args.path)
+                    self.save_checkpoint(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
             else:
                 logger.info(f"{t}s elapsed\n")
-            elapsed += t
-            if epoch - best_e >= args.patience:
+            if self.patience < 1:
                 break
         loss, metric = self.load(**args)._evaluate(test.loader)
+        self.save(args.path)
 
-        logger.info(f"Epoch {best_e} saved")
-        logger.info(f"{'dev:':5} {best_metric}")
+        logger.info(f"Epoch {self.best_e} saved")
+        logger.info(f"{'dev:':5} {self.best_metric}")
         logger.info(f"{'test:':5} {metric}")
-        logger.info(f"{elapsed}s elapsed, {elapsed / epoch}s/epoch")
+        logger.info(f"{self.elapsed}s elapsed, {self.elapsed / epoch}s/epoch")
 
     def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):
         args = self.args.update(locals())
@@ -98,7 +106,7 @@ class Parser(object):
         self.transform.train()
         logger.info("Loading the data")
         dataset = Dataset(self.transform, data)
-        dataset.build(args.batch_size, args.buckets)
+        dataset.build(batch_size, buckets)
         logger.info(f"\n{dataset}")
 
         logger.info("Evaluating the dataset")
@@ -120,7 +128,7 @@ class Parser(object):
 
         logger.info("Loading the data")
         dataset = Dataset(self.transform, data, lang=lang)
-        dataset.build(args.batch_size, args.buckets)
+        dataset.build(batch_size, buckets)
         logger.info(f"\n{dataset}")
 
         logger.info("Making predictions on the dataset")
@@ -153,7 +161,7 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, reload=False, src=None, **kwargs):
+    def load(cls, path, reload=False, src=None, checkpoint=False, **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -169,6 +177,8 @@ class Parser(object):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: None.
+            checkpoint (bool):
+                If ``True``, loads all checkpoint states to restore the training process. Default: ``False``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -192,7 +202,9 @@ class Parser(object):
         model.load_state_dict(state['state_dict'], False)
         model.to(args.device)
         transform = state['transform']
-        return cls(args, model, transform)
+        parser = cls(args, model, transform)
+        parser.checkpoint_state_dict = state['checkpoint_state_dict'] if args.checkpoint else None
+        return parser
 
     def save(self, path):
         model = self.model
@@ -205,5 +217,24 @@ class Parser(object):
                  'args': args,
                  'state_dict': state_dict,
                  'pretrained': pretrained,
+                 'transform': self.transform}
+        torch.save(state, path, pickle_module=dill)
+
+    def save_checkpoint(self, path):
+        model = self.model
+        if hasattr(model, 'module'):
+            model = self.model.module
+        args = model.args
+        checkpoint_state_dict = {k: getattr(self, k) for k in ['epoch', 'best_e', 'patience', 'best_metric', 'elapsed']}
+        checkpoint_state_dict.update({'optimizer_state_dict': self.optimizer.state_dict(),
+                                      'scheduler_state_dict': self.scheduler.state_dict(),
+                                      'rng_state': get_rng_state()})
+        state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
+        pretrained = state_dict.pop('pretrained.weight', None)
+        state = {'name': self.NAME,
+                 'args': args,
+                 'state_dict': state_dict,
+                 'pretrained': pretrained,
+                 'checkpoint_state_dict': checkpoint_state_dict,
                  'transform': self.transform}
         torch.save(state, path, pickle_module=dill)
