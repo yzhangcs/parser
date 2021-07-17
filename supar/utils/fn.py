@@ -99,7 +99,20 @@ def download(url, reload=False):
             members = f.infolist()
             path = os.path.join(os.path.dirname(path), members[0].filename)
             if len(members) != 1:
-                raise RuntimeError('Only one file(not dir) is allowed in the zipfile.')
+                raise RuntimeError('Only one file (not dir) is allowed in the zipfile.')
             if reload or not os.path.exists(path):
                 f.extractall(os.path.dirname(path))
     return path
+
+
+def get_rng_state():
+    state = {'rng_state': torch.get_rng_state()}
+    if torch.cuda.is_available():
+        state['cuda_rng_state'] = torch.cuda.get_rng_state()
+    return state
+
+
+def set_rng_state(state):
+    torch.set_rng_state(state['rng_state'])
+    if torch.cuda.is_available():
+        torch.cuda.set_rng_state(state['cuda_rng_state'])
