@@ -35,90 +35,6 @@ As a prerequisite, the following requirements should be satisfied:
 * [`pytorch`](https://github.com/pytorch/pytorch): >= 1.7
 * [`transformers`](https://github.com/huggingface/transformers): >= 4.0
 
-## Performance
-
-`SuPar` provides pretrained models for English, Chinese and 17 other languages.
-The tables below list the performance and parsing speed of pretrained models for different tasks.
-All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz and Nvidia GeForce GTX 1080 Ti GPU.
-
-### Dependency Parsing
-
-English and Chinese dependency parsing models are trained on PTB and CTB7 respectively.
-For each parser, we provide pretrained models that take BiLSTM as encoder.
-We also provide models trained by finetuning pretrained language models from [Huggingface Transformers](https://github.com/huggingface/transformers).
-We use [`robert-large`](https://huggingface.co/roberta-large) for English and [`hfl/chinese-electra-180g-large-discriminator`](https://huggingface.co/hfl/chinese-electra-180g-large-discriminator) for Chinese.
-During evaluation, punctuation is ignored in all metrics for PTB.
-
-| Name                      |  UAS  |   LAS | Sents/s |
-| ------------------------- | :---: | ----: | :-----: |
-| `biaffine-dep-en`         | 96.01 | 94.41 | 1831.91 |
-| `crf2o-dep-en`            | 96.07 | 94.51 | 531.59  |
-| `biaffine-dep-roberta-en` | 97.33 | 95.86 | 271.80  |
-| `biaffine-dep-zh`         | 88.64 | 85.47 | 1180.57 |
-| `crf2o-dep-zh`            | 89.22 | 86.15 | 237.40  |
-| `biaffine-dep-electra-zh` | 92.45 | 89.55 | 160.56  |
-
-The multilingual dependency parsing model, named `biaffine-dep-xlmr`, is trained on merged 12 selected treebanks from Universal Dependencies (UD) v2.3 dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
-The following table lists results of each treebank.
-Languages are represented by [ISO 639-1 Language Codes](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
-
-| Language |  UAS  |  LAS  | Sents/s |
-| -------- | :---: | :---: | ------: |
-| `bg`     | 96.95 | 94.24 |  343.96 |
-| `ca`     | 95.57 | 94.20 |  184.88 |
-| `cs`     | 95.79 | 93.83 |  245.68 |
-| `de`     | 89.74 | 85.59 |  283.53 |
-| `en`     | 93.37 | 91.27 |  269.16 |
-| `es`     | 94.78 | 93.29 |  192.00 |
-| `fr`     | 94.56 | 91.90 |  219.35 |
-| `it`     | 96.29 | 94.47 |  254.82 |
-| `nl`     | 96.04 | 93.76 |  268.57 |
-| `no`     | 95.64 | 94.45 |  318.00 |
-| `ro`     | 94.59 | 89.79 |  216.45 |
-| `ru`     | 96.37 | 95.24 |  243.56 |
-
-### Constituency Parsing
-
-We use PTB and CTB7 datasets to train English and Chinese constituency parsing models.
-Below are the results.
-
-| Name                 |   P   |   R   | F<sub>1 | Sents/s |
-| -------------------- | :---: | :---: | :-----: | ------: |
-| `crf-con-en`         | 94.16 | 93.98 |  94.07  |  841.88 |
-| `crf-con-roberta-en` | 96.42 | 96.13 |  96.28  |  233.34 |
-| `crf-con-zh`         | 88.82 | 88.42 |  88.62  |  590.05 |
-| `crf-con-electra-zh` | 92.18 | 91.66 |  91.92  |  140.45 |
-
-The multilingual model `crf-con-xlmr` is trained on SPMRL dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
-We follow instructions of [Benepar](https://github.com/nikitakit/self-attentive-parser) to preprocess the data.
-For simplicity, we then directly merge train/dev/test treebanks of all languages in SPMRL into big ones to train the model.
-The results of each treebank are as follows.
-
-| Language |   P   |   R   | F<sub>1 | Sents/s |
-| -------- | :---: | :---: | :-----: | ------: |
-| `eu`     | 93.40 | 94.19 |  93.79  |  266.96 |
-| `fr`     | 88.77 | 88.84 |  88.81  |  149.34 |
-| `de`     | 93.68 | 92.18 |  92.92  |  200.31 |
-| `he`     | 94.65 | 95.20 |  94.93  |  172.50 |
-| `hu`     | 96.70 | 96.81 |  96.76  |  186.58 |
-| `ko`     | 91.75 | 92.46 |  92.11  |  234.86 |
-| `pl`     | 97.33 | 97.27 |  97.30  |  310.86 |
-| `sv`     | 92.51 | 92.50 |  92.50  |  235.49 |
-
-### Semantic Dependency Parsing
-
-English semantic dependency parsing models are trained on [DM data introduced in SemEval-2014 task 8](https://catalog.ldc.upenn.edu/LDC2016T10), while Chinese models are trained on [NEWS domain data of corpora from SemEval-2016 Task 9](https://github.com/HIT-SCIR/SemEval-2016).
-Our data preprocessing steps follow [Second_Order_SDP](https://github.com/wangxinyu0922/Second_Order_SDP).
-
-| Name                |   P   |   R   | F<sub>1 | Sents/s |
-| ------------------- | :---: | :---: | :-----: | ------: |
-| `biaffine-sdp-en`   | 94.35 | 93.12 |  93.73  | 1067.06 |
-| `vi-sdp-en`         | 94.36 | 93.52 |  93.94  |  821.73 |
-| `vi-sdp-roberta-en` | 95.18 | 95.20 |  95.19  |  264.13 |
-| `biaffine-sdp-zh`   | 72.93 | 66.29 |  69.45  |  523.36 |
-| `vi-sdp-zh`         | 72.05 | 67.97 |  69.95  |  411.94 |
-| `vi-sdp-electra-zh` | 73.29 | 70.53 |  71.89  |  139.52 |
-
 ## Usage
 
 `SuPar` allows you to download the pretrained model and parse sentences with a few lines of code:
@@ -263,6 +179,90 @@ The evaluation process resembles prediction:
 ```
 
 See [EXAMPLES](EXAMPLES.md) for more instructions on training and evaluation.
+
+## Performance
+
+`SuPar` provides pretrained models for English, Chinese and 17 other languages.
+The tables below list the performance and parsing speed of pretrained models for different tasks.
+All results are tested on the machine with Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz and Nvidia GeForce GTX 1080 Ti GPU.
+
+### Dependency Parsing
+
+English and Chinese dependency parsing models are trained on PTB and CTB7 respectively.
+For each parser, we provide pretrained models that take BiLSTM as encoder.
+We also provide models trained by finetuning pretrained language models from [Huggingface Transformers](https://github.com/huggingface/transformers).
+We use [`robert-large`](https://huggingface.co/roberta-large) for English and [`hfl/chinese-electra-180g-large-discriminator`](https://huggingface.co/hfl/chinese-electra-180g-large-discriminator) for Chinese.
+During evaluation, punctuation is ignored in all metrics for PTB.
+
+| Name                      |  UAS  |   LAS | Sents/s |
+| ------------------------- | :---: | ----: | :-----: |
+| `biaffine-dep-en`         | 96.01 | 94.41 | 1831.91 |
+| `crf2o-dep-en`            | 96.07 | 94.51 | 531.59  |
+| `biaffine-dep-roberta-en` | 97.33 | 95.86 | 271.80  |
+| `biaffine-dep-zh`         | 88.64 | 85.47 | 1180.57 |
+| `crf2o-dep-zh`            | 89.22 | 86.15 | 237.40  |
+| `biaffine-dep-electra-zh` | 92.45 | 89.55 | 160.56  |
+
+The multilingual dependency parsing model, named `biaffine-dep-xlmr`, is trained on merged 12 selected treebanks from Universal Dependencies (UD) v2.3 dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
+The following table lists results of each treebank.
+Languages are represented by [ISO 639-1 Language Codes](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
+
+| Language |  UAS  |  LAS  | Sents/s |
+| -------- | :---: | :---: | ------: |
+| `bg`     | 96.95 | 94.24 |  343.96 |
+| `ca`     | 95.57 | 94.20 |  184.88 |
+| `cs`     | 95.79 | 93.83 |  245.68 |
+| `de`     | 89.74 | 85.59 |  283.53 |
+| `en`     | 93.37 | 91.27 |  269.16 |
+| `es`     | 94.78 | 93.29 |  192.00 |
+| `fr`     | 94.56 | 91.90 |  219.35 |
+| `it`     | 96.29 | 94.47 |  254.82 |
+| `nl`     | 96.04 | 93.76 |  268.57 |
+| `no`     | 95.64 | 94.45 |  318.00 |
+| `ro`     | 94.59 | 89.79 |  216.45 |
+| `ru`     | 96.37 | 95.24 |  243.56 |
+
+### Constituency Parsing
+
+We use PTB and CTB7 datasets to train English and Chinese constituency parsing models.
+Below are the results.
+
+| Name                 |   P   |   R   | F<sub>1 | Sents/s |
+| -------------------- | :---: | :---: | :-----: | ------: |
+| `crf-con-en`         | 94.16 | 93.98 |  94.07  |  841.88 |
+| `crf-con-roberta-en` | 96.42 | 96.13 |  96.28  |  233.34 |
+| `crf-con-zh`         | 88.82 | 88.42 |  88.62  |  590.05 |
+| `crf-con-electra-zh` | 92.18 | 91.66 |  91.92  |  140.45 |
+
+The multilingual model `crf-con-xlmr` is trained on SPMRL dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
+We follow instructions of [Benepar](https://github.com/nikitakit/self-attentive-parser) to preprocess the data.
+For simplicity, we then directly merge train/dev/test treebanks of all languages in SPMRL into big ones to train the model.
+The results of each treebank are as follows.
+
+| Language |   P   |   R   | F<sub>1 | Sents/s |
+| -------- | :---: | :---: | :-----: | ------: |
+| `eu`     | 93.40 | 94.19 |  93.79  |  266.96 |
+| `fr`     | 88.77 | 88.84 |  88.81  |  149.34 |
+| `de`     | 93.68 | 92.18 |  92.92  |  200.31 |
+| `he`     | 94.65 | 95.20 |  94.93  |  172.50 |
+| `hu`     | 96.70 | 96.81 |  96.76  |  186.58 |
+| `ko`     | 91.75 | 92.46 |  92.11  |  234.86 |
+| `pl`     | 97.33 | 97.27 |  97.30  |  310.86 |
+| `sv`     | 92.51 | 92.50 |  92.50  |  235.49 |
+
+### Semantic Dependency Parsing
+
+English semantic dependency parsing models are trained on [DM data introduced in SemEval-2014 task 8](https://catalog.ldc.upenn.edu/LDC2016T10), while Chinese models are trained on [NEWS domain data of corpora from SemEval-2016 Task 9](https://github.com/HIT-SCIR/SemEval-2016).
+Our data preprocessing steps follow [Second_Order_SDP](https://github.com/wangxinyu0922/Second_Order_SDP).
+
+| Name                |   P   |   R   | F<sub>1 | Sents/s |
+| ------------------- | :---: | :---: | :-----: | ------: |
+| `biaffine-sdp-en`   | 94.35 | 93.12 |  93.73  | 1067.06 |
+| `vi-sdp-en`         | 94.36 | 93.52 |  93.94  |  821.73 |
+| `vi-sdp-roberta-en` | 95.18 | 95.20 |  95.19  |  264.13 |
+| `biaffine-sdp-zh`   | 72.93 | 66.29 |  69.45  |  523.36 |
+| `vi-sdp-zh`         | 72.05 | 67.97 |  69.95  |  411.94 |
+| `vi-sdp-electra-zh` | 73.29 | 70.53 |  71.89  |  139.52 |
 
 ## Citation
 
