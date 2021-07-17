@@ -25,9 +25,9 @@ setup(
     install_requires=[
         'torch>=1.7.1',
         'transformers>=4.0.0',
+        'allennlp',
         'nltk',
         'stanza',
-        'opt_einsum',
         'dill'],
     entry_points={
         'console_scripts': [
