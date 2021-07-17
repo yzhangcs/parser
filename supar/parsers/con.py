@@ -27,10 +27,7 @@ class CRFConstituencyParser(Parser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if self.args.feat in ('char', 'bert'):
-            self.WORD, self.FEAT = self.transform.WORD
-        else:
-            self.WORD, self.FEAT = self.transform.WORD, self.transform.POS
+        self.TAG = self.transform.POS
         self.TREE = self.transform.TREE
         self.CHART = self.transform.CHART
 
@@ -252,7 +249,7 @@ class CRFConstituencyParser(Parser):
 
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, eos=EOS, lower=True)
-        TAG, CHAR, BERT = None, None, None
+        TAG, CHAR, ELMO, BERT = None, None, None, None
         if args.encoder != 'lstm':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
@@ -272,6 +269,10 @@ class CRFConstituencyParser(Parser):
                 TAG = Field('tags', bos=BOS, eos=EOS)
             if 'char' in args.feat:
                 CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, eos=EOS, fix_len=args.fix_len)
+            if 'elmo' in args.feat:
+                from allennlp.modules.elmo import batch_to_ids
+                ELMO = RawField('elmo')
+                ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
@@ -287,7 +288,7 @@ class CRFConstituencyParser(Parser):
                 BERT.vocab = t.get_vocab()
         TREE = RawField('trees')
         CHART = ChartField('charts')
-        transform = Tree(WORD=(WORD, CHAR, BERT), POS=TAG, TREE=TREE, CHART=CHART)
+        transform = Tree(WORD=(WORD, CHAR, ELMO, BERT), POS=TAG, TREE=TREE, CHART=CHART)
 
         train = Dataset(transform, args.train)
         if args.encoder == 'lstm':

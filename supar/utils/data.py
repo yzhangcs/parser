@@ -87,6 +87,7 @@ class Dataset(torch.utils.data.Dataset):
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
                                  collate_fn=self.collate_fn)
+        return self
 
 
 class DataLoader(torch.utils.data.DataLoader):

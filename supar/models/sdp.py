@@ -46,6 +46,11 @@ class BiaffineSemanticDependencyModel(Model):
             The size of hidden states of CharLSTM, required if using CharLSTM. Default: 100.
         char_pad_index (int):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
+        elmo (str):
+            Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
+        elmo_bos_eos (tuple[bool]):
+            A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
+            Default: ``(True, False)``.
         bert (str):
             Specifies which kind of language model to use, e.g., ``'bert-base-cased'``.
             This is required if ``encoder='bert'`` or using BERT features. The full list can be found in `transformers`_.
@@ -107,6 +112,8 @@ class BiaffineSemanticDependencyModel(Model):
                  n_char_hidden=400,
                  char_pad_index=0,
                  char_dropout=0.33,
+                 elmo='original_5b',
+                 elmo_bos_eos=(True, False),
                  bert=None,
                  n_bert_layers=4,
                  mix_dropout=.0,
@@ -206,7 +213,7 @@ class BiaffineSemanticDependencyModel(Model):
                 Scores of all possible labels on each edge.
 
         Returns:
-            ~torch.BoolTensor:
+            ~torch.LongTensor:
                 Predicted labels of shape ``[batch_size, seq_len, seq_len]``.
         """
 
@@ -252,6 +259,11 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
             The size of hidden states of CharLSTM, required if using CharLSTM. Default: 100.
         char_pad_index (int):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
+        elmo (str):
+            Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
+        elmo_bos_eos (tuple[bool]):
+            A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
+            Default: ``(True, False)``.
         bert (str):
             Specifies which kind of language model to use, e.g., ``'bert-base-cased'``.
             This is required if ``encoder='bert'`` or using BERT features. The full list can be found in `transformers`_.
@@ -321,6 +333,8 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
                  n_char_hidden=100,
                  char_pad_index=0,
                  char_dropout=0,
+                 elmo='original_5b',
+                 elmo_bos_eos=(True, False),
                  bert=None,
                  n_bert_layers=4,
                  mix_dropout=.0,
