@@ -2,8 +2,9 @@
 
 import torch
 import torch.nn as nn
-from supar.modules import (CharLSTM, IndependentDropout, SharedDropout,
-                           TransformerEmbedding, VariationalLSTM)
+from supar.modules import (CharLSTM, ELMoEmbedding, IndependentDropout,
+                           SharedDropout, TransformerEmbedding,
+                           VariationalLSTM)
 from supar.utils import Config
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -24,6 +25,8 @@ class Model(nn.Module):
                  n_char_hidden=100,
                  char_pad_index=0,
                  char_dropout=0,
+                 elmo_bos_eos=(True, True),
+                 elmo_dropout=0.5,
                  bert=None,
                  n_bert_layers=4,
                  mix_dropout=.0,
@@ -63,6 +66,12 @@ class Model(nn.Module):
                 self.lemma_embed = nn.Embedding(num_embeddings=n_lemmas,
                                                 embedding_dim=n_feat_embed)
                 n_input += n_feat_embed
+            if 'elmo' in feat:
+                self.elmo_embed = ELMoEmbedding(n_out=n_feat_embed,
+                                                bos_eos=elmo_bos_eos,
+                                                dropout=elmo_dropout,
+                                                requires_grad=(not freeze))
+                n_input += self.elmo_embed.n_out
             if 'bert' in feat:
                 self.bert_embed = TransformerEmbedding(model=bert,
                                                        n_layers=n_bert_layers,
@@ -126,6 +135,8 @@ class Model(nn.Module):
             feat_embeds.append(self.tag_embed(feats.pop()))
         if 'char' in self.args.feat:
             feat_embeds.append(self.char_embed(feats.pop(0)))
+        if 'elmo' in self.args.feat:
+            feat_embeds.append(self.elmo_embed(feats.pop(0)))
         if 'bert' in self.args.feat:
             feat_embeds.append(self.bert_embed(feats.pop(0)))
         if 'lemma' in self.args.feat:

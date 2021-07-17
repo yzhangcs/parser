@@ -9,7 +9,7 @@ from supar.models import (BiaffineSemanticDependencyModel,
 from supar.parsers.parser import Parser
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, PAD, UNK
-from supar.utils.field import ChartField, Field, SubwordField
+from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import ChartMetric
 from supar.utils.transform import CoNLL
@@ -28,7 +28,6 @@ class BiaffineSemanticDependencyParser(Parser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.WORD, self.CHAR, self.BERT = self.transform.FORM
         self.LEMMA = self.transform.LEMMA
         self.TAG = self.transform.POS
         self.LABEL = self.transform.PHEAD
@@ -224,7 +223,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
-        TAG, CHAR, LEMMA, BERT = None, None, None, None
+        TAG, CHAR, LEMMA, ELMO, BERT = None, None, None, None, None
         if args.encoder != 'lstm':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
@@ -245,6 +244,10 @@ class BiaffineSemanticDependencyParser(Parser):
                 CHAR = SubwordField('chars', pad=PAD, unk=UNK, bos=BOS, fix_len=args.fix_len)
             if 'lemma' in args.feat:
                 LEMMA = Field('lemmas', pad=PAD, unk=UNK, bos=BOS, lower=True)
+            if 'elmo' in args.feat:
+                from allennlp.modules.elmo import batch_to_ids
+                ELMO = RawField('elmo')
+                ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
             if 'bert' in args.feat:
                 from transformers import (AutoTokenizer, GPT2Tokenizer,
                                           GPT2TokenizerFast)
@@ -258,7 +261,7 @@ class BiaffineSemanticDependencyParser(Parser):
                                     fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
                 BERT.vocab = t.get_vocab()
         LABEL = ChartField('labels', fn=CoNLL.get_labels)
-        transform = CoNLL(FORM=(WORD, CHAR, BERT), LEMMA=LEMMA, POS=TAG, PHEAD=LABEL)
+        transform = CoNLL(FORM=(WORD, CHAR, ELMO, BERT), LEMMA=LEMMA, POS=TAG, PHEAD=LABEL)
 
         train = Dataset(transform, args.train)
         if args.encoder == 'lstm':
@@ -302,7 +305,6 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.WORD, self.CHAR, self.BERT = self.transform.FORM
         self.LEMMA = self.transform.LEMMA
         self.TAG = self.transform.POS
         self.LABEL = self.transform.PHEAD
