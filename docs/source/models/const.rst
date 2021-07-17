@@ -1,7 +1,7 @@
 Constituency Models
 ==================================================================
 
-.. currentmodule:: supar.models.con
+.. currentmodule:: supar.models.const
 
 CRFConstituencyModel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

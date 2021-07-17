@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .con import CRFConstituencyParser, VIConstituencyParser
+from .const import CRFConstituencyParser, VIConstituencyParser
 from .dep import (BiaffineDependencyParser, CRF2oDependencyParser,
                   CRFDependencyParser, VIDependencyParser)
 from .parser import Parser

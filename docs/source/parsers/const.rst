@@ -1,7 +1,7 @@
 Constituency Parsers
 ================================================================
 
-.. currentmodule:: supar.parsers.con
+.. currentmodule:: supar.parsers.const
 
 CRFConstituencyParser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
