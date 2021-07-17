@@ -7,7 +7,7 @@ Modules
    :maxdepth: 2
 
    affine
-   transformer
    lstm
+   pretrained
    dropout
    mlp

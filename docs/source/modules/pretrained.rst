@@ -1,4 +1,4 @@
-Transformer Layers
+Embedding Layers
 ================================================================
 
 .. currentmodule:: supar.modules.pretrained
