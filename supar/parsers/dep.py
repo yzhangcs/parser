@@ -155,7 +155,8 @@ class BiaffineDependencyParser(Parser):
 
         bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for i, (words, texts, *feats, arcs, rels) in enumerate(bar, 1):
+        for i, batch in enumerate(bar, 1):
+            words, texts, *feats, arcs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -186,7 +187,8 @@ class BiaffineDependencyParser(Parser):
 
         total_loss, metric = 0, AttachmentMetric()
 
-        for words, texts, *feats, arcs, rels in loader:
+        for batch in loader:
+            words, texts, *feats, arcs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -210,7 +212,8 @@ class BiaffineDependencyParser(Parser):
         self.model.eval()
 
         preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
-        for words, texts, *feats in progress_bar(loader):
+        for batch in progress_bar(loader):
+            words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -465,7 +468,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for i, (words, texts, *feats, arcs, rels) in enumerate(bar, 1):
+        for i, batch in enumerate(bar, 1):
+            words, texts, *feats, arcs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -496,7 +500,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         total_loss, metric = 0, AttachmentMetric()
 
-        for words, texts, *feats, arcs, rels in loader:
+        for batch in loader:
+            words, texts, *feats, arcs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -520,7 +525,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
         self.model.eval()
 
         preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
-        for words, texts, *feats in progress_bar(loader):
+        for batch in progress_bar(loader):
+            words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -681,7 +687,8 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for i, (words, texts, *feats, arcs, sibs, rels) in enumerate(bar, 1):
+        for i, batch in enumerate(bar, 1):
+            words, texts, *feats, arcs, sibs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -712,7 +719,8 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         total_loss, metric = 0, AttachmentMetric()
 
-        for words, texts, *feats, arcs, sibs, rels in loader:
+        for batch in loader:
+            words, texts, *feats, arcs, sibs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -736,7 +744,8 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         self.model.eval()
 
         preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
-        for words, texts, *feats in progress_bar(loader):
+        for batch in progress_bar(loader):
+            words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -987,7 +996,8 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         bar, metric = progress_bar(loader), AttachmentMetric()
 
-        for i, (words, texts, *feats, arcs, rels) in enumerate(bar, 1):
+        for i, batch in enumerate(bar, 1):
+            words, texts, *feats, arcs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -1018,7 +1028,8 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         total_loss, metric = 0, AttachmentMetric()
 
-        for words, texts, *feats, arcs, rels in loader:
+        for batch in loader:
+            words, texts, *feats, arcs, rels = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -1042,7 +1053,8 @@ class VIDependencyParser(BiaffineDependencyParser):
         self.model.eval()
 
         preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
-        for words, texts, *feats in progress_bar(loader):
+        for batch in progress_bar(loader):
+            words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence

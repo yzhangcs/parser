@@ -35,11 +35,10 @@ class Transform(object):
         return f"{self.__class__.__name__}({s})"
 
     def __call__(self, sentences):
-        # numericalize the specified field of each sentence and set the value as sentence attribute
-        for f in self.flattened_fields:
-            values = f.transform([getattr(i, f.name) for i in sentences])
-            for s, v in zip(sentences, values):
-                s.transformed[f.name] = v
+        # numericalize the fields of each sentence
+        for sentence in progress_bar(sentences):
+            for f in self.flattened_fields:
+                sentence.transformed[f.name] = f.transform([getattr(sentence, f.name)])[0]
         return self.flattened_fields
 
     def __getitem__(self, index):
@@ -81,57 +80,6 @@ class Transform(object):
     def save(self, path, sentences):
         with open(path, 'w') as f:
             f.write('\n'.join([str(i) for i in sentences]) + '\n')
-
-
-class Sentence(object):
-    r"""
-    A Sentence object holds a sentence with regard to specific data format.
-    """
-
-    def __init__(self, transform):
-        self.transform = transform
-
-        # mapping from each nested field to their proper position
-        self.maps = dict()
-        # names of each field
-        self.keys = set()
-        for i, field in enumerate(self.transform):
-            if not isinstance(field, Iterable):
-                field = [field]
-            for f in field:
-                if f is not None:
-                    self.maps[f.name] = i
-                    self.keys.add(f.name)
-        # original values and numericalized values of each position
-        self.values = []
-        self.transformed = {key: None for key in self.keys}
-
-    def __contains__(self, key):
-        return key in self.keys
-
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        elif name in self.maps:
-            return self.values[self.maps[name]]
-        else:
-            raise AttributeError
-
-    def __setattr__(self, name, value):
-        if 'keys' in self.__dict__ and name in self:
-            index = self.maps[name]
-            if index >= len(self.values):
-                self.__dict__[name] = value
-            else:
-                self.values[index] = value
-        else:
-            self.__dict__[name] = value
-
-    def __getstate__(self):
-        return vars(self)
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
 
 
 class CoNLL(Transform):
@@ -402,77 +350,6 @@ class CoNLL(Transform):
         return sentences
 
 
-class CoNLLSentence(Sentence):
-    r"""
-    Sencence in CoNLL-X format.
-
-    Args:
-        transform (CoNLL):
-            A :class:`~supar.utils.transform.CoNLL` object.
-        lines (list[str]):
-            A list of strings composing a sentence in CoNLL-X format.
-            Comments and non-integer IDs are permitted.
-
-    Examples:
-        >>> lines = ['# text = But I found the location wonderful and the neighbors very kind.',
-                     '1\tBut\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '2\tI\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '3\tfound\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '4\tthe\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '5\tlocation\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '6\twonderful\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '7\tand\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '7.1\tfound\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '8\tthe\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '9\tneighbors\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '10\tvery\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '11\tkind\t_\t_\t_\t_\t_\t_\t_\t_',
-                     '12\t.\t_\t_\t_\t_\t_\t_\t_\t_']
-        >>> sentence = CoNLLSentence(transform, lines)  # fields in transform are built from ptb.
-        >>> sentence.arcs = [3, 3, 0, 5, 6, 3, 6, 9, 11, 11, 6, 3]
-        >>> sentence.rels = ['cc', 'nsubj', 'root', 'det', 'nsubj', 'xcomp',
-                             'cc', 'det', 'dep', 'advmod', 'conj', 'punct']
-        >>> sentence
-        # text = But I found the location wonderful and the neighbors very kind.
-        1       But     _       _       _       _       3       cc      _       _
-        2       I       _       _       _       _       3       nsubj   _       _
-        3       found   _       _       _       _       0       root    _       _
-        4       the     _       _       _       _       5       det     _       _
-        5       location        _       _       _       _       6       nsubj   _       _
-        6       wonderful       _       _       _       _       3       xcomp   _       _
-        7       and     _       _       _       _       6       cc      _       _
-        7.1     found   _       _       _       _       _       _       _       _
-        8       the     _       _       _       _       9       det     _       _
-        9       neighbors       _       _       _       _       11      dep     _       _
-        10      very    _       _       _       _       11      advmod  _       _
-        11      kind    _       _       _       _       6       conj    _       _
-        12      .       _       _       _       _       3       punct   _       _
-    """
-
-    def __init__(self, transform, lines):
-        super().__init__(transform)
-
-        self.values = []
-        # record annotations for post-recovery
-        self.annotations = dict()
-
-        for i, line in enumerate(lines):
-            value = line.split('\t')
-            if value[0].startswith('#') or not value[0].isdigit():
-                self.annotations[-i-1] = line
-            else:
-                self.annotations[len(self.values)] = line
-                self.values.append(value)
-        self.values = list(zip(*self.values))
-
-    def __repr__(self):
-        # cover the raw lines
-        merged = {**self.annotations,
-                  **{i: '\t'.join(map(str, line))
-                     for i, line in enumerate(zip(*self.values))}}
-        return '\n'.join(merged.values()) + '\n'
-
-
 class Tree(Transform):
     r"""
     The Tree object factorize a constituency tree into four fields,
@@ -739,6 +616,150 @@ class Tree(Transform):
             sentences = [i for i in sentences if len(i) < max_len]
 
         return sentences
+
+
+class Batch(object):
+
+    def __init__(self, sentences):
+        self.sentences = sentences
+        self.transformed = {f.name: f.compose([s.transformed[f.name] for s in sentences])
+                            for f in sentences[0].transform.flattened_fields}
+        self.fields = list(self.transformed.keys())
+
+    def __repr__(self):
+        s = ', '.join([f"{name}" for name in self.fields])
+        return f"{self.__class__.__name__}({s})"
+
+    def __getitem__(self, index):
+        return self.transformed[self.fields[index]]
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        if name in self.transformed:
+            return self.transformed[name]
+        if hasattr(self.sentences[0], name):
+            return [getattr(s, name) for s in self.sentences]
+        raise AttributeError
+
+
+class Sentence(object):
+
+    def __init__(self, transform):
+        self.transform = transform
+
+        # mapping from each nested field to their proper position
+        self.maps = dict()
+        # names of each field
+        self.keys = set()
+        for i, field in enumerate(self.transform):
+            if not isinstance(field, Iterable):
+                field = [field]
+            for f in field:
+                if f is not None:
+                    self.maps[f.name] = i
+                    self.keys.add(f.name)
+        # original values and numericalized values of each position
+        self.values = []
+        self.transformed = {key: None for key in self.keys}
+
+    def __contains__(self, key):
+        return key in self.keys
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        elif name in self.maps:
+            return self.values[self.maps[name]]
+        else:
+            raise AttributeError
+
+    def __setattr__(self, name, value):
+        if 'keys' in self.__dict__ and name in self:
+            index = self.maps[name]
+            if index >= len(self.values):
+                self.__dict__[name] = value
+            else:
+                self.values[index] = value
+        else:
+            self.__dict__[name] = value
+
+    def __getstate__(self):
+        return vars(self)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+
+class CoNLLSentence(Sentence):
+    r"""
+    Sencence in CoNLL-X format.
+
+    Args:
+        transform (CoNLL):
+            A :class:`~supar.utils.transform.CoNLL` object.
+        lines (list[str]):
+            A list of strings composing a sentence in CoNLL-X format.
+            Comments and non-integer IDs are permitted.
+
+    Examples:
+        >>> lines = ['# text = But I found the location wonderful and the neighbors very kind.',
+                     '1\tBut\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '2\tI\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '3\tfound\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '4\tthe\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '5\tlocation\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '6\twonderful\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '7\tand\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '7.1\tfound\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '8\tthe\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '9\tneighbors\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '10\tvery\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '11\tkind\t_\t_\t_\t_\t_\t_\t_\t_',
+                     '12\t.\t_\t_\t_\t_\t_\t_\t_\t_']
+        >>> sentence = CoNLLSentence(transform, lines)  # fields in transform are built from ptb.
+        >>> sentence.arcs = [3, 3, 0, 5, 6, 3, 6, 9, 11, 11, 6, 3]
+        >>> sentence.rels = ['cc', 'nsubj', 'root', 'det', 'nsubj', 'xcomp',
+                             'cc', 'det', 'dep', 'advmod', 'conj', 'punct']
+        >>> sentence
+        # text = But I found the location wonderful and the neighbors very kind.
+        1       But     _       _       _       _       3       cc      _       _
+        2       I       _       _       _       _       3       nsubj   _       _
+        3       found   _       _       _       _       0       root    _       _
+        4       the     _       _       _       _       5       det     _       _
+        5       location        _       _       _       _       6       nsubj   _       _
+        6       wonderful       _       _       _       _       3       xcomp   _       _
+        7       and     _       _       _       _       6       cc      _       _
+        7.1     found   _       _       _       _       _       _       _       _
+        8       the     _       _       _       _       9       det     _       _
+        9       neighbors       _       _       _       _       11      dep     _       _
+        10      very    _       _       _       _       11      advmod  _       _
+        11      kind    _       _       _       _       6       conj    _       _
+        12      .       _       _       _       _       3       punct   _       _
+    """
+
+    def __init__(self, transform, lines):
+        super().__init__(transform)
+
+        self.values = []
+        # record annotations for post-recovery
+        self.annotations = dict()
+
+        for i, line in enumerate(lines):
+            value = line.split('\t')
+            if value[0].startswith('#') or not value[0].isdigit():
+                self.annotations[-i-1] = line
+            else:
+                self.annotations[len(self.values)] = line
+                self.values.append(value)
+        self.values = list(zip(*self.values))
+
+    def __repr__(self):
+        # cover the raw lines
+        merged = {**self.annotations,
+                  **{i: '\t'.join(map(str, line))
+                     for i, line in enumerate(zip(*self.values))}}
+        return '\n'.join(merged.values()) + '\n'
 
 
 class TreeSentence(Sentence):
