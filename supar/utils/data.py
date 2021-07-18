@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from collections import namedtuple
-
 import torch
 import torch.distributed as dist
 from supar.utils.alg import kmeans
+from supar.utils.transform import Batch
+from torch.utils.data import DataLoader
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -74,33 +74,15 @@ class Dataset(torch.utils.data.Dataset):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
-    def collate_fn(self, batch):
-        if not hasattr(self, 'fields'):
-            raise RuntimeError("The fields are not numericalized yet. Please build the dataset first.")
-        return {f: [s.transformed[f.name] for s in batch] for f in self.fields}
-
     def build(self, batch_size, n_buckets=1, shuffle=False, distributed=False):
         # numericalize all fields
-        self.fields = self.transform(self.sentences)
+        fields = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.buckets = dict(zip(*kmeans([len(s.transformed[self.fields[0].name]) for s in self], n_buckets)))
+        self.buckets = dict(zip(*kmeans([len(s.transformed[fields[0].name]) for s in self], n_buckets)))
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
-                                 collate_fn=self.collate_fn)
+                                 collate_fn=lambda x: Batch(x))
         return self
-
-
-class DataLoader(torch.utils.data.DataLoader):
-    r"""
-    DataLoader, matching with :class:`Dataset`.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __iter__(self):
-        for batch in super().__iter__():
-            yield namedtuple('Batch', (f.name for f in batch.keys()))(*[f.compose(d) for f, d in batch.items()])
 
 
 class Sampler(torch.utils.data.Sampler):
