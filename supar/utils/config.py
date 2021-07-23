@@ -60,7 +60,7 @@ class Config(object):
     @classmethod
     def load(cls, conf='', unknown=None, **kwargs):
         config = ConfigParser()
-        config.read(conf if not conf or os.path.exists(conf) else download(supar.CONFIG.get(conf, conf)))
+        config.read(conf if not conf or os.path.exists(conf) else download(supar.CONFIG['github'].get(conf, conf)))
         config = dict((name, literal_eval(value))
                       for section in config.sections()
                       for name, value in config.items(section))
