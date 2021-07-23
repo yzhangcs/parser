@@ -161,7 +161,7 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, reload=False, src=None, checkpoint=False, **kwargs):
+    def load(cls, path, reload=False, src='github', checkpoint=False, **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -176,7 +176,7 @@ class Parser(object):
                 Specifies where to download the model.
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: None.
+                Default: ``'github'``.
             checkpoint (bool):
                 If ``True``, loads all checkpoint states to restore the training process. Default: ``False``.
             kwargs (dict):
@@ -190,11 +190,7 @@ class Parser(object):
 
         args = Config(**locals())
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        if src is not None:
-            links = {n: f"{supar.SRC[src]}/v{supar.__version__}/{m}.zip" for n, m in supar.NAME.items()}
-        else:
-            links = supar.MODEL
-        state = torch.load(path if os.path.exists(path) else download(links.get(path, path), reload=reload))
+        state = torch.load(path if os.path.exists(path) else download(supar.MODEL[src].get(path, path), reload=reload))
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args'].update(args)
         model = cls.MODEL(**args)
