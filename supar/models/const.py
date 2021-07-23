@@ -177,7 +177,7 @@ class CRFConstituencyModel(Model):
             s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Scores of all constituents.
             s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                Scores of all labels on each constituent.
+                Scores of all constituent labels.
             charts (~torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
                 The tensor of gold-standard labels. Positions without labels are filled with -1.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
@@ -204,7 +204,7 @@ class CRFConstituencyModel(Model):
             s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Scores of all constituents.
             s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                Scores of all labels on each constituent.
+                Scores of all constituent labels.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 The mask for covering the unpadded tokens in each chart.
 
@@ -406,7 +406,7 @@ class VIConstituencyModel(CRFConstituencyModel):
             s_pair (~torch.Tensor): ``[batch_size, seq_len, seq_len, seq_len]``.
                 Scores of second-order triples.
             s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                Scores of all labels on each constituent.
+                Scores of all constituent labels.
             charts (~torch.LongTensor): ``[batch_size, seq_len, seq_len]``.
                 The tensor of gold-standard labels. Positions without labels are filled with -1.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
@@ -430,7 +430,7 @@ class VIConstituencyModel(CRFConstituencyModel):
             s_span (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
                 Scores of all constituents.
             s_label (~torch.Tensor): ``[batch_size, seq_len, seq_len, n_labels]``.
-                Scores of all labels on each constituent.
+                Scores of all constituent labels.
             mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
                 The mask for covering the unpadded tokens in each chart.
 

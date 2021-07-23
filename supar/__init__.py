@@ -16,7 +16,7 @@ __all__ = ['BiaffineDependencyParser',
            'VISemanticDependencyParser',
            'Parser']
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFDependencyParser,
@@ -28,7 +28,7 @@ PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              VISemanticDependencyParser]}
 
 SRC = {'github': 'https://github.com/yzhangcs/parser/releases/download',
-       'hlt': 'http://hlt.suda.edu.cn/LA/yzhang/supar'}
+       'hlt': 'http://hlt.suda.edu.cn/~yzhang/supar'}
 NAME = {
     'biaffine-dep-en': 'ptb.biaffine.dep.lstm.char',
     'biaffine-dep-zh': 'ctb7.biaffine.dep.lstm.char',
@@ -49,5 +49,5 @@ NAME = {
     'vi-sdp-roberta-en': 'dm.vi.sdp.roberta',
     'vi-sdp-electra-zh': 'semeval16.vi.sdp.electra'
 }
-MODEL = {n: f"{SRC['github']}/v1.1.0/{m}.zip" for n, m in NAME.items()}
-CONFIG = {n: f"{SRC['github']}/v1.1.0/{m}.ini" for n, m in NAME.items()}
+MODEL = {src: {n: f"{link}/v1.1.0/{m}.zip" for n, m in NAME.items()} for src, link in SRC.items()}
+CONFIG = {src: {n: f"{link}/v1.1.0/{m}.ini" for n, m in NAME.items()} for src, link in SRC.items()}

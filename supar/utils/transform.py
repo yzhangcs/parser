@@ -542,13 +542,13 @@ class Tree(Transform):
 
         Args:
             tree (nltk.tree.Tree):
-                An empty tree that provides a base for building a result tree.
+                An empty tree that provides a base for building a resulting tree.
             sequence (list[tuple]):
                 A list of tuples used for generating a tree.
                 Each tuple consits of the indices of left/right boundaries and label of the constituent.
 
         Returns:
-            A result constituency tree.
+            A resulting constituency tree.
 
         Examples:
             >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
