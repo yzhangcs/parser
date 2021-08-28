@@ -91,8 +91,9 @@ class Parser(object):
                 logger.info(f"{t}s elapsed\n")
             if self.patience < 1:
                 break
-        loss, metric = self.load(**args)._evaluate(test.loader)
-        self.save(args.path)
+        parser = self.load(**args)
+        loss, metric = parser._evaluate(test.loader)
+        parser.save(args.path)
 
         logger.info(f"Epoch {self.best_e} saved")
         logger.info(f"{'dev:':5} {self.best_metric}")
