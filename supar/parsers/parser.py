@@ -50,8 +50,8 @@ class Parser(object):
             from transformers import AdamW, get_linear_schedule_with_warmup
             steps = len(train.loader) * epochs // args.update_steps
             self.optimizer = AdamW(
-                [{'params': c.parameters(), 'lr': args.lr * (1 if n == 'encoder' else args.lr_rate)}
-                 for n, c in self.model.named_children()],
+                [{'params': p, 'lr': args.lr * (1 if n.startswith('encoder') else args.lr_rate)}
+                 for n, p in self.model.named_parameters()],
                 args.lr)
             self.scheduler = get_linear_schedule_with_warmup(self.optimizer, int(steps*args.warmup), steps)
 
