@@ -93,12 +93,9 @@ class SpanMetric(Metric):
 
     def __call__(self, preds, golds):
         for pred, gold in zip(preds, golds):
-            upred = Counter([(i, j) for i, j, label in pred])
-            ugold = Counter([(i, j) for i, j, label in gold])
-            utp = list((upred & ugold).elements())
-            lpred = Counter(pred)
-            lgold = Counter(gold)
-            ltp = list((lpred & lgold).elements())
+            upred, ugold = Counter([tuple(span[:-1]) for span in pred]), Counter([tuple(span[:-1]) for span in gold])
+            lpred, lgold = Counter([tuple(span) for span in pred]), Counter([tuple(span) for span in gold])
+            utp, ltp = list((upred & ugold).elements()), list((lpred & lgold).elements())
             self.n += 1
             self.n_ucm += len(utp) == len(pred) == len(gold)
             self.n_lcm += len(ltp) == len(pred) == len(gold)
