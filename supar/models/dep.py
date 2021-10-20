@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from supar.models.model import Model
 from supar.modules import MLP, Biaffine, Triaffine
-from supar.structs import (CRF2oDependency, CRFDependency, MatrixTree,
-                           MFVIDependency, LBPDependency)
+from supar.structs import (CRF2oDependency, CRFDependency, DependencyLBP,
+                           DependencyMFVI, MatrixTree)
 from supar.utils import Config
 from supar.utils.alg import eisner, eisner2o, mst
 from supar.utils.transform import CoNLL
@@ -746,7 +746,7 @@ class VIDependencyModel(BiaffineDependencyModel):
         self.arc_attn = Biaffine(n_in=n_arc_mlp, scale=scale, bias_x=True, bias_y=False)
         self.sib_attn = Triaffine(n_in=n_sib_mlp, scale=scale, bias_x=True, bias_y=True)
         self.rel_attn = Biaffine(n_in=n_rel_mlp, n_out=n_rels, bias_x=True, bias_y=True)
-        self.inference = (MFVIDependency if inference == 'mfvi' else LBPDependency)(max_iter)
+        self.inference = (DependencyMFVI if inference == 'mfvi' else DependencyLBP)(max_iter)
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):

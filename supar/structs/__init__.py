@@ -2,8 +2,8 @@
 
 from .treecrf import (CRF2oDependency, CRFConstituency, CRFDependency,
                       MatrixTree)
-from .vi import (LBPConstituency, LBPDependency, LBPSemanticDependency,
-                 MFVIConstituency, MFVIDependency, MFVISemanticDependency)
+from .vi import (ConstituencyLBP, ConstituencyMFVI, DependencyLBP,
+                 DependencyMFVI, SemanticDependencyLBP, SemanticDependencyMFVI)
 
-__all__ = ['CRF2oDependency', 'CRFConstituency', 'CRFDependency', 'LBPConstituency', 'LBPDependency',
-           'LBPSemanticDependency', 'MatrixTree', 'MFVIConstituency', 'MFVIDependency', 'MFVISemanticDependency']
+__all__ = ['CRF2oDependency', 'CRFConstituency', 'CRFDependency', 'ConstituencyLBP', 'DependencyLBP',
+           'SemanticDependencyLBP', 'MatrixTree', 'ConstituencyMFVI', 'DependencyMFVI', 'SemanticDependencyMFVI']
