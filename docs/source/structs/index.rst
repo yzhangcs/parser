@@ -6,5 +6,6 @@ Structs
 .. toctree::
    :maxdepth: 2
 
-   treecrf
+   tree
+   linearchain
    vi
