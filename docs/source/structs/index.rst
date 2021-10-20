@@ -7,4 +7,4 @@ Structs
    :maxdepth: 2
 
    treecrf
-   variational_inference
+   vi
