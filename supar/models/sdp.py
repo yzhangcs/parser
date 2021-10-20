@@ -3,7 +3,7 @@
 import torch.nn as nn
 from supar.models.model import Model
 from supar.modules import MLP, Biaffine, Triaffine
-from supar.structs import LBPSemanticDependency, MFVISemanticDependency
+from supar.structs import SemanticDependencyLBP, SemanticDependencyMFVI
 from supar.utils import Config
 
 
@@ -372,7 +372,7 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
         self.cop_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=True)
         self.grd_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=True)
         self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
-        self.inference = (MFVISemanticDependency if inference == 'mfvi' else LBPSemanticDependency)(max_iter)
+        self.inference = (SemanticDependencyMFVI if inference == 'mfvi' else SemanticDependencyLBP)(max_iter)
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):
