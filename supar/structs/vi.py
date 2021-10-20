@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from supar.utils.common import MIN
 
 
-class MFVIDependency(nn.Module):
+class DependencyMFVI(nn.Module):
     r"""
     Mean Field Variational Inference for approximately calculating marginals
     of dependency trees :cite:`wang-tu-2020-second`.
@@ -75,7 +75,7 @@ class MFVIDependency(nn.Module):
         return q.permute(2, 1, 0)
 
 
-class LBPDependency(nn.Module):
+class DependencyLBP(nn.Module):
     r"""
     Loopy Belief Propagation for approximately calculating marginals
     of dependency trees :cite:`smith-eisner-2008-dependency`.
@@ -150,7 +150,7 @@ class LBPDependency(nn.Module):
         return q.permute(2, 1, 0)
 
 
-class MFVIConstituency(nn.Module):
+class ConstituencyMFVI(nn.Module):
     r"""
     Mean Field Variational Inference for approximately calculating marginals of constituent trees.
     """
@@ -217,7 +217,7 @@ class MFVIConstituency(nn.Module):
         return q.permute(2, 0, 1)
 
 
-class LBPConstituency(nn.Module):
+class ConstituencyLBP(nn.Module):
     r"""
     Loopy Belief Propagation for approximately calculating marginals of constituent trees.
     """
@@ -289,7 +289,7 @@ class LBPConstituency(nn.Module):
         return q.permute(3, 2, 1, 0)
 
 
-class MFVISemanticDependency(nn.Module):
+class SemanticDependencyMFVI(nn.Module):
     r"""
     Mean Field Variational Inference for approximately calculating marginals
     of semantic dependency trees :cite:`wang-etal-2019-second`.
@@ -363,7 +363,7 @@ class MFVISemanticDependency(nn.Module):
         return q.permute(2, 1, 0)
 
 
-class LBPSemanticDependency(nn.Module):
+class SemanticDependencyLBP(nn.Module):
     r"""
     Loopy Belief Propagation for approximately calculating marginals
     of semantic dependency trees :cite:`wang-etal-2019-second`.
