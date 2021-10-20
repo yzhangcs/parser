@@ -1,24 +1,24 @@
-TreeCRF
+Tree
 ================================================================
 
-.. currentmodule:: supar.structs.treecrf
+.. currentmodule:: supar.structs.tree
 
 MatrixTree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: MatrixTree
     :members:
 
-CRFDependency
+DependencyCRF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: CRFDependency
+.. autoclass:: DependencyCRF
     :members:
 
-CRF2oDependency
+Dependency2oCRF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: CRF2oDependency
+.. autoclass:: Dependency2oCRF
     :members:
 
-CRFConstituency
+ConstituencyCRF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: CRFConstituency
+.. autoclass:: ConstituencyCRF
     :members:

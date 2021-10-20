@@ -2,7 +2,7 @@
 Variational Inference
 ================================================================
 
-.. currentmodule:: supar.structs.variational_inference
+.. currentmodule:: supar.structs.vi
 
 MFVIDependency
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
