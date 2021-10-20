@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from supar.utils.common import MIN
 
 
 class MFVIDependency(nn.Module):
@@ -129,7 +130,7 @@ class LBPDependency(nn.Module):
         # [seq_len, seq_len, batch_size], (h->m)
         s_arc = s_arc.permute(2, 1, 0)
         # [seq_len, seq_len, seq_len, batch_size], (h->m->s)
-        s_sib = s_sib.permute(2, 1, 3, 0).masked_fill_(~mask2o, float('-inf'))
+        s_sib = s_sib.permute(2, 1, 3, 0).masked_fill_(~mask2o, MIN)
 
         # log beliefs
         # [seq_len, seq_len, batch_size], (h->m)
