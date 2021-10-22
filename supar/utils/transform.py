@@ -174,7 +174,7 @@ class CoNLL(Transform):
         for i, s in enumerate(sequence, 1):
             if s != '_':
                 for pair in s.split('|'):
-                    edge, label = pair.split(':')
+                    edge, label = pair.split(':', 1)
                     labels[i][int(edge)] = label
         return labels
 
