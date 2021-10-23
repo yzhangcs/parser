@@ -227,7 +227,7 @@ class BiaffineSemanticDependencyParser(Parser):
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
         TAG, CHAR, LEMMA, ELMO, BERT = None, None, None, None, None
-        if args.encoder != 'lstm':
+        if args.encoder == 'bert':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
             t = AutoTokenizer.from_pretrained(args.bert)
@@ -267,7 +267,7 @@ class BiaffineSemanticDependencyParser(Parser):
         transform = CoNLL(FORM=(WORD, CHAR, ELMO, BERT), LEMMA=LEMMA, POS=TAG, PHEAD=LABEL)
 
         train = Dataset(transform, args.train)
-        if args.encoder == 'lstm':
+        if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
             if TAG is not None:
                 TAG.build(train)
@@ -277,7 +277,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 LEMMA.build(train)
         LABEL.build(train)
         args.update({
-            'n_words': len(WORD.vocab) if args.encoder != 'lstm' else WORD.vocab.n_init,
+            'n_words': len(WORD.vocab) if args.encoder == 'bert' else WORD.vocab.n_init,
             'n_labels': len(LABEL.vocab),
             'n_tags': len(TAG.vocab) if TAG is not None else None,
             'n_chars': len(CHAR.vocab) if CHAR is not None else None,

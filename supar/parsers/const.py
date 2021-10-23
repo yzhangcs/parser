@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from supar.models import CRFConstituencyModel, VIConstituencyModel
 from supar.parsers.parser import Parser
+from supar.structs import ConstituencyCRF
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, EOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
@@ -27,7 +28,6 @@ class CRFConstituencyParser(Parser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.TAG = self.transform.POS
         self.TREE = self.transform.TREE
         self.CHART = self.transform.CHART
 
@@ -213,8 +213,7 @@ class CRFConstituencyParser(Parser):
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             lens = mask[:, 0].sum(-1)
             s_span, s_label = self.model(words, feats)
-            if self.args.mbr:
-                s_span = self.model.crf(s_span, mask, mbr=True)
+            s_span = ConstituencyCRF(s_span, mask[:, 0].sum()).marginals if self.args.mbr else s_span
             chart_preds = self.model.decode(s_span, s_label, mask)
             preds['trees'].extend([Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                                    for tree, chart in zip(trees, chart_preds)])
@@ -253,7 +252,7 @@ class CRFConstituencyParser(Parser):
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, eos=EOS, lower=True)
         TAG, CHAR, ELMO, BERT = None, None, None, None
-        if args.encoder != 'lstm':
+        if args.encoder == 'bert':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
             t = AutoTokenizer.from_pretrained(args.bert)
@@ -294,7 +293,7 @@ class CRFConstituencyParser(Parser):
         transform = Tree(WORD=(WORD, CHAR, ELMO, BERT), POS=TAG, TREE=TREE, CHART=CHART)
 
         train = Dataset(transform, args.train)
-        if args.encoder == 'lstm':
+        if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
             if TAG is not None:
                 TAG.build(train)
@@ -302,7 +301,7 @@ class CRFConstituencyParser(Parser):
                 CHAR.build(train)
         CHART.build(train)
         args.update({
-            'n_words': len(WORD.vocab) if args.encoder != 'lstm' else WORD.vocab.n_init,
+            'n_words': len(WORD.vocab) if args.encoder == 'bert' else WORD.vocab.n_init,
             'n_labels': len(CHART.vocab),
             'n_tags': len(TAG.vocab) if TAG is not None else None,
             'n_chars': len(CHAR.vocab) if CHAR is not None else None,

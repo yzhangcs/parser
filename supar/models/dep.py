@@ -4,10 +4,10 @@ import torch
 import torch.nn as nn
 from supar.models.model import Model
 from supar.modules import MLP, Biaffine, Triaffine
-from supar.structs import (CRF2oDependency, CRFDependency, DependencyLBP,
+from supar.structs import (Dependency2oCRF, DependencyCRF, DependencyLBP,
                            DependencyMFVI, MatrixTree)
 from supar.utils import Config
-from supar.utils.alg import eisner, eisner2o, mst
+from supar.utils.common import MIN
 from supar.utils.transform import CoNLL
 
 
@@ -166,7 +166,7 @@ class BiaffineDependencyModel(Model):
         rel_h = self.rel_mlp_h(x)
 
         # [batch_size, seq_len, seq_len]
-        s_arc = self.arc_attn(arc_d, arc_h).masked_fill_(~mask.unsqueeze(1), float('-inf'))
+        s_arc = self.arc_attn(arc_d, arc_h).masked_fill_(~mask.unsqueeze(1), MIN)
         # [batch_size, seq_len, seq_len, n_rels]
         s_rel = self.rel_attn(rel_d, rel_h).permute(0, 2, 3, 1)
 
@@ -226,8 +226,7 @@ class BiaffineDependencyModel(Model):
         arc_preds = s_arc.argmax(-1)
         bad = [not CoNLL.istree(seq[1:i+1], proj) for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
-            alg = eisner if proj else mst
-            arc_preds[bad] = alg(s_arc[bad], mask[bad])
+            arc_preds[bad] = (DependencyCRF if proj else MatrixTree)(s_arc[bad], mask[bad].sum(-1)).argmax
         rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds
@@ -315,14 +314,9 @@ class CRFDependencyModel(BiaffineDependencyModel):
         unk_index (int):
             The index of the unknown token in the word vocabulary. Default: 1.
         proj (bool):
-            If ``True``, takes :class:`CRFDependency` as inference layer, :class:`MatrixTree` otherwise.
+            If ``True``, takes :class:`DependencyCRF` as inference layer, :class:`MatrixTree` otherwise.
             Default: ``True``.
     """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self.crf = (CRFDependency if self.args.proj else MatrixTree)()
 
     def loss(self, s_arc, s_rel, arcs, rels, mask, mbr=True, partial=False):
         r"""
@@ -348,7 +342,10 @@ class CRFDependencyModel(BiaffineDependencyModel):
                 original arc scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
-        arc_loss, arc_probs = self.crf(s_arc, mask, arcs, mbr, partial)
+        CRF = DependencyCRF if self.args.proj else MatrixTree
+        arc_dist = CRF(s_arc, mask.sum(-1))
+        arc_loss = -arc_dist.log_prob(arcs, partial=partial).sum() / mask.sum()
+        arc_probs = arc_dist.marginals if mbr else s_arc
         # -1 denotes un-annotated arcs
         if partial:
             mask = mask & arcs.ge(0)
@@ -489,7 +486,6 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         self.arc_attn = Biaffine(n_in=n_arc_mlp, scale=scale, bias_x=True, bias_y=False)
         self.sib_attn = Triaffine(n_in=n_sib_mlp, scale=scale, bias_x=True, bias_y=True)
         self.rel_attn = Biaffine(n_in=n_rel_mlp, n_out=n_rels, bias_x=True, bias_y=True)
-        self.crf = CRF2oDependency()
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):
@@ -522,7 +518,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         rel_h = self.rel_mlp_h(x)
 
         # [batch_size, seq_len, seq_len]
-        s_arc = self.arc_attn(arc_d, arc_h).masked_fill_(~mask.unsqueeze(1), float('-inf'))
+        s_arc = self.arc_attn(arc_d, arc_h).masked_fill_(~mask.unsqueeze(1), MIN)
         # [batch_size, seq_len, seq_len, seq_len]
         s_sib = self.sib_attn(sib_s, sib_d, sib_h).permute(0, 3, 1, 2)
         # [batch_size, seq_len, seq_len, n_rels]
@@ -558,7 +554,9 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                 original arc scores of shape ``[batch_size, seq_len, seq_len]`` if ``mbr=False``, or marginals otherwise.
         """
 
-        arc_loss, arc_probs = self.crf((s_arc, s_sib), mask, (arcs, sibs), mbr, partial)
+        arc_dist = Dependency2oCRF((s_arc, s_sib), mask.sum(-1))
+        arc_loss = -arc_dist.log_prob((arcs, sibs), partial=partial).sum() / mask.sum()
+        arc_probs = arc_dist.marginals if mbr else s_arc
         # -1 denotes un-annotated arcs
         if partial:
             mask = mask & arcs.ge(0)
@@ -596,10 +594,9 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         bad = [not CoNLL.istree(seq[1:i+1], proj) for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
             if proj and not mbr:
-                arc_preds = eisner2o((s_arc, s_sib), mask)
+                arc_preds[bad] = Dependency2oCRF((s_arc[bad], s_sib[bad]), mask[bad].sum(-1)).argmax
             else:
-                alg = eisner if proj else mst
-                arc_preds[bad] = alg(s_arc[bad], mask[bad])
+                arc_preds[bad] = (DependencyCRF if proj else MatrixTree)(s_arc[bad], mask[bad].sum(-1)).argmax
         rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds
@@ -779,7 +776,7 @@ class VIDependencyModel(BiaffineDependencyModel):
         rel_h = self.rel_mlp_h(x)
 
         # [batch_size, seq_len, seq_len]
-        s_arc = self.arc_attn(arc_d, arc_h).masked_fill_(~mask.unsqueeze(1), float('-inf'))
+        s_arc = self.arc_attn(arc_d, arc_h).masked_fill_(~mask.unsqueeze(1), MIN)
         # [batch_size, seq_len, seq_len, seq_len]
         s_sib = self.sib_attn(sib_s, sib_d, sib_h).permute(0, 3, 1, 2)
         # [batch_size, seq_len, seq_len, n_rels]
@@ -838,8 +835,7 @@ class VIDependencyModel(BiaffineDependencyModel):
         arc_preds = s_arc.argmax(-1)
         bad = [not CoNLL.istree(seq[1:i+1], proj) for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
-            alg = eisner if proj else mst
-            arc_preds[bad] = alg(s_arc[bad], mask[bad])
+            arc_preds[bad] = (DependencyCRF if proj else MatrixTree)(s_arc[bad], mask[bad].sum(-1)).argmax
         rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds
