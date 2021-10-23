@@ -7,6 +7,7 @@ import torch.nn as nn
 from supar.models import (BiaffineDependencyModel, CRF2oDependencyModel,
                           CRFDependencyModel, VIDependencyModel)
 from supar.parsers.parser import Parser
+from supar.structs import Dependency2oCRF, DependencyCRF, MatrixTree
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
@@ -176,7 +177,7 @@ class BiaffineDependencyParser(Parser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             metric(arc_preds, rel_preds, arcs, rels, mask)
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
         logger.info(f"{bar.postfix}")
@@ -200,7 +201,7 @@ class BiaffineDependencyParser(Parser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             total_loss += loss.item()
             metric(arc_preds, rel_preds, arcs, rels, mask)
         total_loss /= len(loader)
@@ -261,7 +262,7 @@ class BiaffineDependencyParser(Parser):
 
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
-        if args.encoder != 'lstm':
+        if args.encoder == 'bert':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
             t = AutoTokenizer.from_pretrained(args.bert)
@@ -301,7 +302,7 @@ class BiaffineDependencyParser(Parser):
         transform = CoNLL(FORM=(WORD, TEXT, CHAR, ELMO, BERT), CPOS=TAG, HEAD=ARC, DEPREL=REL)
 
         train = Dataset(transform, args.train)
-        if args.encoder == 'lstm':
+        if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
             if TAG is not None:
                 TAG.build(train)
@@ -309,7 +310,7 @@ class BiaffineDependencyParser(Parser):
                 CHAR.build(train)
         REL.build(train)
         args.update({
-            'n_words': len(WORD.vocab) if args.encoder != 'lstm' else WORD.vocab.n_init,
+            'n_words': len(WORD.vocab) if args.encoder == 'bert' else WORD.vocab.n_init,
             'n_rels': len(REL.vocab),
             'n_tags': len(TAG.vocab) if TAG is not None else None,
             'n_chars': len(CHAR.vocab) if CHAR is not None else None,
@@ -489,7 +490,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             metric(arc_preds, rel_preds, arcs, rels, mask)
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
         logger.info(f"{bar.postfix}")
@@ -513,7 +514,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             total_loss += loss.item()
             metric(arc_preds, rel_preds, arcs, rels, mask)
         total_loss /= len(loader)
@@ -524,18 +525,19 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def _predict(self, loader):
         self.model.eval()
 
+        CRF = DependencyCRF if self.args.proj else MatrixTree
         preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
-            words, texts, *feats = batch
+            words, _, *feats = batch
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            lens = mask.sum(1).tolist()
+            lens = mask.sum(1)
             s_arc, s_rel = self.model(words, feats)
-            if self.args.mbr:
-                s_arc = self.model.crf(s_arc, mask, mbr=True)
+            s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
+            lens = lens.tolist()
             preds['arcs'].extend(arc_preds[mask].split(lens))
             preds['rels'].extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -708,7 +710,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             metric(arc_preds, rel_preds, arcs, rels, mask)
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
         logger.info(f"{bar.postfix}")
@@ -732,7 +734,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             total_loss += loss.item()
             metric(arc_preds, rel_preds, arcs, rels, mask)
         total_loss /= len(loader)
@@ -750,11 +752,11 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            lens = mask.sum(1).tolist()
+            lens = mask.sum(1)
             s_arc, s_sib, s_rel = self.model(words, feats)
-            if self.args.mbr:
-                s_arc = self.model.crf((s_arc, s_sib), mask, mbr=True)
+            s_arc = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else s_arc
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
+            lens = lens.tolist()
             preds['arcs'].extend(arc_preds[mask].split(lens))
             preds['rels'].extend(rel_preds[mask].split(lens))
             if self.args.prob:
@@ -794,7 +796,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
-        if args.encoder != 'lstm':
+        if args.encoder == 'bert':
             from transformers import (AutoTokenizer, GPT2Tokenizer,
                                       GPT2TokenizerFast)
             t = AutoTokenizer.from_pretrained(args.bert)
@@ -835,7 +837,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         transform = CoNLL(FORM=(WORD, TEXT, CHAR, ELMO, BERT), CPOS=TAG, HEAD=(ARC, SIB), DEPREL=REL)
 
         train = Dataset(transform, args.train)
-        if args.encoder == 'lstm':
+        if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
             if TAG is not None:
                 TAG.build(train)
@@ -843,7 +845,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 CHAR.build(train)
         REL.build(train)
         args.update({
-            'n_words': len(WORD.vocab) if args.encoder != 'lstm' else WORD.vocab.n_init,
+            'n_words': len(WORD.vocab) if args.encoder == 'bert' else WORD.vocab.n_init,
             'n_rels': len(REL.vocab),
             'n_tags': len(TAG.vocab) if TAG is not None else None,
             'n_chars': len(CHAR.vocab) if CHAR is not None else None,
@@ -1017,7 +1019,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             metric(arc_preds, rel_preds, arcs, rels, mask)
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
         logger.info(f"{bar.postfix}")
@@ -1041,7 +1043,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 mask &= arcs.ge(0)
             # ignore all punctuation if not specified
             if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in texts for w in s]))
+                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
             total_loss += loss.item()
             metric(arc_preds, rel_preds, arcs, rels, mask)
         total_loss /= len(loader)

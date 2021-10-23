@@ -1,9 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from .treecrf import (CRF2oDependency, CRFConstituency, CRFDependency,
-                      MatrixTree)
+from .distribution import StructuredDistribution
+from .linearchain import LinearChainCRF
+from .tree import ConstituencyCRF, Dependency2oCRF, DependencyCRF, MatrixTree
 from .vi import (ConstituencyLBP, ConstituencyMFVI, DependencyLBP,
                  DependencyMFVI, SemanticDependencyLBP, SemanticDependencyMFVI)
 
-__all__ = ['CRF2oDependency', 'CRFConstituency', 'CRFDependency', 'ConstituencyLBP', 'DependencyLBP',
-           'SemanticDependencyLBP', 'MatrixTree', 'ConstituencyMFVI', 'DependencyMFVI', 'SemanticDependencyMFVI']
+__all__ = ['StructuredDistribution',
+           'MatrixTree',
+           'DependencyCRF',
+           'Dependency2oCRF',
+           'ConstituencyCRF',
+           'LinearChainCRF',
+           'DependencyMFVI',
+           'DependencyLBP',
+           'ConstituencyMFVI',
+           'ConstituencyLBP',
+           'SemanticDependencyMFVI',
+           'SemanticDependencyLBP', ]
