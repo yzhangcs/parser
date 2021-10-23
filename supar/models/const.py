@@ -4,9 +4,8 @@ import torch
 import torch.nn as nn
 from supar.models.model import Model
 from supar.modules import MLP, Biaffine, Triaffine
-from supar.structs import ConstituencyLBP, ConstituencyMFVI, CRFConstituency
+from supar.structs import ConstituencyCRF, ConstituencyLBP, ConstituencyMFVI
 from supar.utils import Config
-from supar.utils.alg import cky
 
 
 class CRFConstituencyModel(Model):
@@ -133,7 +132,6 @@ class CRFConstituencyModel(Model):
 
         self.span_attn = Biaffine(n_in=n_span_mlp, bias_x=True, bias_y=False)
         self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
-        self.crf = CRFConstituency()
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, words, feats=None):
@@ -192,7 +190,9 @@ class CRFConstituencyModel(Model):
         """
 
         span_mask = charts.ge(0) & mask
-        span_loss, span_probs = self.crf(s_span, mask, span_mask, mbr)
+        span_dist = ConstituencyCRF(s_span, mask[:, 0].sum())
+        span_loss = -span_dist.log_prob(span_mask).sum() / mask[:, 0].sum()
+        span_probs = span_dist.marginals if mbr else s_span
         label_loss = self.criterion(s_label[span_mask], charts[span_mask])
         loss = span_loss + label_loss
 
@@ -213,9 +213,9 @@ class CRFConstituencyModel(Model):
                 Sequences of factorized labeled trees traversed in pre-order.
         """
 
-        span_preds = cky(s_span.unsqueeze(-1), mask)
+        span_preds = ConstituencyCRF(s_span, mask[:, 0].sum()).argmax
         label_preds = s_label.argmax(-1).tolist()
-        return [[(i, j, labels[i][j]) for i, j, _ in cons] for cons, labels in zip(span_preds, label_preds)]
+        return [[(i, j, labels[i][j]) for i, j in spans] for spans, labels in zip(span_preds, label_preds)]
 
 
 class VIConstituencyModel(CRFConstituencyModel):
@@ -439,6 +439,6 @@ class VIConstituencyModel(CRFConstituencyModel):
                 Sequences of factorized labeled trees traversed in pre-order.
         """
 
-        span_preds = cky(s_span.unsqueeze(-1), mask)
+        span_preds = ConstituencyCRF(s_span, mask[:, 0].sum()).argmax
         label_preds = s_label.argmax(-1).tolist()
-        return [[(i, j, labels[i][j]) for i, j, _ in cons] for cons, labels in zip(span_preds, label_preds)]
+        return [[(i, j, labels[i][j]) for i, j in spans] for spans, labels in zip(span_preds, label_preds)]

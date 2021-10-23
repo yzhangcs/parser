@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import torch
-import torch.autograd as autograd
-from supar.utils.fn import pad, stripe
+from supar.utils.common import MIN
+from supar.utils.fn import pad
 
 
 def kmeans(x, k, max_it=32):
@@ -156,9 +156,9 @@ def chuliu_edmonds(s):
         https://github.com/tdozat/Parser-v3
     """
 
-    s[0, 1:] = float('-inf')
+    s[0, 1:] = MIN
     # prevent self-loops
-    s.diagonal()[1:].fill_(float('-inf'))
+    s.diagonal()[1:].fill_(MIN)
     # select heads with highest scores
     tree = s.argmax(-1)
     # return the cycle finded by tarjan algorithm lazily
@@ -254,8 +254,8 @@ def mst(scores, mask, multiroot=False):
                                     [-60.6957, -60.2866, -48.6457, -63.8125],
                                     [-38.1747, -49.9296, -45.2733, -49.5571],
                                     [-19.7504, -23.9066,  -9.9139, -16.2088]]])
-        >>> scores[:, 0, 1:] = float('-inf')
-        >>> scores.diagonal(0, 1, 2)[1:].fill_(float('-inf'))
+        >>> scores[:, 0, 1:] = MIN
+        >>> scores.diagonal(0, 1, 2)[1:].fill_(MIN)
         >>> mask = torch.tensor([[False,  True,  True,  True]])
         >>> mst(scores, mask)
         tensor([[0, 2, 0, 2]])
@@ -271,10 +271,10 @@ def mst(scores, mask, multiroot=False):
         roots = torch.where(tree[1:].eq(0))[0] + 1
         if not multiroot and len(roots) > 1:
             s_root = s[:, 0]
-            s_best = float('-inf')
-            s = s.index_fill(1, torch.tensor(0), float('-inf'))
+            s_best = MIN
+            s = s.index_fill(1, torch.tensor(0), MIN)
             for root in roots:
-                s[:, 0] = float('-inf')
+                s[:, 0] = MIN
                 s[root, 0] = s_root[root]
                 t = chuliu_edmonds(s)
                 s_tree = s[1:].gather(1, t[1:].unsqueeze(-1)).sum()
@@ -283,240 +283,3 @@ def mst(scores, mask, multiroot=False):
         preds.append(tree)
 
     return pad(preds, total_length=seq_len).to(mask.device)
-
-
-@torch.enable_grad()
-def eisner(scores, mask, multiroot=False):
-    r"""
-    First-order Eisner algorithm for projective decoding :cite:`mcdonald-etal-2005-online`.
-
-    Args:
-        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-            Scores of all dependent-head pairs.
-        mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
-            The mask to avoid parsing over padding tokens.
-            The first column serving as pseudo words for roots should be ``False``.
-        multiroot (bool):
-            Ensures to parse a single-root tree If ``False``.
-
-    Returns:
-        ~torch.Tensor:
-            A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
-
-    Examples:
-        >>> scores = torch.tensor([[[-13.5026, -18.3700, -13.0033, -16.6809],
-                                    [-36.5235, -28.6344, -28.4696, -31.6750],
-                                    [ -2.9084,  -7.4825,  -1.4861,  -6.8709],
-                                    [-29.4880, -27.6905, -26.1498, -27.0233]]])
-        >>> mask = torch.tensor([[False,  True,  True,  True]])
-        >>> eisner(scores, mask)
-        tensor([[0, 2, 0, 2]])
-    """
-
-    lens = mask.sum(1)
-    batch_size, seq_len, _ = scores.shape
-    scores = scores.permute(2, 1, 0).requires_grad_()
-    s_i = torch.full_like(scores, -1e30)
-    s_c = torch.full_like(scores, -1e30)
-    s_c.diagonal().fill_(0)
-
-    for w in range(1, seq_len):
-        n = seq_len - w
-        # ilr = C(i->r) + C(j->r+1)
-        ilr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
-        # [batch_size, n, w]
-        il = ir = ilr.permute(2, 0, 1)
-        # I(j->i) = max(C(i->r) + C(j->r+1) + s(j->i)), i <= r < j
-        il_span, _ = il.max(-1)
-        s_i.diagonal(-w).copy_(il_span + scores.diagonal(-w))
-        # I(i->j) = max(C(i->r) + C(j->r+1) + s(i->j)), i <= r < j
-        ir_span, _ = ir.max(-1)
-        s_i.diagonal(w).copy_(ir_span + scores.diagonal(w))
-
-        # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
-        cl = stripe(s_c, n, w, (0, 0), 0) + stripe(s_i, n, w, (w, 0))
-        cl_span, _ = cl.permute(2, 0, 1).max(-1)
-        s_c.diagonal(-w).copy_(cl_span)
-        # C(i->j) = max(I(i->r) + C(r->j)), i < r <= j
-        cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
-        cr_span, _ = cr.permute(2, 0, 1).max(-1)
-        s_c.diagonal(w).copy_(cr_span)
-        if not multiroot:
-            s_c[0, w][lens.ne(w)] = float('-inf')
-
-    logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
-    marginals, = autograd.grad(logZ, scores)
-    preds = lens.new_zeros(batch_size, seq_len).masked_scatter_(mask, marginals.permute(2, 1, 0).nonzero()[:, 2])
-
-    return preds
-
-
-@torch.enable_grad()
-def eisner2o(scores, mask, multiroot=False):
-    r"""
-    Second-order Eisner algorithm for projective decoding :cite:`mcdonald-pereira-2006-online`.
-    This is an extension of the first-order one that further incorporates sibling scores into tree scoring.
-
-    Args:
-        scores (~torch.Tensor, ~torch.Tensor):
-            A tuple of two tensors representing the first-order and second-order scores respectively.
-            The first (``[batch_size, seq_len, seq_len]``) holds scores of all dependent-head pairs.
-            The second (``[batch_size, seq_len, seq_len, seq_len]``) holds scores of all dependent-head-sibling triples.
-        mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
-            The mask to avoid parsing over padding tokens.
-            The first column serving as pseudo words for roots should be ``False``.
-        multiroot (bool):
-            Ensures to parse a single-root tree If ``False``.
-
-    Returns:
-        ~torch.Tensor:
-            A tensor with shape ``[batch_size, seq_len]`` for the resulting projective parse trees.
-
-    Examples:
-        >>> s_arc = torch.tensor([[[ -2.8092,  -7.9104,  -0.9414,  -5.4360],
-                                   [-10.3494,  -7.9298,  -3.6929,  -7.3985],
-                                   [  1.1815,  -3.8291,   2.3166,  -2.7183],
-                                   [ -3.9776,  -3.9063,  -1.6762,  -3.1861]]])
-        >>> s_sib = torch.tensor([[[[ 0.4719,  0.4154,  1.1333,  0.6946],
-                                    [ 1.1252,  1.3043,  2.1128,  1.4621],
-                                    [ 0.5974,  0.5635,  1.0115,  0.7550],
-                                    [ 1.1174,  1.3794,  2.2567,  1.4043]],
-                                   [[-2.1480, -4.1830, -2.5519, -1.8020],
-                                    [-1.2496, -1.7859, -0.0665, -0.4938],
-                                    [-2.6171, -4.0142, -2.9428, -2.2121],
-                                    [-0.5166, -1.0925,  0.5190,  0.1371]],
-                                   [[ 0.5827, -1.2499, -0.0648, -0.0497],
-                                    [ 1.4695,  0.3522,  1.5614,  1.0236],
-                                    [ 0.4647, -0.7996, -0.3801,  0.0046],
-                                    [ 1.5611,  0.3875,  1.8285,  1.0766]],
-                                   [[-1.3053, -2.9423, -1.5779, -1.2142],
-                                    [-0.1908, -0.9699,  0.3085,  0.1061],
-                                    [-1.6783, -2.8199, -1.8853, -1.5653],
-                                    [ 0.3629, -0.3488,  0.9011,  0.5674]]]])
-        >>> mask = torch.tensor([[False,  True,  True,  True]])
-        >>> eisner2o((s_arc, s_sib), mask)
-        tensor([[0, 2, 0, 2]])
-    """
-
-    # the end position of each sentence in a batch
-    lens = mask.sum(1)
-    s_arc, s_sib = (s.requires_grad_() for s in scores)
-    batch_size, seq_len, _ = s_arc.shape
-    # [seq_len, seq_len, batch_size]
-    s_arc = s_arc.permute(2, 1, 0)
-    # [seq_len, seq_len, seq_len, batch_size]
-    s_sib = s_sib.permute(2, 1, 3, 0)
-    s_i = torch.full_like(s_arc, float('-inf'))
-    s_s = torch.full_like(s_arc, float('-inf'))
-    s_c = torch.full_like(s_arc, float('-inf'))
-    s_c.diagonal().fill_(0)
-
-    for w in range(1, seq_len):
-        # n denotes the number of spans to iterate,
-        # from span (0, w) to span (n, n+w) given width w
-        n = seq_len - w
-        # I(j->i) = max(I(j->r) + S(j->r, i)), i < r < j |
-        #               C(j->j) + C(i->j-1))
-        #           + s(j->i)
-        # [n, w, batch_size]
-        il = stripe(s_i, n, w, (w, 1)) + stripe(s_s, n, w, (1, 0), 0)
-        il += stripe(s_sib[range(w, n+w), range(n)], n, w, (0, 1))
-        # [n, 1, batch_size]
-        il0 = stripe(s_c, n, 1, (w, w)) + stripe(s_c, n, 1, (0, w - 1))
-        # il0[0] are set to zeros since the scores of the complete spans starting from 0 are always -inf
-        il[:, -1] = il0.index_fill_(0, lens.new_tensor(0), 0).squeeze(1)
-        il_span, _ = il.permute(2, 0, 1).max(-1)
-        s_i.diagonal(-w).copy_(il_span + s_arc.diagonal(-w))
-        # I(i->j) = max(I(i->r) + S(i->r, j), i < r < j |
-        #               C(i->i) + C(j->i+1))
-        #           + s(i->j)
-        # [n, w, batch_size]
-        ir = stripe(s_i, n, w) + stripe(s_s, n, w, (0, w), 0)
-        ir += stripe(s_sib[range(n), range(w, n+w)], n, w)
-        ir[0] = float('-inf')
-        # [n, 1, batch_size]
-        ir0 = stripe(s_c, n, 1) + stripe(s_c, n, 1, (w, 1))
-        ir[:, 0] = ir0.squeeze(1)
-        ir_span, _ = ir.permute(2, 0, 1).max(-1)
-        s_i.diagonal(w).copy_(ir_span + s_arc.diagonal(w))
-
-        # [n, w, batch_size]
-        slr = stripe(s_c, n, w) + stripe(s_c, n, w, (w, 1))
-        slr_span, _ = slr.permute(2, 0, 1).max(-1)
-        # S(j, i) = max(C(i->r) + C(j->r+1)), i <= r < j
-        s_s.diagonal(-w).copy_(slr_span)
-        # S(i, j) = max(C(i->r) + C(j->r+1)), i <= r < j
-        s_s.diagonal(w).copy_(slr_span)
-
-        # C(j->i) = max(C(r->i) + I(j->r)), i <= r < j
-        cl = stripe(s_c, n, w, (0, 0), 0) + stripe(s_i, n, w, (w, 0))
-        cl_span, _ = cl.permute(2, 0, 1).max(-1)
-        s_c.diagonal(-w).copy_(cl_span)
-        # C(i->j) = max(I(i->r) + C(r->j)), i < r <= j
-        cr = stripe(s_i, n, w, (0, 1)) + stripe(s_c, n, w, (1, w), 0)
-        cr_span, _ = cr.permute(2, 0, 1).max(-1)
-        s_c.diagonal(w).copy_(cr_span)
-        if not multiroot:
-            s_c[0, w][lens.ne(w)] = float('-inf')
-
-    logZ = s_c[0].gather(0, lens.unsqueeze(0)).sum()
-    marginals, = autograd.grad(logZ, s_arc)
-    preds = lens.new_zeros(batch_size, seq_len).masked_scatter_(mask, marginals.permute(2, 1, 0).nonzero()[:, 2])
-
-    return preds
-
-
-@torch.enable_grad()
-def cky(scores, mask):
-    r"""
-    The implementation of `Cocke-Kasami-Younger`_ (CKY) algorithm to parse constituency trees :cite:`zhang-etal-2020-fast`.
-
-    Args:
-        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-            Scores of all candidate constituents.
-        mask (~torch.BoolTensor): ``[batch_size, seq_len, seq_len]``.
-            The mask to avoid parsing over padding tokens.
-            For each square matrix in a batch, the positions except upper triangular part should be masked out.
-
-    Returns:
-        Sequences of factorized predicted bracketed trees that are traversed in pre-order.
-
-    Examples:
-        >>> scores = torch.tensor([[[ 2.5659,  1.4253, -2.5272,  3.3011],
-                                    [ 1.3687, -0.5869,  1.0011,  3.3020],
-                                    [ 1.2297,  0.4862,  1.1975,  2.5387],
-                                    [-0.0511, -1.2541, -0.7577,  0.2659]]])
-        >>> mask = torch.tensor([[[False,  True,  True,  True],
-                                  [False, False,  True,  True],
-                                  [False, False, False,  True],
-                                  [False, False, False, False]]])
-        >>> cky(scores, mask)
-        [[(0, 3), (0, 1), (1, 3), (1, 2), (2, 3)]]
-
-    .. _Cocke-Kasami-Younger:
-        https://en.wikipedia.org/wiki/CYK_algorithm
-    """
-
-    lens = mask[:, 0].sum(-1)
-    scores = scores.permute(1, 2, 3, 0).requires_grad_()
-    seq_len, seq_len, n_labels, batch_size = scores.shape
-    s = scores.new_zeros(seq_len, seq_len, batch_size)
-
-    for w in range(1, seq_len):
-        n = seq_len - w
-        s_l, _ = scores.diagonal(w).max(0)
-
-        if w == 1:
-            s.diagonal(w).copy_(s_l)
-            continue
-        # [n, w, batch_size]
-        s_s = stripe(s, n, w-1, (0, 1)) + stripe(s, n, w-1, (1, w), 0)
-        # [batch_size, n, w]
-        s_s = s_s.permute(2, 0, 1)
-        # [batch_size, n]
-        s_s, _ = s_s.max(-1)
-        s.diagonal(w).copy_(s_s + s_l)
-
-    logZ = s[0].gather(0, lens.unsqueeze(0)).sum()
-    marginals, = autograd.grad(logZ, scores)
-    return [sorted(i.nonzero().tolist(), key=lambda x:(x[0], -x[1])) for i in marginals.permute(3, 0, 1, 2)]
