@@ -6,6 +6,8 @@ Structs
 .. toctree::
    :maxdepth: 2
 
+   dist
+   semiring
    tree
    linearchain
    vi

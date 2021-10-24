@@ -8,10 +8,12 @@ from supar.utils.common import MIN
 
 class Semiring(object):
     r"""
-    A semiring is defined by a tuple `<K, +, ×, 0, 1>` :cite:`goodman-1999-semiring`.
-    `K` is a set of values;
-    `+` is commutative, associative and has an identity element `0`;
-    `×` is associative, has an identity element `1` and distributes over `+`.
+    Base semiring class :cite:`goodman-1999-semiring`.
+
+    A semiring is defined by a tuple :math:`<K, \oplus, \otimes, \mathbf{0}, \mathbf{1}>`.
+    :math:`K` is a set of values;
+    :math:`\oplus` is commutative, associative and has an identity element `0`;
+    :math:`\otimes` is associative, has an identity element `1` and distributes over `+`.
     """
 
     zero = 0
@@ -80,7 +82,7 @@ class Semiring(object):
 
 class LogSemiring(Semiring):
     r"""
-    Log-space semiring: `<logsumexp, +, -inf, 0>`.
+    Log-space semiring :math:`<\mathrm{logsumexp}, +, -\infty, 0>`.
     """
 
     zero = MIN
@@ -101,7 +103,7 @@ class LogSemiring(Semiring):
 
 class MaxSemiring(LogSemiring):
     r"""
-    Max semiring `<max, +, -inf, 0>`.
+    Max semiring :math:`<\mathrm{max}, +, -\infty, 0>`.
     """
 
     @classmethod
@@ -111,7 +113,7 @@ class MaxSemiring(LogSemiring):
 
 def KMaxSemiring(k):
     r"""
-    k-max semiring `<kmax, +, [-inf, -inf, ...], [0, -inf, ...]>`.
+    k-max semiring :math:`<\mathrm{kmax}, +, [-\infty, -\infty, \dots], [0, -\infty, \dots]>`.
     """
 
     class KMaxSemiring(LogSemiring):
@@ -139,7 +141,9 @@ def KMaxSemiring(k):
 
 class EntropySemiring(LogSemiring):
     """
-    Entropy expectation semiring: `<logsumexp, +, -inf, 0>` :cite:`li-eisner-2009-first`.
+    Entropy expectation semiring: :math:`<\oplus, +, [-\infty, 0], [0, 0]>`,
+    where :math:`\oplus` computes the log-values and the running distributional entropy :math:`H[p]`
+    :cite:`li-eisner-2009-first,hwa-2000-sample,kim-etal-2019-unsupervised`.
     """
 
     @classmethod
@@ -174,7 +178,9 @@ class EntropySemiring(LogSemiring):
 
 class CrossEntropySemiring(LogSemiring):
     """
-    Cross entropy expectation semiring: `<logsumexp, +, -inf, 0>` :cite:`li-eisner-2009-first`.
+    Cross Entropy expectation semiring: :math:`<\oplus, +, [-\infty, -\infty, 0], [0, 0, 0]>`,
+    where :math:`\oplus` computes the log-values and the running distributional cross entropy :math:`H[p,q]`
+    of the two distributions :cite:`li-eisner-2009-first`.
     """
 
     @classmethod
@@ -208,6 +214,11 @@ class CrossEntropySemiring(LogSemiring):
 
 
 class KLDivergenceSemiring(LogSemiring):
+    """
+    KL divergence expectation semiring: :math:`<\oplus, +, [-\infty, -\infty, 0], [0, 0, 0]>`,
+    where :math:`\oplus` computes the log-values and the running distributional KL divergence :math:`KL[p \parallel q]`
+    of the two distributions :cite:`li-eisner-2009-first`.
+    """
     """
     KL divergence expectation semiring: `<logsumexp, +, -inf, 0>` :cite:`li-eisner-2009-first`.
     """

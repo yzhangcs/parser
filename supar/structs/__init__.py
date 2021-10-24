@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .distribution import StructuredDistribution
+from .dist import StructuredDistribution
 from .linearchain import LinearChainCRF
 from .tree import ConstituencyCRF, Dependency2oCRF, DependencyCRF, MatrixTree
 from .vi import (ConstituencyLBP, ConstituencyMFVI, DependencyLBP,
