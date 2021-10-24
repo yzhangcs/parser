@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import torch
-from torch.distributions.utils import lazy_property
-from supar.structs.distribution import StructuredDistribution
+from supar.structs.dist import StructuredDistribution
 from supar.structs.semiring import LogSemiring
+from torch.distributions.utils import lazy_property
 
 
 class LinearChainCRF(StructuredDistribution):

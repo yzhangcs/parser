@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from supar.structs.distribution import StructuredDistribution
+from supar.structs.dist import StructuredDistribution
 from supar.structs.semiring import LogSemiring
 from supar.utils.alg import mst
 from supar.utils.fn import stripe
