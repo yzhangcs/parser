@@ -108,7 +108,7 @@ class BruteForceDependency2oCRF(BruteForceStructuredDistribution):
 
 class BruteForceConstituencyCRF(BruteForceStructuredDistribution):
 
-    def __init__(self, scores, lens=None, labeled=False):
+    def __init__(self, scores, lens=None):
         super().__init__(scores)
 
         batch_size, seq_len = scores.shape[:2]
@@ -116,10 +116,8 @@ class BruteForceConstituencyCRF(BruteForceStructuredDistribution):
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.unsqueeze(1) & scores.new_ones(scores.shape[:3]).bool().triu_(1)
 
-        self.labeled = labeled
-
     def enumerate(self, semiring):
-        scores = self.scores if self.labeled else self.scores.unsqueeze(-1)
+        scores = self.scores.unsqueeze(-1)
 
         def enumerate(s, i, j):
             if i + 1 == j:
@@ -178,10 +176,6 @@ def test_struct():
         s2 = torch.randn(batch_size, seq_len, seq_len).to(device)
         yield (ConstituencyCRF(s1, lens), ConstituencyCRF(s2, lens),
                BruteForceConstituencyCRF(s1, lens), BruteForceConstituencyCRF(s2, lens))
-        s1 = torch.randn(batch_size, seq_len, seq_len, n_tags).to(device)
-        s2 = torch.randn(batch_size, seq_len, seq_len, n_tags).to(device)
-        yield (ConstituencyCRF(s1, lens, labeled=True), ConstituencyCRF(s2, lens, labeled=True),
-               BruteForceConstituencyCRF(s1, lens, labeled=True), BruteForceConstituencyCRF(s2, lens, labeled=True))
         s1 = torch.randn(batch_size, seq_len, n_tags).to(device)
         s2 = torch.randn(batch_size, seq_len, n_tags).to(device)
         t1 = torch.randn(n_tags+1, n_tags+1).to(device)

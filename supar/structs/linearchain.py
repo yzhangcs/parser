@@ -8,7 +8,7 @@ from supar.structs.semiring import LogSemiring
 
 class LinearChainCRF(StructuredDistribution):
     r"""
-        Linear-chain CRFs (:cite:`lafferty-etal-2001-crf`).
+        Linear-chain CRFs :cite:`lafferty-etal-2001-crf`.
 
         Args:
             scores (~torch.Tensor): ``[batch_size, seq_len, n_tags]``.

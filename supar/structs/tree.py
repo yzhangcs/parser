@@ -11,8 +11,33 @@ from torch.distributions.utils import lazy_property
 
 class MatrixTree(StructuredDistribution):
     r"""
-    MatrixTree for calculating partitions and marginals of non-projective dependency trees
-    in :math:`O(n^3)` by an adaptation of Kirchhoff's MatrixTree Theorem :cite:`koo-etal-2007-structured`.
+    MatrixTree for calculating partitions and marginals of non-projective dependency trees in :math:`O(n^3)`
+    by an adaptation of Kirchhoff's MatrixTree Theorem :cite:`koo-etal-2007-structured`.
+
+    Args:
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all possible dependent-head pairs.
+        lens (~torch.LongTensor): ``[batch_size]``.
+            Sentence lengths for masking, regardless of root positions. Default: ``None``.
+        multiroot (bool):
+            If ``False``, requires the tree to contain only a single root. Default: ``True``.
+
+    Examples:
+        >>> from supar import MatrixTree
+        >>> batch_size, seq_len = 2, 5
+        >>> lens = torch.tensor([3, 4])
+        >>> arcs = torch.tensor([[0, 2, 0, 4, 2], [0, 3, 1, 0, 3]])
+        >>> s1 = MatrixTree(torch.randn(batch_size, seq_len, seq_len), lens)
+        >>> s2 = MatrixTree(torch.randn(batch_size, seq_len, seq_len), lens)
+        >>> s1.max
+        tensor([2.6816, 7.2115], grad_fn=<CopyBackwards>)
+        >>> s1.argmax
+        tensor([[0, 0, 3, 1, 0],
+                [0, 3, 0, 2, 3]])
+        >>> s1.log_partition
+        tensor([2.6816, 7.2115], grad_fn=<CopyBackwards>)
+        >>> s1.log_prob(arcs)
+        tensor([-0.7524, -3.0046], grad_fn=<SubBackward0>)
     """
 
     def __init__(self, scores, lens=None, multiroot=False):
@@ -63,17 +88,6 @@ class MatrixTree(StructuredDistribution):
 
     @torch.enable_grad()
     def forward(self, semiring):
-        r"""
-        Args:
-            scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-                Scores of all possible dependent-head pairs.
-            mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
-                The mask to avoid aggregation on padding tokens.
-                The first column serving as pseudo words for roots should be ``False``.
-            value (~torch.LongTensor): ``[batch_size, seq_len]``.
-                The tensor of gold-standard dependent-head pairs. Default: ``None``.
-        """
-
         s_arc = self.scores
         mask, lens = self.mask, self.lens
         batch_size, seq_len, _ = s_arc.shape
@@ -97,8 +111,36 @@ class MatrixTree(StructuredDistribution):
 
 class DependencyCRF(StructuredDistribution):
     r"""
-    First-order TreeCRF for calculating partitions and marginals of projective dependency trees
-    in :math:`O(n^3)` :cite:`zhang-etal-2020-efficient`.
+    First-order TreeCRF for projective dependency trees :cite:`eisner-2000-bilexical,zhang-etal-2020-efficient`.
+
+    Args:
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all possible dependent-head pairs.
+        lens (~torch.LongTensor): ``[batch_size]``.
+            Sentence lengths for masking, regardless of root positions. Default: ``None``.
+        multiroot (bool):
+            If ``False``, requires the tree to contain only a single root. Default: ``True``.
+
+    Examples:
+        >>> from supar import DependencyCRF
+        >>> batch_size, seq_len = 2, 5
+        >>> lens = torch.tensor([3, 4])
+        >>> arcs = torch.tensor([[0, 2, 0, 4, 2], [0, 3, 1, 0, 3]])
+        >>> s1 = DependencyCRF(torch.randn(batch_size, seq_len, seq_len), lens)
+        >>> s2 = DependencyCRF(torch.randn(batch_size, seq_len, seq_len), lens)
+        >>> s1.max
+        tensor([3.6346, 1.7194], grad_fn=<IndexBackward>)
+        >>> s1.argmax
+        tensor([[0, 2, 3, 0, 0],
+                [0, 0, 3, 1, 1]])
+        >>> s1.log_partition
+        tensor([4.1007, 3.3383], grad_fn=<IndexBackward>)
+        >>> s1.log_prob(arcs)
+        tensor([-1.3866, -5.5352], grad_fn=<SubBackward0>)
+        >>> s1.entropy
+        tensor([0.9979, 2.6056], grad_fn=<IndexBackward>)
+        >>> s1.kl(s2)
+        tensor([1.6631, 2.6558], grad_fn=<IndexBackward>)
     """
 
     def __init__(self, scores, lens=None, multiroot=False):
@@ -172,7 +214,41 @@ class DependencyCRF(StructuredDistribution):
 
 class Dependency2oCRF(StructuredDistribution):
     r"""
-    Second-order TreeCRF :cite:`zhang-etal-2020-efficient`.
+    Second-order TreeCRF for projective dependency trees :cite:`mcdonald-pereira-2006-online,zhang-etal-2020-efficient`.
+
+    Args:
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all possible dependent-head pairs.
+        lens (~torch.LongTensor): ``[batch_size]``.
+            Sentence lengths for masking, regardless of root positions. Default: ``None``.
+        multiroot (bool):
+            If ``False``, requires the tree to contain only a single root. Default: ``True``.
+
+    Examples:
+        >>> from supar import Dependency2oCRF
+        >>> batch_size, seq_len = 2, 5
+        >>> lens = torch.tensor([3, 4])
+        >>> arcs = torch.tensor([[0, 2, 0, 4, 2], [0, 3, 1, 0, 3]])
+        >>> sibs = torch.tensor([CoNLL.get_sibs(i) for i in arcs[:, 1:].tolist()])
+        >>> s1 = Dependency2oCRF((torch.randn(batch_size, seq_len, seq_len),
+                                  torch.randn(batch_size, seq_len, seq_len, seq_len)),
+                                 lens)
+        >>> s2 = Dependency2oCRF((torch.randn(batch_size, seq_len, seq_len),
+                                  torch.randn(batch_size, seq_len, seq_len, seq_len)),
+                                 lens)
+        >>> s1.max
+        tensor([0.7574, 3.3634], grad_fn=<IndexBackward>)
+        >>> s1.argmax
+        tensor([[0, 3, 3, 0, 0],
+                [0, 4, 4, 4, 0]])
+        >>> s1.log_partition
+        tensor([1.9906, 4.3599], grad_fn=<IndexBackward>)
+        >>> s1.log_prob((arcs, sibs))
+        tensor([-0.6975, -6.2845], grad_fn=<SubBackward0>)
+        >>> s1.entropy
+        tensor([1.6436, 2.1717], grad_fn=<IndexBackward>)
+        >>> s1.kl(s2)
+        tensor([0.4929, 2.0759], grad_fn=<IndexBackward>)
     """
 
     def __init__(self, scores, lens=None, multiroot=False):
@@ -273,10 +349,45 @@ class Dependency2oCRF(StructuredDistribution):
 
 class ConstituencyCRF(StructuredDistribution):
     r"""
-    TreeCRF for calculating partitions and marginals of constituency trees :cite:`zhang-etal-2020-fast`.
+    Constituency TreeCRF :cite:`zhang-etal-2020-fast,stern-etal-2017-minimal`.
+
+    Args:
+        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
+            Scores of all constituents.
+        lens (~torch.LongTensor): ``[batch_size]``.
+            Sentence lengths for masking.
+
+    Examples:
+        >>> from supar import ConstituencyCRF
+        >>> batch_size, seq_len = 2, 5
+        >>> lens = torch.tensor([3, 4])
+        >>> charts = torch.tensor([[[0, 1, 0, 1, 0],
+                                    [0, 0, 1, 1, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0]],
+                                   [[0, 1, 1, 0, 1],
+                                    [0, 0, 1, 0, 0],
+                                    [0, 0, 0, 1, 1],
+                                    [0, 0, 0, 0, 1],
+                                    [0, 0, 0, 0, 0]]]).bool()
+        >>> s1 = ConstituencyCRF(torch.randn(batch_size, seq_len, seq_len), lens)
+        >>> s2 = ConstituencyCRF(torch.randn(batch_size, seq_len, seq_len), lens)
+        >>> s1.max
+        tensor([ 2.5068, -0.5628], grad_fn=<IndexBackward>)
+        >>> s1.argmax
+        [[[0, 3], [0, 1], [1, 3], [1, 2], [2, 3]], [[0, 4], [0, 2], [0, 1], [1, 2], [2, 4], [2, 3], [3, 4]]]
+        >>> s1.log_partition
+        tensor([2.9235, 0.0154], grad_fn=<IndexBackward>)
+        >>> s1.log_prob(charts)
+        tensor([-0.4167, -0.5781], grad_fn=<SubBackward0>)
+        >>> s1.entropy
+        tensor([0.6415, 1.2026], grad_fn=<IndexBackward>)
+        >>> s1.kl(s2)
+        tensor([0.0362, 2.9017], grad_fn=<IndexBackward>)
     """
 
-    def __init__(self, scores, lens=None, labeled=False):
+    def __init__(self, scores, lens=None):
         super().__init__(scores)
 
         batch_size, seq_len = scores.shape[:2]
@@ -284,13 +395,11 @@ class ConstituencyCRF(StructuredDistribution):
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.unsqueeze(1) & scores.new_ones(scores.shape[:3]).bool().triu_(1)
 
-        self.labeled = labeled
-
     def __repr__(self):
-        return f"{self.__class__.__name__}(labeled={self.labeled})"
+        return f"{self.__class__.__name__}()"
 
     def __add__(self, other):
-        return ConstituencyCRF(torch.stack((self.scores, other.scores), -1), self.lens, self.labeled)
+        return ConstituencyCRF(torch.stack((self.scores, other.scores), -1), self.lens)
 
     @lazy_property
     def argmax(self):
@@ -306,9 +415,8 @@ class ConstituencyCRF(StructuredDistribution):
     @torch.enable_grad()
     def forward(self, semiring):
         batch_size, seq_len = self.scores.shape[:2]
-        scores = semiring.convert(self.scores.movedim((1, 2), (0, 1)))
         # [seq_len, seq_len, batch_size, ...], (l->r)
-        scores = semiring.sum(scores, 3) if self.labeled else scores
+        scores = semiring.convert(self.scores.movedim((1, 2), (0, 1)))
         s = semiring.zeros_like(scores)
 
         for w in range(1, seq_len):
