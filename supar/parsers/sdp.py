@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 class BiaffineSemanticDependencyParser(Parser):
     r"""
-    The implementation of Biaffine Semantic Dependency Parser :cite:`dozat-etal-2018-simpler`.
+    The implementation of Biaffine Semantic Dependency Parser :cite:`dozat-manning-2018-simpler`.
     """
 
     NAME = 'biaffine-semantic-dependency'

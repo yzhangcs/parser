@@ -9,7 +9,7 @@ from supar.utils import Config
 
 class BiaffineSemanticDependencyModel(Model):
     r"""
-    The implementation of Biaffine Semantic Dependency Parser :cite:`dozat-etal-2018-simpler`.
+    The implementation of Biaffine Semantic Dependency Parser :cite:`dozat-manning-2018-simpler`.
 
     Args:
         n_words (int):
