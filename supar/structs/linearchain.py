@@ -8,26 +8,41 @@ from supar.structs.semiring import LogSemiring
 
 class LinearChainCRF(StructuredDistribution):
     r"""
+        Linear-chain CRFs (:cite:`lafferty-etal-2001-crf`).
+
+        Args:
+            scores (~torch.Tensor): ``[batch_size, seq_len, n_tags]``.
+                Log potentials.
+            trans (~torch.Tensor): ``[n_tags+1, n_tags+1]``.
+                Transition scores.
+                ``trans[-1, :-1]``/``trans[:-1, -1]`` represent transitions for start/end positions respectively.
+            lens (~torch.LongTensor): ``[batch_size]``.
+                Sentence lengths for masking. Default: ``None``.
 
         Examples:
             >>> from supar import LinearChainCRF
-            >>> batch_size, seq_len, n_tags = 3, 5, 4
-            >>> lens = torch.tensor([3, 4, 5])
+            >>> batch_size, seq_len, n_tags = 2, 5, 4
+            >>> lens = torch.tensor([3, 4])
             >>> value = torch.randint(n_tags, (batch_size, seq_len))
-            >>> s1 = LinearChainCRF(torch.randn(batch_size, seq_len, n_tags), torch.randn(n_tags+1, n_tags+1), lens)
-            >>> s2 = LinearChainCRF(torch.randn(batch_size, seq_len, n_tags), torch.randn(n_tags+1, n_tags+1), lens)
+            >>> s1 = LinearChainCRF(torch.randn(batch_size, seq_len, n_tags),
+                                    torch.randn(n_tags+1, n_tags+1),
+                                    lens)
+            >>> s2 = LinearChainCRF(torch.randn(batch_size, seq_len, n_tags),
+                                    torch.randn(n_tags+1, n_tags+1),
+                                    lens)
             >>> s1.max
-            tensor([2.4978, 5.7460, 4.9088], grad_fn=<MaxBackward0>)
+            tensor([4.4120, 8.9672], grad_fn=<MaxBackward0>)
             >>> s1.argmax
-            tensor([[3, 1, 3, 0, 0],
-                    [1, 0, 1, 0, 0],
-                    [2, 0, 1, 1, 0]])
+            tensor([[2, 0, 3, 0, 0],
+                    [3, 3, 3, 2, 0]])
             >>> s1.log_partition
-            tensor([3.7812, 7.9180, 7.8031], grad_fn=<LogsumexpBackward>)
+            tensor([ 6.3486, 10.9106], grad_fn=<LogsumexpBackward>)
             >>> s1.log_prob(value)
-            tensor([ -8.9096, -11.3473,  -9.6189], grad_fn=<SubBackward0>)
+            tensor([ -8.1515, -10.5572], grad_fn=<SubBackward0>)
+            >>> s1.entropy
+            tensor([3.4150, 3.6549], grad_fn=<SelectBackward>)
             >>> s1.kl(s2)
-            tensor([1.9768, 5.1978, 8.6055], grad_fn=<SelectBackward>)
+            tensor([4.0333, 4.3807], grad_fn=<SelectBackward>)
     """
 
     def __init__(self, scores, trans=None, lens=None):
@@ -50,6 +65,10 @@ class LinearChainCRF(StructuredDistribution):
     @lazy_property
     def argmax(self):
         return self.lens.new_zeros(self.mask.shape).masked_scatter_(self.mask, torch.where(self.backward(self.max.sum()))[2])
+
+    def topk(self, k):
+        preds = torch.stack([torch.where(self.backward(i))[2] for i in self.kmax(k).sum(0)], -1)
+        return self.lens.new_zeros(*self.mask.shape, k).masked_scatter_(self.mask.unsqueeze(-1), preds)
 
     def score(self, value):
         scores, mask, value = self.scores.transpose(0, 1), self.mask.t(), value.t()
