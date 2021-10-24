@@ -15,6 +15,9 @@ class StructuredDistribution(Distribution):
         self.scores = scores.requires_grad_() if isinstance(scores, torch.Tensor) else [s.requires_grad_() for s in scores]
         self.kwargs = kwargs
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
+
     @lazy_property
     def log_partition(self):
         return self.forward(LogSemiring)

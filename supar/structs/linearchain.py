@@ -1,12 +1,33 @@
 # -*- coding: utf-8 -*-
 
 import torch
+from torch.distributions.utils import lazy_property
 from supar.structs.distribution import StructuredDistribution
 from supar.structs.semiring import LogSemiring
 
 
 class LinearChainCRF(StructuredDistribution):
     r"""
+
+        Examples:
+            >>> from supar import LinearChainCRF
+            >>> batch_size, seq_len, n_tags = 3, 5, 4
+            >>> lens = torch.tensor([3, 4, 5])
+            >>> value = torch.randint(n_tags, (batch_size, seq_len))
+            >>> s1 = LinearChainCRF(torch.randn(batch_size, seq_len, n_tags), torch.randn(n_tags+1, n_tags+1), lens)
+            >>> s2 = LinearChainCRF(torch.randn(batch_size, seq_len, n_tags), torch.randn(n_tags+1, n_tags+1), lens)
+            >>> s1.max
+            tensor([2.4978, 5.7460, 4.9088], grad_fn=<MaxBackward0>)
+            >>> s1.argmax
+            tensor([[3, 1, 3, 0, 0],
+                    [1, 0, 1, 0, 0],
+                    [2, 0, 1, 1, 0]])
+            >>> s1.log_partition
+            tensor([3.7812, 7.9180, 7.8031], grad_fn=<LogsumexpBackward>)
+            >>> s1.log_prob(value)
+            tensor([ -8.9096, -11.3473,  -9.6189], grad_fn=<SubBackward0>)
+            >>> s1.kl(s2)
+            tensor([1.9768, 5.1978, 8.6055], grad_fn=<SelectBackward>)
     """
 
     def __init__(self, scores, trans=None, lens=None):
@@ -25,6 +46,10 @@ class LinearChainCRF(StructuredDistribution):
         return LinearChainCRF(torch.stack((self.scores, other.scores), -1),
                               torch.stack((self.trans, other.trans), -1),
                               self.lens)
+
+    @lazy_property
+    def argmax(self):
+        return self.lens.new_zeros(self.mask.shape).masked_scatter_(self.mask, torch.where(self.backward(self.max.sum()))[2])
 
     def score(self, value):
         scores, mask, value = self.scores.transpose(0, 1), self.mask.t(), value.t()
