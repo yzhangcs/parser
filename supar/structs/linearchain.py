@@ -89,9 +89,6 @@ class LinearChainCRF(StructuredDistribution):
         # [batch_size, n_tags]
         alpha = semiring.mul(trans[-1, :-1], scores[0])
         for i in range(1, len(mask)):
-            # [batch_size, n_tags]
-            alpha[mask[i]] = semiring.sum(semiring.times(trans[:-1, :-1].unsqueeze(0),
-                                                         scores[i].unsqueeze(1),
-                                                         alpha.unsqueeze(2)), 1)[mask[i]]
+            alpha[mask[i]] = semiring.mul(semiring.dot(alpha.unsqueeze(2), trans[:-1, :-1], 1), scores[i])[mask[i]]
         alpha = semiring.dot(alpha, trans[:-1, -1], 1)
         return semiring.unconvert(alpha)
