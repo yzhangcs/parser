@@ -46,12 +46,12 @@ class TransformerEmbedding(nn.Module):
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
         self.hidden_size = self.bert.config.hidden_size
         self.n_out = n_out or self.hidden_size
-        self.stride = stride
         self.pooling = pooling
         self.pad_index = pad_index
         self.dropout = dropout
         self.requires_grad = requires_grad
         self.max_len = int(max(0, self.bert.config.max_position_embeddings) or 1e12) - 2
+        self.stride = min(stride, self.max_len)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model)
 
