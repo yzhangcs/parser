@@ -234,8 +234,8 @@ class BiaffineDependencyModel(Model):
 
 class CRFDependencyModel(BiaffineDependencyModel):
     r"""
-    The implementation of first-order CRF Dependency Parser (:cite:`zhang-etal-2020-efficient`,
-    :cite:`ma-hovy-2017-neural`, :cite:`koo-etal-2007-structured`).
+    The implementation of first-order CRF Dependency Parser
+    :cite:`zhang-etal-2020-efficient,ma-hovy-2017-neural,koo-etal-2007-structured`).
 
     Args:
         n_words (int):

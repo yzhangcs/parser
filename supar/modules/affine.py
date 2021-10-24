@@ -80,7 +80,7 @@ class Biaffine(nn.Module):
 
 class Triaffine(nn.Module):
     r"""
-    Triaffine layer for second-order scoring (:cite:`zhang-etal-2020-efficient`, :cite:`wang-etal-2019-second`).
+    Triaffine layer for second-order scoring :cite:`zhang-etal-2020-efficient,wang-etal-2019-second`.
 
     This function has a tensor of weights :math:`W` and bias terms if needed.
     The score :math:`s(x, y, z)` of the vector triple :math:`(x, y, z)` is computed as :math:`x^T z^T W y / d^s`,
