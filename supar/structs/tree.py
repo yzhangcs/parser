@@ -64,6 +64,9 @@ class MatrixTree(StructuredDistribution):
     def kmax(self, k):
         raise NotImplementedError
 
+    def sample(self):
+        raise NotImplementedError
+
     @lazy_property
     def entropy(self):
         raise NotImplementedError

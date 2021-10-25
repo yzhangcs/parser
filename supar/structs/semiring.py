@@ -251,3 +251,30 @@ class KLDivergenceSemiring(LogSemiring):
     @classmethod
     def one_(cls, x):
         return x.fill_(cls.one)
+
+
+class SampledSemiring(LogSemiring):
+    r"""
+    Sampling semiring :math:`<\mathrm{logsumexp}, +, -\infty, 0>`,
+    which is an exact forward-filtering, backward-sampling approach.
+    """
+
+    @classmethod
+    def sum(cls, x, dim=-1):
+        return SampledLogsumexp.apply(x, dim)
+
+
+class SampledLogsumexp(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, x, dim=-1):
+        ctx.save_for_backward(x, torch.tensor(dim))
+        return x.logsumexp(dim=dim)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        from torch.distributions import OneHotCategorical
+        x, dim = ctx.saved_tensors
+        if ctx.needs_input_grad[0]:
+            return grad_output.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
+        return None, None
