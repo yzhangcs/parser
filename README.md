@@ -6,17 +6,26 @@
 [![downloads](https://img.shields.io/github/downloads/yzhangcs/parser/total)](https://pypistats.org/packages/supar)
 [![LICENSE](https://img.shields.io/github/license/yzhangcs/parser)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
-A Python package that includes many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages), as well as highly-parallelized implementations of several well-known and effective structured prediction algorithms.
+A Python package designed for structured prediction, including reproductions of many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages), and
 
 * Dependency Parser
-  * Biaffine ([Dozat and Manning, 2017](https://parser.readthedocs.io/en/latest/refs.html#dozat-2017-biaffine))
-  * CRF/MatrixTree ([Koo et al., 2007](https://parser.readthedocs.io/en/latest/refs.html#koo-2007-structured); [Ma and Hovy, 2017](https://parser.readthedocs.io/en/latest/refs.html#ma-2017-neural))
-  * CRF2o ([Zhang et al., 2020a](https://parser.readthedocs.io/en/latest/refs.html#zhang-2020-efficient))
+  * Biaffine ([Dozat and Manning, 2017](https://openreview.net/forum?id=Hk95PK9le))
+  * CRF/CRF2o ([Zhang et al., 2020a](https://aclanthology.org/2020.acl-main.302))
 * Constituency Parser
-  * CRF ([Zhang et al., 2020b](https://parser.readthedocs.io/en/latest/refs.html#zhang-2020-fast))
+  * CRF ([Zhang et al., 2020b](https://www.ijcai.org/Proceedings/2020/560/))
 * Semantic Dependency Parser
-  * Biaffine ([Dozat and Manning, 2018](https://parser.readthedocs.io/en/latest/refs.html#wang-2019-second))
-  * MFVI/LBP ([Wang et al, 2019](https://parser.readthedocs.io/en/latest/refs.html#wang-2019-second))
+  * Biaffine ([Dozat and Manning, 2018](https://aclanthology.org/P18-2077))
+  * MFVI/LBP ([Wang et al, 2019](https://aclanthology.org/P18-2077))
+
+highly-parallelized implementations of several well-known structured prediction algorithms.[^1]
+
+* Tree
+  * MatrixTree ([Koo et al., 2007](https://www.aclweb.org/anthology/D07-1015); [Ma and Hovy, 2017](https://aclanthology.org/I17-1007))
+  * DependencyCRF ([Eisner et al., 2000](https://www.cs.jhu.edu/~jason/papers/eisner.iwptbook00.pdf); [Zhang et al., 2020](https://aclanthology.org/2020.acl-main.302))
+  * Dependency2oCRF ([McDonald et al., 2006](https://www.aclweb.org/anthology/E06-1011); [Zhang et al., 2020](https://aclanthology.org/2020.acl-main.302))
+  * ConstituencyCRF ([Stern et al. 2017](https://aclanthology.org/P17-1076); [Zhang et al., 2020b](https://www.ijcai.org/Proceedings/2020/560/))
+* Linear Chain:
+  * LinearChainCRF ([Lafferty et al., 2001](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2001/crf.pdf))
 
 ## Installation
 
@@ -37,7 +46,7 @@ As a prerequisite, the following requirements should be satisfied:
 
 ## Usage
 
-`SuPar` allows you to download the pretrained model and parse sentences with a few lines of code:
+You can download the pretrained model and parse sentences with just a few lines of code:
 ```py
 >>> from supar import Parser
 >>> parser = Parser.load('biaffine-dep-en')
@@ -288,3 +297,7 @@ If you are interested in them, please cite:
   pages     = {4046--4053}
 }
 ```
+
+## Acknowledge
+
+[^1]: The implementations of structured distributions and semirings are heavily borrowed from [torchstruct](https://github.com/harvardnlp/pytorch-struct) with some tailoring.
