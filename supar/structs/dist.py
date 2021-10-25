@@ -29,7 +29,7 @@ class StructuredDistribution(Distribution):
     @lazy_property
     def log_partition(self):
         r"""
-        Computes the log partition function.
+        Computes the log partition function of the distribution :math:`p(y)`.
         """
 
         return self.forward(LogSemiring)
@@ -37,7 +37,7 @@ class StructuredDistribution(Distribution):
     @lazy_property
     def marginals(self):
         r"""
-        Computes marginals of the distribution :math:`p(y)`.
+        Computes marginal probabilities of the distribution :math:`p(y)`.
         """
 
         return self.backward(self.log_partition.sum())
@@ -45,7 +45,7 @@ class StructuredDistribution(Distribution):
     @lazy_property
     def max(self):
         r"""
-        Computes the max score of distribution :math:`p(y)`.
+        Computes the max score of the distribution :math:`p(y)`.
         """
 
         return self.forward(MaxSemiring)
@@ -53,7 +53,7 @@ class StructuredDistribution(Distribution):
     @lazy_property
     def argmax(self):
         r"""
-        Computes :math:`\arg\max_y p(y)` of distribution :math:`p(y)`.
+        Computes :math:`\arg\max_y p(y)` of the distribution :math:`p(y)`.
         """
         raise NotImplementedError
 
@@ -63,20 +63,20 @@ class StructuredDistribution(Distribution):
 
     def kmax(self, k):
         r"""
-        Computes the k-max of distribution :math:`p(y)`.
+        Computes the k-max of the distribution :math:`p(y)`.
         """
 
         return self.forward(KMaxSemiring(k))
 
     def topk(self, k):
         r"""
-        Computes the k-argmax of distribution :math:`p(y)`.
+        Computes the k-argmax of the distribution :math:`p(y)`.
         """
         raise NotImplementedError
 
     def sample(self):
         r"""
-        Computes structured samples from the distribution :math:`y \sim p(y)`.
+        Obtains a structured sample from the distribution :math:`y \sim p(y)`.
         TODO: multi-sampling.
         """
 
@@ -85,7 +85,7 @@ class StructuredDistribution(Distribution):
     @lazy_property
     def entropy(self):
         r"""
-        Computes entropy :math:`H[p]` of distribution :math:`p(y)`.
+        Computes entropy :math:`H[p]` of the distribution :math:`p(y)`.
         """
 
         return self.forward(EntropySemiring)
