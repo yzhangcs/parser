@@ -5,10 +5,10 @@ from .parsers import (BiaffineDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser, Parser,
                       VIConstituencyParser, VIDependencyParser,
                       VISemanticDependencyParser)
-from .structs import (Dependency2oCRF, ConstituencyCRF, DependencyCRF,
-                      ConstituencyLBP, DependencyLBP, SemanticDependencyLBP,
-                      MatrixTree, ConstituencyMFVI, DependencyMFVI,
-                      SemanticDependencyMFVI)
+from .structs import (ConstituencyCRF, ConstituencyLBP, ConstituencyMFVI,
+                      Dependency2oCRF, DependencyCRF, DependencyLBP,
+                      DependencyMFVI, LinearChainCRF, MatrixTree,
+                      SemanticDependencyLBP, SemanticDependencyMFVI)
 
 __all__ = ['BiaffineDependencyParser',
            'CRFDependencyParser',
@@ -23,14 +23,15 @@ __all__ = ['BiaffineDependencyParser',
            'DependencyCRF',
            'Dependency2oCRF',
            'ConstituencyCRF',
-           'ConstituencyLBP',
-           'ConstituencyMFVI',
+           'LinearChainCRF',
            'DependencyLBP',
            'DependencyMFVI',
+           'ConstituencyLBP',
+           'ConstituencyMFVI',
            'SemanticDependencyLBP',
            'SemanticDependencyMFVI']
 
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFDependencyParser,
