@@ -37,3 +37,8 @@ KLDivergenceSemiring
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: KLDivergenceSemiring
     :members:
+
+SampledSemiring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: SampledSemiring
+    :members:
