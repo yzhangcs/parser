@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 SuPar
-===============================================================================
+================================================================
 
 .. image:: https://github.com/yzhangcs/parser/workflows/build/badge.svg
    :alt: build
@@ -22,7 +22,7 @@ SuPar
    :alt: LICENSE
    :target: https://github.com/yzhangcs/parser/blob/master/LICENSE
 
-A Python package that includes many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages), as well as highly-parallelized implementations of several well-known and effective structured prediction algorithms.
+A Python package designed for structured prediction, including reproductions of many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages), and highly-parallelized implementations of several well-known structured prediction algorithms.
 
 .. toctree::
    :maxdepth: 2
@@ -43,3 +43,9 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+Acknowledge
+================================================================
+
+The implementations of structured distributions and semirings are heavily borrowed from torchstruct_ with some tailoring.
+
+.. _torchstruct: https://github.com/harvardnlp/pytorch-struct
