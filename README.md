@@ -298,6 +298,4 @@ If you are interested in them, please cite:
 }
 ```
 
-## Acknowledge
-
 [^1]: The implementations of structured distributions and semirings are heavily borrowed from [torchstruct](https://github.com/harvardnlp/pytorch-struct) with some tailoring.
