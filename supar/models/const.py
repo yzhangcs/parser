@@ -190,7 +190,7 @@ class CRFConstituencyModel(Model):
         """
 
         span_mask = charts.ge(0) & mask
-        span_dist = ConstituencyCRF(s_span, mask[:, 0].sum())
+        span_dist = ConstituencyCRF(s_span, mask[:, 0].sum(-1))
         span_loss = -span_dist.log_prob(span_mask).sum() / mask[:, 0].sum()
         span_probs = span_dist.marginals if mbr else s_span
         label_loss = self.criterion(s_label[span_mask], charts[span_mask])
@@ -213,7 +213,7 @@ class CRFConstituencyModel(Model):
                 Sequences of factorized labeled trees traversed in pre-order.
         """
 
-        span_preds = ConstituencyCRF(s_span, mask[:, 0].sum()).argmax
+        span_preds = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).argmax
         label_preds = s_label.argmax(-1).tolist()
         return [[(i, j, labels[i][j]) for i, j in spans] for spans, labels in zip(span_preds, label_preds)]
 
@@ -439,6 +439,6 @@ class VIConstituencyModel(CRFConstituencyModel):
                 Sequences of factorized labeled trees traversed in pre-order.
         """
 
-        span_preds = ConstituencyCRF(s_span, mask[:, 0].sum()).argmax
+        span_preds = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).argmax
         label_preds = s_label.argmax(-1).tolist()
         return [[(i, j, labels[i][j]) for i, j in spans] for spans, labels in zip(span_preds, label_preds)]

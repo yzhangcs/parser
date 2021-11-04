@@ -213,7 +213,7 @@ class CRFConstituencyParser(Parser):
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             lens = mask[:, 0].sum(-1)
             s_span, s_label = self.model(words, feats)
-            s_span = ConstituencyCRF(s_span, mask[:, 0].sum()).marginals if self.args.mbr else s_span
+            s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
             chart_preds = self.model.decode(s_span, s_label, mask)
             preds['trees'].extend([Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                                    for tree, chart in zip(trees, chart_preds)])
