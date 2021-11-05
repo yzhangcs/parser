@@ -35,8 +35,7 @@ $ pip install -U supar
 ```
 Or installing from source is also permitted:
 ```sh
-$ git clone https://github.com/yzhangcs/parser && cd parser
-$ python setup.py install
+$ pip install -U git+https://github.com/yzhangcs/parser
 ```
 
 As a prerequisite, the following requirements should be satisfied:
