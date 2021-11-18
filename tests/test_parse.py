@@ -7,13 +7,13 @@ from supar import Parser
 
 
 def test_parse():
-    sents = {'en': 'She enjoys playing tennis.',
+    sents = {'en': ['She enjoys playing tennis.', 'Too young too simple!'],
              'zh': '她喜欢打网球.',
              'de': 'Sie spielt gerne Tennis.',
              'fr': 'Elle aime jouer au tennis.',
              'ru': 'Она любит играть в теннис.',
              'he': 'היא נהנית לשחק טניס.'}
-    tokenized_sents = {'en': ['She', 'enjoys', 'playing', 'tennis', '.'],
+    tokenized_sents = {'en': [['She', 'enjoys', 'playing', 'tennis', '.'], ['Too', 'young', 'too', 'simple', '!']],
                        'zh': ['她', '喜欢', '打', '网球', '.'],
                        'de': ['Sie', 'spielt', 'gerne', 'Tennis', '.'],
                        'fr': ['Elle', 'aime', 'jouer', 'au', 'tennis', '.'],
