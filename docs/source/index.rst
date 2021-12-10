@@ -43,7 +43,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-Acknowledge
+Acknowledgements
 ================================================================
 
 The implementations of structured distributions and semirings are heavily borrowed from torchstruct_ with some tailoring.
