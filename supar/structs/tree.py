@@ -196,18 +196,18 @@ class DependencyCRF(StructuredDistribution):
 
             # [n, batch_size, ...]
             il = ir = semiring.dot(stripe(s_c, n, w), stripe(s_c, n, w, (w, 1)), 1)
-            # I(j->i) = logsumexp(C(i->r) + C(j->r+1)) + s(j->i), i <= r < j
+            # I(j->i) = <C(i->r), C(j->r+1)> * s(j->i), i <= r < j
             # fill the w-th diagonal of the lower triangular part of s_i with I(j->i) of n spans
             s_i.diagonal(-w).copy_(semiring.mul(il, s_arc.diagonal(-w).movedim(-1, 0)).movedim(0, -1))
-            # I(i->j) = logsumexp(C(i->r) + C(j->r+1)) + s(i->j), i <= r < j
+            # I(i->j) = <C(i->r), C(j->r+1)> * s(i->j), i <= r < j
             # fill the w-th diagonal of the upper triangular part of s_i with I(i->j) of n spans
             s_i.diagonal(w).copy_(semiring.mul(ir, s_arc.diagonal(w).movedim(-1, 0)).movedim(0, -1))
 
             # [n, batch_size, ...]
-            # C(j->i) = logsumexp(C(r->i) + I(j->r)), i <= r < j
+            # C(j->i) = <C(r->i), I(j->r)>, i <= r < j
             cl = semiring.dot(stripe(s_c, n, w, (0, 0), 0), stripe(s_i, n, w, (w, 0)), 1)
             s_c.diagonal(-w).copy_(cl.movedim(0, -1))
-            # C(i->j) = logsumexp(I(i->r) + C(r->j)), i < r <= j
+            # C(i->j) = <I(i->r), C(r->j)>, i < r <= j
             cr = semiring.dot(stripe(s_i, n, w, (0, 1)), stripe(s_c, n, w, (1, w), 0), 1)
             s_c.diagonal(w).copy_(cr.movedim(0, -1))
             if not self.multiroot:
@@ -310,9 +310,8 @@ class Dependency2oCRF(StructuredDistribution):
         for w in range(1, seq_len):
             n = seq_len - w
 
-            # I(j->i) = logsum(exp(I(j->r) + S(j->r, i)) +, i < r < j
-            #                  exp(C(j->j) + C(i->j-1)))
-            #           + s(j->i)
+            # I(j->i) = <I(j->r), S(j->r, i)> * s(j->i), i < r < j
+            #           <C(j->j), C(i->j-1)>  * s(j->i), otherwise
             # [n, w, batch_size, ...]
             il = semiring.times(stripe(s_i, n, w, (w, 1)),
                                 stripe(s_s, n, w, (1, 0), 0),
@@ -320,9 +319,8 @@ class Dependency2oCRF(StructuredDistribution):
             il[:, -1] = semiring.mul(stripe(s_c, n, 1, (w, w)), stripe(s_c, n, 1, (0, w - 1))).squeeze(1)
             il = semiring.sum(il, 1)
             s_i.diagonal(-w).copy_(semiring.mul(il, s_arc.diagonal(-w).movedim(-1, 0)).movedim(0, -1))
-            # I(i->j) = logsum(exp(I(i->r) + S(i->r, j)) +, i < r < j
-            #                  exp(C(i->i) + C(j->i+1)))
-            #           + s(i->j)
+            # I(i->j) = <I(i->r), S(i->r, j)> * s(i->j), i < r < j
+            #           <C(i->i), C(j->i+1)>  * s(i->j), otherwise
             # [n, w, batch_size, ...]
             ir = semiring.times(stripe(s_i, n, w),
                                 stripe(s_s, n, w, (0, w), 0),
@@ -335,16 +333,16 @@ class Dependency2oCRF(StructuredDistribution):
 
             # [batch_size, ..., n]
             sl = sr = semiring.dot(stripe(s_c, n, w), stripe(s_c, n, w, (w, 1)), 1).movedim(0, -1)
-            # S(j, i) = logsumexp(C(i->r) + C(j->r+1)), i <= r < j
+            # S(j, i) = <C(i->r), C(j->r+1)>, i <= r < j
             s_s.diagonal(-w).copy_(sl)
-            # S(i, j) = logsumexp(C(i->r) + C(j->r+1)), i <= r < j
+            # S(i, j) = <C(i->r), C(j->r+1)>, i <= r < j
             s_s.diagonal(w).copy_(sr)
 
             # [n, batch_size, ...]
-            # C(j->i) = logsumexp(C(r->i) + I(j->r)), i <= r < j
+            # C(j->i) = <C(r->i), I(j->r)>, i <= r < j
             cl = semiring.dot(stripe(s_c, n, w, (0, 0), 0), stripe(s_i, n, w, (w, 0)), 1)
             s_c.diagonal(-w).copy_(cl.movedim(0, -1))
-            # C(i->j) = logsumexp(I(i->r) + C(r->j)), i < r <= j
+            # C(i->j) = <I(i->r), C(r->j)>, i < r <= j
             cr = semiring.dot(stripe(s_i, n, w, (0, 1)), stripe(s_c, n, w, (1, w), 0), 1)
             s_c.diagonal(w).copy_(cr.movedim(0, -1))
         return semiring.unconvert(s_c)[0][self.lens, range(batch_size)]
