@@ -23,6 +23,7 @@ setup(
         'setuptools>=56.0',
     ],
     install_requires=[
+        'numpy<1.21.5; python_version<"3.8"',
         'torch>=1.7.1',
         'transformers>=4.0.0',
         'nltk',
