@@ -4,7 +4,7 @@ from functools import reduce
 
 import torch
 from supar.utils.common import MIN
-from supar.structs.fn import sampled_logsumexp
+from supar.structs.fn import sampled_logsumexp, sparsemax
 
 
 class Semiring(object):
@@ -260,3 +260,15 @@ class SampledSemiring(LogSemiring):
     @classmethod
     def sum(cls, x, dim=-1):
         return sampled_logsumexp(x, dim)
+
+
+class SparsemaxSemiring(LogSemiring):
+    r"""
+    Sparsemax semiring :math:`<\mathrm{sparsemax}, +, -\infty, 0>`
+    :cite:`martins-etal-2016-sparsemax,mensch-etal-2018-dp,correia-etal-2020-efficient`.
+    """
+
+    @staticmethod
+    def sum(x, dim=-1):
+        p = sparsemax(x, dim)
+        return x.mul(p).sum(dim) - p.norm(p=2, dim=dim)

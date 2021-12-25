@@ -230,4 +230,28 @@ class SampledLogsumexp(Function):
         return None, None
 
 
+class SparsemaxFunction(Function):
+
+    @staticmethod
+    def forward(ctx, x, dim=-1):
+        ctx.dim = dim
+        sorted_x, _ = x.sort(dim, True)
+        z = sorted_x.cumsum(dim) - 1
+        k = x.new_tensor(range(1, sorted_x.size(dim) + 1)).view(-1, *[1] * (x.dim() - 1)).transpose(0, dim)
+        k = (k * sorted_x).gt(z).sum(dim, True)
+        tau = z.gather(dim, k - 1) / k
+        p = torch.clamp(x - tau, 0)
+        ctx.save_for_backward(k, p)
+        return p
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        k, p, dim = *ctx.saved_tensors, ctx.dim
+        grad = grad_output.masked_fill(p.eq(0), 0)
+        grad = torch.where(p.ne(0), grad - grad.sum(dim, True) / k, grad)
+        return grad, None
+
+
 sampled_logsumexp = SampledLogsumexp.apply
+
+sparsemax = SparsemaxFunction.apply
