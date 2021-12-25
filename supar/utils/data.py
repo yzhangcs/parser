@@ -2,7 +2,7 @@
 
 import torch
 import torch.distributed as dist
-from supar.utils.alg import kmeans
+from supar.utils.fn import kmeans
 from supar.utils.transform import Batch
 from torch.utils.data import DataLoader
 

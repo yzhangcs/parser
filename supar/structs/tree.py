@@ -3,8 +3,8 @@
 import torch
 import torch.nn as nn
 from supar.structs.dist import StructuredDistribution
+from supar.structs.fn import mst
 from supar.structs.semiring import LogSemiring
-from supar.utils.alg import mst
 from supar.utils.fn import stripe
 from torch.distributions.utils import lazy_property
 

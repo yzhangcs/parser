@@ -3,79 +3,7 @@
 import torch
 from supar.utils.common import MIN
 from supar.utils.fn import pad
-
-
-def kmeans(x, k, max_it=32):
-    r"""
-    KMeans algorithm for clustering the sentences by length.
-
-    Args:
-        x (list[int]):
-            The list of sentence lengths.
-        k (int):
-            The number of clusters.
-            This is an approximate value. The final number of clusters can be less or equal to `k`.
-        max_it (int):
-            Maximum number of iterations.
-            If centroids does not converge after several iterations, the algorithm will be early stopped.
-
-    Returns:
-        list[float], list[list[int]]:
-            The first list contains average lengths of sentences in each cluster.
-            The second is the list of clusters holding indices of data points.
-
-    Examples:
-        >>> x = torch.randint(10,20,(10,)).tolist()
-        >>> x
-        [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
-        >>> centroids, clusters = kmeans(x, 3)
-        >>> centroids
-        [10.5, 14.0, 17.799999237060547]
-        >>> clusters
-        [[1, 3], [0, 5, 9], [2, 4, 6, 7, 8]]
-    """
-
-    # the number of clusters must not be greater than the number of datapoints
-    x, k = torch.tensor(x, dtype=torch.float), min(len(x), k)
-    # collect unique datapoints
-    d = x.unique()
-    # initialize k centroids randomly
-    c = d[torch.randperm(len(d))[:k]]
-    # assign each datapoint to the cluster with the closest centroid
-    dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
-
-    for _ in range(max_it):
-        # if an empty cluster is encountered,
-        # choose the farthest datapoint from the biggest cluster and move that the empty one
-        mask = torch.arange(k).unsqueeze(-1).eq(y)
-        none = torch.where(~mask.any(-1))[0].tolist()
-        while len(none) > 0:
-            for i in none:
-                # the biggest cluster
-                b = torch.where(mask[mask.sum(-1).argmax()])[0]
-                # the datapoint farthest from the centroid of cluster b
-                f = dists[b].argmax()
-                # update the assigned cluster of f
-                y[b[f]] = i
-                # re-calculate the mask
-                mask = torch.arange(k).unsqueeze(-1).eq(y)
-            none = torch.where(~mask.any(-1))[0].tolist()
-        # update the centroids
-        c, old = (x * mask).sum(-1) / mask.sum(-1), c
-        # re-assign all datapoints to clusters
-        dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
-        # stop iteration early if the centroids converge
-        if c.equal(old):
-            break
-    # assign all datapoints to the new-generated clusters
-    # the empty ones are discarded
-    assigned = y.unique().tolist()
-    # get the centroids of the assigned clusters
-    centroids = c[assigned].tolist()
-    # map all values of datapoints to buckets
-    clusters = [torch.where(y.eq(i))[0].tolist() for i in assigned]
-
-    return centroids, clusters
+from torch.autograd import Function
 
 
 def tarjan(sequence):
@@ -283,3 +211,23 @@ def mst(scores, mask, multiroot=False):
         preds.append(tree)
 
     return pad(preds, total_length=seq_len).to(mask.device)
+
+
+class SampledLogsumexp(Function):
+
+    @staticmethod
+    def forward(ctx, x, dim=-1):
+        ctx.dim = dim
+        ctx.save_for_backward(x)
+        return x.logsumexp(dim=dim)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        from torch.distributions import OneHotCategorical
+        x, dim = ctx.saved_tensors, ctx.dim
+        if ctx.needs_input_grad[0]:
+            return grad_output.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
+        return None, None
+
+
+sampled_logsumexp = SampledLogsumexp.apply
