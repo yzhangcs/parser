@@ -11,3 +11,4 @@ Structs
    tree
    linearchain
    vi
+   fn

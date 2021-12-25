@@ -6,8 +6,8 @@ Utils
 .. toctree::
    :maxdepth: 2
 
-   alg
    data
    field
    transform
    vocab
+   fn

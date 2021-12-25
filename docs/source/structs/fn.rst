@@ -1,20 +1,16 @@
-Algorithms
+Functions
 ==================================================================
 
-.. currentmodule:: supar.utils.alg
-
-KMeans
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: supar.utils.alg.kmeans
+.. currentmodule:: supar.structs.fn
 
 Tarjan
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: supar.utils.alg.tarjan
+.. autofunction:: supar.structs.fn.tarjan
 
 ChuLiuEdmods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: supar.utils.alg.chuliu_edmonds
+.. autofunction:: supar.structs.fn.chuliu_edmonds
 
 MST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: supar.utils.alg.mst
+.. autofunction:: supar.structs.fn.mst
