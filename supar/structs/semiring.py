@@ -4,6 +4,7 @@ from functools import reduce
 
 import torch
 from supar.utils.common import MIN
+from supar.structs.fn import sampled_logsumexp
 
 
 class Semiring(object):
@@ -140,8 +141,8 @@ def KMaxSemiring(k):
 
 
 class EntropySemiring(LogSemiring):
-    """
-    Entropy expectation semiring: :math:`<\oplus, +, [-\infty, 0], [0, 0]>`,
+    r"""
+    Entropy expectation semiring :math:`<\oplus, +, [-\infty, 0], [0, 0]>`,
     where :math:`\oplus` computes the log-values and the running distributional entropy :math:`H[p]`
     :cite:`li-eisner-2009-first,hwa-2000-sample,kim-etal-2019-unsupervised`.
     """
@@ -177,8 +178,8 @@ class EntropySemiring(LogSemiring):
 
 
 class CrossEntropySemiring(LogSemiring):
-    """
-    Cross Entropy expectation semiring: :math:`<\oplus, +, [-\infty, -\infty, 0], [0, 0, 0]>`,
+    r"""
+    Cross Entropy expectation semiring :math:`<\oplus, +, [-\infty, -\infty, 0], [0, 0, 0]>`,
     where :math:`\oplus` computes the log-values and the running distributional cross entropy :math:`H[p,q]`
     of the two distributions :cite:`li-eisner-2009-first`.
     """
@@ -214,13 +215,10 @@ class CrossEntropySemiring(LogSemiring):
 
 
 class KLDivergenceSemiring(LogSemiring):
-    """
-    KL divergence expectation semiring: :math:`<\oplus, +, [-\infty, -\infty, 0], [0, 0, 0]>`,
+    r"""
+    KL divergence expectation semiring :math:`<\oplus, +, [-\infty, -\infty, 0], [0, 0, 0]>`,
     where :math:`\oplus` computes the log-values and the running distributional KL divergence :math:`KL[p \parallel q]`
     of the two distributions :cite:`li-eisner-2009-first`.
-    """
-    """
-    KL divergence expectation semiring: `<logsumexp, +, -inf, 0>` :cite:`li-eisner-2009-first`.
     """
 
     @classmethod
@@ -261,20 +259,4 @@ class SampledSemiring(LogSemiring):
 
     @classmethod
     def sum(cls, x, dim=-1):
-        return SampledLogsumexp.apply(x, dim)
-
-
-class SampledLogsumexp(torch.autograd.Function):
-
-    @staticmethod
-    def forward(ctx, x, dim=-1):
-        ctx.save_for_backward(x, torch.tensor(dim))
-        return x.logsumexp(dim=dim)
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        from torch.distributions import OneHotCategorical
-        x, dim = ctx.saved_tensors
-        if ctx.needs_input_grad[0]:
-            return grad_output.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
-        return None, None
+        return sampled_logsumexp(x, dim)

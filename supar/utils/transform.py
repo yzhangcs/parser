@@ -292,7 +292,7 @@ class CoNLL(Transform):
             False
         """
 
-        from supar.utils.alg import tarjan
+        from supar.structs.fn import tarjan
         if proj and not cls.isprojective(sequence):
             return False
         n_roots = sum(head == 0 for head in sequence)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from supar.utils import tarjan
+from supar.structs.fn import tarjan
 
 
 def test_tarjan():
