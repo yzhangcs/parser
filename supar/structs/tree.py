@@ -69,7 +69,7 @@ class MatrixTree(StructuredDistribution):
 
     @lazy_property
     def entropy(self):
-        raise NotImplementedError
+        return self.log_partition - (self.marginals * self.scores).sum((-1, -2))
 
     def cross_entropy(self, other):
         raise NotImplementedError
