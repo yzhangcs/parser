@@ -72,10 +72,10 @@ class MatrixTree(StructuredDistribution):
         return self.log_partition - (self.marginals * self.scores).sum((-1, -2))
 
     def cross_entropy(self, other):
-        raise NotImplementedError
+        return other.log_partition - (self.marginals * other.scores).sum((-1, -2))
 
     def kl(self, other):
-        raise NotImplementedError
+        return other.log_partition - self.log_partition + (self.marginals * (self.scores - other.scores)).sum((-1, -2))
 
     def score(self, value, partial=False):
         arcs = value
