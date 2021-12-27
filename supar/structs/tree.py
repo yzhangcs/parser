@@ -58,10 +58,10 @@ class MatrixTree(StructuredDistribution):
 
     @lazy_property
     def argmax(self):
-        with torch.no_grad():
-            return mst(self.scores, self.mask, self.multiroot)
+        return mst(self.scores, self.mask, self.multiroot)
 
     def kmax(self, k):
+        # TODO: Camerini algorithm
         raise NotImplementedError
 
     def sample(self):
