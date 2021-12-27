@@ -100,7 +100,7 @@ class BiaffineSemanticDependencyParser(Parser):
         return super().predict(**Config().update(locals()))
 
     @classmethod
-    def load(cls, path, reload=False, src=None, **kwargs):
+    def load(cls, path, reload=False, src='github', **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -115,7 +115,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 Specifies where to download the model.
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: None.
+                Default: ``'github'``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -380,7 +380,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         return super().predict(**Config().update(locals()))
 
     @classmethod
-    def load(cls, path, reload=False, src=None, **kwargs):
+    def load(cls, path, reload=False, src='github', **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -395,7 +395,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 Specifies where to download the model.
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: None.
+                Default: ``'github'``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 

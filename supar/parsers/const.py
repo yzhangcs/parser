@@ -126,7 +126,7 @@ class CRFConstituencyParser(Parser):
         return super().predict(**Config().update(locals()))
 
     @classmethod
-    def load(cls, path, reload=False, src=None, **kwargs):
+    def load(cls, path, reload=False, src='github', **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -141,7 +141,7 @@ class CRFConstituencyParser(Parser):
                 Specifies where to download the model.
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: None.
+                Default: ``'github'``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -419,7 +419,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         return super().predict(**Config().update(locals()))
 
     @classmethod
-    def load(cls, path, reload=False, src=None, **kwargs):
+    def load(cls, path, reload=False, src='github', **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -434,7 +434,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 Specifies where to download the model.
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: None.
+                Default: ``'github'``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
