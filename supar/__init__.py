@@ -31,7 +31,7 @@ __all__ = ['BiaffineDependencyParser',
            'SemanticDependencyLBP',
            'SemanticDependencyMFVI']
 
-__version__ = '1.1.3'
+__version__ = '1.1.4'
 
 PARSER = {parser.NAME: parser for parser in [BiaffineDependencyParser,
                                              CRFDependencyParser,
