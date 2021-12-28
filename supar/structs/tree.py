@@ -30,14 +30,18 @@ class MatrixTree(StructuredDistribution):
         >>> s1 = MatrixTree(torch.randn(batch_size, seq_len, seq_len), lens)
         >>> s2 = MatrixTree(torch.randn(batch_size, seq_len, seq_len), lens)
         >>> s1.max
-        tensor([2.6816, 7.2115], grad_fn=<CopyBackwards>)
+        tensor([0.7174, 3.7910], grad_fn=<SumBackward1>)
         >>> s1.argmax
-        tensor([[0, 0, 3, 1, 0],
-                [0, 3, 0, 2, 3]])
+        tensor([[0, 0, 1, 1, 0],
+                [0, 4, 1, 0, 3]])
         >>> s1.log_partition
-        tensor([2.6816, 7.2115], grad_fn=<CopyBackwards>)
+        tensor([2.0229, 6.0558], grad_fn=<CopyBackwards>)
         >>> s1.log_prob(arcs)
-        tensor([-0.7524, -3.0046], grad_fn=<SubBackward0>)
+        tensor([-3.2209, -2.5756], grad_fn=<SubBackward0>)
+        >>> s1.entropy
+        tensor([1.9711, 3.4497], grad_fn=<SubBackward0>)
+        >>> s1.kl(s2)
+        tensor([1.3354, 2.6914], grad_fn=<AddBackward0>)
     """
 
     def __init__(self, scores, lens=None, multiroot=False):
@@ -57,8 +61,14 @@ class MatrixTree(StructuredDistribution):
         return MatrixTree(torch.stack((self.scores, other.scores)), self.lens, self.multiroot)
 
     @lazy_property
+    def max(self):
+        arcs = self.argmax
+        return LogSemiring.prod(LogSemiring.one_mask(self.scores.gather(-1, arcs.unsqueeze(-1)).squeeze(-1), ~self.mask), -1)
+
+    @lazy_property
     def argmax(self):
-        return mst(self.scores, self.mask, self.multiroot)
+        with torch.no_grad():
+            return mst(self.scores, self.mask, self.multiroot)
 
     def kmax(self, k):
         # TODO: Camerini algorithm
@@ -92,9 +102,8 @@ class MatrixTree(StructuredDistribution):
     @torch.enable_grad()
     def forward(self, semiring):
         s_arc = self.scores
-        mask, lens = self.mask, self.lens
-        batch_size, seq_len, _ = s_arc.shape
-        mask = mask.index_fill(1, lens.new_tensor(0), 1)
+        batch_size, *_ = s_arc.shape
+        mask = self.mask.index_fill(1, self.lens.new_tensor(0), 1)
         s_arc = semiring.zero_mask(s_arc, ~(mask.unsqueeze(-1) & mask.unsqueeze(-2)))
 
         # A(i, j) = exp(s(i, j))
@@ -107,7 +116,11 @@ class MatrixTree(StructuredDistribution):
         D.diagonal(0, 1, 2).copy_(A.sum(-1))
         # Laplacian matrix
         # L(i, j) = D(i, j) - A(i, j)
-        L = nn.init.eye_(torch.empty_like(A[0])).repeat(batch_size, 1, 1).masked_scatter_(mask.unsqueeze(-1), (D - A)[mask])
+        L = D - A
+        if not self.multiroot:
+            L.diagonal(0, 1, 2).add_(-A[..., 0])
+            L[..., 1] = A[..., 0]
+        L = nn.init.eye_(torch.empty_like(A[0])).repeat(batch_size, 1, 1).masked_scatter_(mask.unsqueeze(-1), L[mask])
         # Z = L^(0, 0), the minor of L w.r.t row 0 and column 0
         return L[:, 1:, 1:].slogdet()[1].float()
 
