@@ -104,7 +104,7 @@ def kmeans(x, k, max_it=32):
 
 def stripe(x, n, w, offset=(0, 0), dim=1):
     r"""
-    Returns a diagonal stripe of the tensor.
+    Returns a parallelogram stripe of the tensor.
 
     Args:
         x (~torch.Tensor): the input tensor with 2 or more dims.
@@ -114,7 +114,7 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
         dim (int): 1 if returns a horizontal stripe; 0 otherwise.
 
     Returns:
-        a diagonal stripe of the tensor.
+        a parallelogram stripe of the tensor.
 
     Examples:
         >>> x = torch.arange(25).view(5, 5)
@@ -136,7 +136,8 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
     """
 
     x, seq_len = x.contiguous(), x.size(1)
-    stride, numel = list(x.stride()), x[0, 0].numel()
+    stride = list(x.stride())
+    numel = stride[1]
     stride[0] = (seq_len + 1) * numel
     stride[1] = (1 if dim == 1 else seq_len) * numel
     return x.as_strided(size=(n, w, *x.shape[2:]),
