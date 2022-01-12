@@ -448,6 +448,8 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
     r"""
     Grammarless Eisner-Satta Algorithm :cite:`eisner-satta-1999-efficient,yang-etal-2021-neural`.
 
+    Code is revised from `Songlin Yang's implementation <https://github.com/sustcsonglin/span-based-dependency-parsing>`_.
+
     Args:
         scores (~torch.Tensor): ``[2, batch_size, seq_len, seq_len]``.
             Scores of dependencies and constituents.
