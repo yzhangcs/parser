@@ -22,3 +22,8 @@ ConstituencyCRF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: ConstituencyCRF
     :members:
+
+BiLexicalizedConstituencyCRF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: BiLexicalizedConstituencyCRF
+    :members:
