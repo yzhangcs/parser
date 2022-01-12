@@ -102,7 +102,7 @@ def kmeans(x, k, max_it=32):
     return centroids, clusters
 
 
-def stripe(x, n, w, offset=(0, 0), dim=1):
+def stripe(x, n, w, offset=(0, 0), horizontal=True):
     r"""
     Returns a parallelogram stripe of the tensor.
 
@@ -111,10 +111,10 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
         n (int): the length of the stripe.
         w (int): the width of the stripe.
         offset (tuple): the offset of the first two dims.
-        dim (int): 1 if returns a horizontal stripe; 0 otherwise.
+        horizontal (bool): `True` if returns a horizontal stripe; `False` otherwise.
 
     Returns:
-        a parallelogram stripe of the tensor.
+        A parallelogram stripe of the tensor.
 
     Examples:
         >>> x = torch.arange(25).view(5, 5)
@@ -135,14 +135,94 @@ def stripe(x, n, w, offset=(0, 0), dim=1):
                 [12, 17, 22]])
     """
 
-    x, seq_len = x.contiguous(), x.size(1)
-    stride = list(x.stride())
+    x = x.contiguous()
+    seq_len, stride = x.size(1), list(x.stride())
     numel = stride[1]
-    stride[0] = (seq_len + 1) * numel
-    stride[1] = (1 if dim == 1 else seq_len) * numel
     return x.as_strided(size=(n, w, *x.shape[2:]),
-                        stride=stride,
+                        stride=[(seq_len + 1) * numel, (1 if horizontal else seq_len) * numel] + stride[2:],
                         storage_offset=(offset[0]*seq_len+offset[1])*numel)
+
+
+def diagonal_stripe(x, offset=1):
+    r"""
+    Returns a diagonal parallelogram stripe of the tensor.
+
+    Args:
+        x (~torch.Tensor): the input tensor with 3 or more dims.
+        offset (int): which diagonal to consider. Default: 1.
+
+    Returns:
+        A diagonal parallelogram stripe of the tensor.
+
+    Examples:
+        >>> x = torch.arange(125).view(5, 5, 5)
+        >>> diagonal_stripe(x)
+        tensor([[ 5],
+                [36],
+                [67],
+                [98]])
+        >>> diagonal_stripe(x, 2)
+        tensor([[10, 11],
+                [41, 42],
+                [72, 73]])
+        >>> diagonal_stripe(x, -2)
+        tensor([[ 50,  51],
+                [ 81,  82],
+                [112, 113]])
+    """
+
+    x = x.contiguous()
+    seq_len, stride = x.size(1), list(x.stride())
+    n, w, numel = seq_len - abs(offset), abs(offset), stride[2]
+    return x.as_strided(size=(n, w, *x.shape[3:]),
+                        stride=[((seq_len + 1) * x.size(2) + 1) * numel] + stride[2:],
+                        storage_offset=offset*stride[1] if offset > 0 else abs(offset)*stride[0])
+
+
+def expanded_stripe(x, n, w, offset=(0, 0)):
+    r"""
+    Returns an expanded parallelogram stripe of the tensor.
+
+    Args:
+        x (~torch.Tensor): the input tensor with 2 or more dims.
+        n (int): the length of the stripe.
+        w (int): the width of the stripe.
+        offset (tuple): the offset of the first two dims.
+
+    Returns:
+        An expanded parallelogram stripe of the tensor.
+
+    Examples:
+        >>> x = torch.arange(25).view(5, 5)
+        >>> x
+        tensor([[ 0,  1,  2,  3,  4],
+                [ 5,  6,  7,  8,  9],
+                [10, 11, 12, 13, 14],
+                [15, 16, 17, 18, 19],
+                [20, 21, 22, 23, 24]])
+        >>> expanded_stripe(x, 2, 3)
+        tensor([[[ 0,  1,  2,  3,  4],
+                [ 5,  6,  7,  8,  9],
+                [10, 11, 12, 13, 14]],
+
+                [[ 5,  6,  7,  8,  9],
+                [10, 11, 12, 13, 14],
+                [15, 16, 17, 18, 19]]])
+        >>> expanded_stripe(x, 2, 3, (1, 1))
+        tensor([[[ 5,  6,  7,  8,  9],
+                [10, 11, 12, 13, 14],
+                [15, 16, 17, 18, 19]],
+
+                [[10, 11, 12, 13, 14],
+                [15, 16, 17, 18, 19],
+                [20, 21, 22, 23, 24]]])
+
+    """
+    x = x.contiguous()
+    stride = list(x.stride())
+    return x.as_strided(size=(n, w, *list(x.shape[1:])),
+                        stride=stride[:1] + [stride[0]] + stride[1:],
+                        storage_offset=(offset[1])*stride[0])
 
 
 def pad(tensors, padding_value=0, total_length=None, padding_side='right'):
