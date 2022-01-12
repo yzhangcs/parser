@@ -26,6 +26,9 @@ class StructuredDistribution(Distribution):
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
+    def __add__(self, other):
+        return self.__class__(torch.stack((self.scores, other.scores), -1), lens=self.lens)
+
     @lazy_property
     def log_partition(self):
         r"""

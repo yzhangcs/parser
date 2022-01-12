@@ -5,10 +5,11 @@ from .parsers import (BiaffineDependencyParser,
                       CRFConstituencyParser, CRFDependencyParser, Parser,
                       VIConstituencyParser, VIDependencyParser,
                       VISemanticDependencyParser)
-from .structs import (ConstituencyCRF, ConstituencyLBP, ConstituencyMFVI,
-                      Dependency2oCRF, DependencyCRF, DependencyLBP,
-                      DependencyMFVI, LinearChainCRF, MatrixTree,
-                      SemanticDependencyLBP, SemanticDependencyMFVI)
+from .structs import (BiLexicalizedConstituencyCRF, ConstituencyCRF,
+                      ConstituencyLBP, ConstituencyMFVI, Dependency2oCRF,
+                      DependencyCRF, DependencyLBP, DependencyMFVI,
+                      LinearChainCRF, MatrixTree, SemanticDependencyLBP,
+                      SemanticDependencyMFVI)
 
 __all__ = ['BiaffineDependencyParser',
            'CRFDependencyParser',
@@ -23,6 +24,7 @@ __all__ = ['BiaffineDependencyParser',
            'DependencyCRF',
            'Dependency2oCRF',
            'ConstituencyCRF',
+           'BiLexicalizedConstituencyCRF',
            'LinearChainCRF',
            'DependencyLBP',
            'DependencyMFVI',

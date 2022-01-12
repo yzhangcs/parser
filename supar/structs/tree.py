@@ -5,7 +5,7 @@ import torch.nn as nn
 from supar.structs.dist import StructuredDistribution
 from supar.structs.fn import mst
 from supar.structs.semiring import LogSemiring
-from supar.utils.fn import stripe
+from supar.utils.fn import diagonal_stripe, expanded_stripe, stripe
 from torch.distributions.utils import lazy_property
 
 
@@ -47,7 +47,7 @@ class MatrixTree(StructuredDistribution):
     def __init__(self, scores, lens=None, multiroot=False):
         super().__init__(scores)
 
-        batch_size, seq_len = scores.shape[:2]
+        batch_size, seq_len, *_ = scores.shape
         self.lens = scores.new_full((batch_size,), seq_len-1).long() if lens is None else lens
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.index_fill(1, self.lens.new_tensor(0), 0)
@@ -162,7 +162,7 @@ class DependencyCRF(StructuredDistribution):
     def __init__(self, scores, lens=None, multiroot=False):
         super().__init__(scores)
 
-        batch_size, seq_len = scores.shape[:2]
+        batch_size, seq_len, *_ = scores.shape
         self.lens = scores.new_full((batch_size,), seq_len-1).long() if lens is None else lens
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.index_fill(1, self.lens.new_tensor(0), 0)
@@ -209,18 +209,18 @@ class DependencyCRF(StructuredDistribution):
 
             # [n, batch_size, ...]
             il = ir = semiring.dot(stripe(s_c, n, w), stripe(s_c, n, w, (w, 1)), 1)
-            # I(j->i) = <C(i->r), C(j->r+1)> * s(j->i), i <= r < j
+            # INCOMPLETE-L: I(j->i) = <C(i->r), C(j->r+1)> * s(j->i), i <= r < j
             # fill the w-th diagonal of the lower triangular part of s_i with I(j->i) of n spans
             s_i.diagonal(-w).copy_(semiring.mul(il, s_arc.diagonal(-w).movedim(-1, 0)).movedim(0, -1))
-            # I(i->j) = <C(i->r), C(j->r+1)> * s(i->j), i <= r < j
+            # INCOMPLETE-R: I(i->j) = <C(i->r), C(j->r+1)> * s(i->j), i <= r < j
             # fill the w-th diagonal of the upper triangular part of s_i with I(i->j) of n spans
             s_i.diagonal(w).copy_(semiring.mul(ir, s_arc.diagonal(w).movedim(-1, 0)).movedim(0, -1))
 
             # [n, batch_size, ...]
-            # C(j->i) = <C(r->i), I(j->r)>, i <= r < j
+            # COMPLETE-L: C(j->i) = <C(r->i), I(j->r)>, i <= r < j
             cl = semiring.dot(stripe(s_c, n, w, (0, 0), 0), stripe(s_i, n, w, (w, 0)), 1)
             s_c.diagonal(-w).copy_(cl.movedim(0, -1))
-            # C(i->j) = <I(i->r), C(r->j)>, i < r <= j
+            # COMPLETE-R: C(i->j) = <I(i->r), C(r->j)>, i < r <= j
             cr = semiring.dot(stripe(s_i, n, w, (0, 1)), stripe(s_c, n, w, (1, w), 0), 1)
             s_c.diagonal(w).copy_(cr.movedim(0, -1))
             if not self.multiroot:
@@ -270,7 +270,7 @@ class Dependency2oCRF(StructuredDistribution):
     def __init__(self, scores, lens=None, multiroot=False):
         super().__init__(scores)
 
-        batch_size, seq_len = scores[0].shape[:2]
+        batch_size, seq_len, *_ = scores[0].shape
         self.lens = scores[0].new_full((batch_size,), seq_len-1).long() if lens is None else lens
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.index_fill(1, self.lens.new_tensor(0), 0)
@@ -323,8 +323,8 @@ class Dependency2oCRF(StructuredDistribution):
         for w in range(1, seq_len):
             n = seq_len - w
 
-            # I(j->i) = <I(j->r), S(j->r, i)> * s(j->i), i < r < j
-            #           <C(j->j), C(i->j-1)>  * s(j->i), otherwise
+            # INCOMPLETE-L: I(j->i) = <I(j->r), S(j->r, i)> * s(j->i), i < r < j
+            #                         <C(j->j), C(i->j-1)>  * s(j->i), otherwise
             # [n, w, batch_size, ...]
             il = semiring.times(stripe(s_i, n, w, (w, 1)),
                                 stripe(s_s, n, w, (1, 0), 0),
@@ -332,8 +332,8 @@ class Dependency2oCRF(StructuredDistribution):
             il[:, -1] = semiring.mul(stripe(s_c, n, 1, (w, w)), stripe(s_c, n, 1, (0, w - 1))).squeeze(1)
             il = semiring.sum(il, 1)
             s_i.diagonal(-w).copy_(semiring.mul(il, s_arc.diagonal(-w).movedim(-1, 0)).movedim(0, -1))
-            # I(i->j) = <I(i->r), S(i->r, j)> * s(i->j), i < r < j
-            #           <C(i->i), C(j->i+1)>  * s(i->j), otherwise
+            # INCOMPLETE-R: I(i->j) = <I(i->r), S(i->r, j)> * s(i->j), i < r < j
+            #                         <C(i->i), C(j->i+1)>  * s(i->j), otherwise
             # [n, w, batch_size, ...]
             ir = semiring.times(stripe(s_i, n, w),
                                 stripe(s_s, n, w, (0, w), 0),
@@ -346,16 +346,16 @@ class Dependency2oCRF(StructuredDistribution):
 
             # [batch_size, ..., n]
             sl = sr = semiring.dot(stripe(s_c, n, w), stripe(s_c, n, w, (w, 1)), 1).movedim(0, -1)
-            # S(j, i) = <C(i->r), C(j->r+1)>, i <= r < j
+            # SIB: S(j, i) = <C(i->r), C(j->r+1)>, i <= r < j
             s_s.diagonal(-w).copy_(sl)
-            # S(i, j) = <C(i->r), C(j->r+1)>, i <= r < j
+            # SIB: S(i, j) = <C(i->r), C(j->r+1)>, i <= r < j
             s_s.diagonal(w).copy_(sr)
 
             # [n, batch_size, ...]
-            # C(j->i) = <C(r->i), I(j->r)>, i <= r < j
+            # COMPLETE-L: C(j->i) = <C(r->i), I(j->r)>, i <= r < j
             cl = semiring.dot(stripe(s_c, n, w, (0, 0), 0), stripe(s_i, n, w, (w, 0)), 1)
             s_c.diagonal(-w).copy_(cl.movedim(0, -1))
-            # C(i->j) = <I(i->r), C(r->j)>, i < r <= j
+            # COMPLETE-R: C(i->j) = <I(i->r), C(r->j)>, i < r <= j
             cr = semiring.dot(stripe(s_i, n, w, (0, 1)), stripe(s_c, n, w, (1, w), 0), 1)
             s_c.diagonal(w).copy_(cr.movedim(0, -1))
         return semiring.unconvert(s_c)[0][self.lens, range(batch_size)]
@@ -404,7 +404,7 @@ class ConstituencyCRF(StructuredDistribution):
     def __init__(self, scores, lens=None):
         super().__init__(scores)
 
-        batch_size, seq_len = scores.shape[:2]
+        batch_size, seq_len, *_ = scores.shape
         self.lens = scores.new_full((batch_size,), seq_len-1).long() if lens is None else lens
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.unsqueeze(1) & scores.new_ones(scores.shape[:3]).bool().triu_(1)
@@ -420,7 +420,7 @@ class ConstituencyCRF(StructuredDistribution):
         return [sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in self.backward(self.max.sum())]
 
     def topk(self, k):
-        return list(zip(*[[sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in self.backward(i)]
+        return list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x:(x[0], -x[1])) for j in self.backward(i)]
                           for i in self.kmax(k).sum(0)]))
 
     def score(self, value):
@@ -439,6 +439,120 @@ class ConstituencyCRF(StructuredDistribution):
                 s.diagonal(w).copy_(scores.diagonal(w))
                 continue
             # [n, batch_size, ...]
-            s_s = semiring.dot(stripe(s, n, w-1, (0, 1)), stripe(s, n, w-1, (1, w), 0), 1)
+            s_s = semiring.dot(stripe(s, n, w-1, (0, 1)), stripe(s, n, w-1, (1, w), False), 1)
             s.diagonal(w).copy_(semiring.mul(s_s, scores.diagonal(w).movedim(-1, 0)).movedim(0, -1))
         return semiring.unconvert(s)[0][self.lens, range(batch_size)]
+
+
+class BiLexicalizedConstituencyCRF(StructuredDistribution):
+    r"""
+    Grammarless Eisner-Satta Algorithm :cite:`eisner-satta-1999-efficient,yang-etal-2021-neural`.
+
+    Args:
+        scores (~torch.Tensor): ``[2, batch_size, seq_len, seq_len]``.
+            Scores of dependencies and constituents.
+        lens (~torch.LongTensor): ``[batch_size]``.
+            Sentence lengths for masking.
+
+    Examples:
+        >>> from supar import BiLexicalizedConstituencyCRF
+        >>> batch_size, seq_len = 2, 5
+        >>> lens = torch.tensor([3, 4])
+        >>> deps = torch.tensor([[0, 0, 1, 1, 0], [0, 3, 1, 0, 3]])
+        >>> cons = torch.tensor([[[0, 1, 1, 0, 0],
+                                  [0, 0, 1, 0, 0],
+                                  [0, 0, 0, 1, 0],
+                                  [0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0]],
+                                 [[0, 1, 1, 1, 1],
+                                  [0, 0, 1, 0, 0],
+                                  [0, 0, 0, 1, 0],
+                                  [0, 0, 0, 0, 1],
+                                  [0, 0, 0, 0, 0]]]).bool()
+        >>> s1 = BiLexicalizedConstituencyCRF(torch.randn(2, batch_size, seq_len, seq_len), lens)
+        >>> s2 = BiLexicalizedConstituencyCRF(torch.randn(2, batch_size, seq_len, seq_len), lens)
+        >>> s1.max
+        tensor([1.3564, 0.9958], grad_fn=<MaxBackward0>)
+        >>> s1.argmax[0]
+        tensor([[0, 2, 0, 2, 0],
+                [0, 0, 1, 1, 3]])
+        >>> s1.argmax[1]
+        [[[0, 3], [0, 2], [0, 1], [1, 2], [2, 3]], [[0, 4], [0, 2], [0, 1], [1, 2], [2, 4], [2, 3], [3, 4]]]
+        >>> s1.log_partition
+        tensor([2.4153, 2.3289], grad_fn=<LogsumexpBackward>)
+        >>> s1.log_prob((deps, cons))
+        tensor([-1.4234, -4.1386], grad_fn=<SubBackward0>)
+        >>> s1.entropy
+        tensor([1.6121, 2.7814], grad_fn=<SelectBackward>)
+        >>> s1.kl(s2)
+        tensor([2.1838, 5.6104], grad_fn=<SelectBackward>)
+    """
+
+    def __init__(self, scores, lens=None):
+        super().__init__(scores)
+
+        batch_size, seq_len, *_ = scores[1].shape
+        self.lens = scores[1].new_full((batch_size,), seq_len-1).long() if lens is None else lens
+        self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
+        self.mask = self.mask.unsqueeze(1) & scores[1].new_ones(scores[1].shape[:3]).bool().triu_(1)
+
+    @lazy_property
+    def argmax(self):
+        marginals = self.backward(self.max.sum())
+        dep_mask = self.mask[:, 0]
+        dep = self.lens.new_zeros(dep_mask.shape).masked_scatter_(dep_mask, torch.where(marginals[0])[2])
+        con = [sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in marginals[1]]
+        return dep, con
+
+    def topk(self, k):
+        dep_mask = self.mask[:, 0]
+        marginals = [self.backward(i) for i in self.kmax(k).sum(0)]
+        dep_preds = torch.stack([torch.where(i[0])[2] for i in marginals], -1)
+        dep_preds = self.lens.new_zeros(*dep_mask.shape, k).masked_scatter_(dep_mask.unsqueeze(-1), dep_preds)
+        con_preds = list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x:(x[0], -x[1])) for j in i[1]]
+                               for i in marginals]))
+        return dep_preds, con_preds
+
+    def score(self, value):
+        deps, cons = value
+        s_dep, s_con = self.scores
+        dep_mask, con_mask = self.mask[:, 0], self.mask
+        s_dep = LogSemiring.prod(LogSemiring.one_mask(s_dep.gather(-1, deps.unsqueeze(-1)).squeeze(-1), ~dep_mask), -1)
+        s_con = LogSemiring.prod(LogSemiring.prod(LogSemiring.one_mask(s_con, ~(con_mask & cons)), -1), -1)
+        return LogSemiring.mul(s_dep, s_con)
+
+    def forward(self, semiring):
+        s_dep, s_con = self.scores[0], self.scores[1]
+        batch_size, seq_len, *_ = s_con.shape
+        # [seq_len, seq_len, batch_size, ...], (m<-h)
+        s_dep = semiring.convert(s_dep.movedim(0, 2))
+        s_root, s_dep = s_dep[1:, 0], s_dep[1:, 1:]
+        # [seq_len, seq_len, batch_size, ...], (l->r)
+        s_con = semiring.convert(s_con.movedim((1, 2), (0, 1)))
+        # [seq_len, seq_len, seq_len, batch_size, ...], (i, j, h)
+        s_span = semiring.zero_(s_con.new_empty(seq_len, seq_len, seq_len-1, *s_con.shape[2:]))
+        # [seq_len, seq_len, seq_len, batch_size, ...], (i, j<-h)
+        s_hook = semiring.zero_(s_con.new_empty(seq_len, seq_len, seq_len-1, *s_con.shape[2:]))
+        diagonal_stripe(s_span, 1).copy_(s_con.diagonal(1).movedim(-1, 0).unsqueeze(1))
+        s_hook.diagonal(1).copy_(semiring.mul(s_dep, s_con.diagonal(1).movedim(-1, 0).unsqueeze(1)).movedim(0, -1))
+
+        for w in range(2, seq_len):
+            n = seq_len - w
+            # COMPLETE-L: s_span_l(i, j, h) = <s_span(i, k, h), s_hook(h->k+1, j)>, i < k < j
+            # [n, w, batch_size, ...]
+            s_l = stripe(semiring.dot(stripe(s_span, n, w-1, (0, 1)), stripe(s_hook, n, w-1, (1, w), False), 1), n, w)
+            # COMPLETE-R: s_span_r(i, j, h) = <s_hook(i, k<-h), s_span(k+1, j, h)>, i < k < j
+            # [n, w, batch_size, ...]
+            s_r = stripe(semiring.dot(stripe(s_hook, n, w-1, (0, 1)), stripe(s_span, n, w-1, (1, w), False), 1), n, w)
+            # COMPLETE: s_span(i, j, h) = s_span_l(i, j, h) + s_span_r(i, j, h) + s(i, j)
+            # [n, w, batch_size, ...]
+            s = semiring.mul(semiring.sum(torch.stack((s_l, s_r)), 0), s_con.diagonal(w).movedim(-1, 0).unsqueeze(1))
+            diagonal_stripe(s_span, w).copy_(s)
+
+            if w == seq_len - 1:
+                continue
+            # ATTACH: s_hook(h->i, j) = <s(h->m), s_span(i, j, m)>, i <= m <= j
+            # [n, seq_len, batch_size, ...]
+            s = semiring.dot(expanded_stripe(s_dep, n, w), diagonal_stripe(s_span, w).unsqueeze(2), 1)
+            s_hook.diagonal(w).copy_(s.movedim(0, -1))
+        return semiring.unconvert(semiring.dot(s_span[0][self.lens, :, range(batch_size)].transpose(0, 1), s_root, 0))
