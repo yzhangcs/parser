@@ -540,10 +540,10 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
 
         for w in range(2, seq_len):
             n = seq_len - w
-            # COMPLETE-L: s_span_l(i, j, h) = <s_span(i, k, h), s_hook(h->k+1, j)>, i < k < j
+            # COMPLETE-L: s_span_l(i, j, h) = <s_span(i, k, h), s_hook(h->k, j)>, i < k < j
             # [n, w, batch_size, ...]
             s_l = stripe(semiring.dot(stripe(s_span, n, w-1, (0, 1)), stripe(s_hook, n, w-1, (1, w), False), 1), n, w)
-            # COMPLETE-R: s_span_r(i, j, h) = <s_hook(i, k<-h), s_span(k+1, j, h)>, i < k < j
+            # COMPLETE-R: s_span_r(i, j, h) = <s_hook(i, k<-h), s_span(k, j, h)>, i < k < j
             # [n, w, batch_size, ...]
             s_r = stripe(semiring.dot(stripe(s_hook, n, w-1, (0, 1)), stripe(s_span, n, w-1, (1, w), False), 1), n, w)
             # COMPLETE: s_span(i, j, h) = s_span_l(i, j, h) + s_span_r(i, j, h) + s(i, j)
@@ -553,7 +553,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
 
             if w == seq_len - 1:
                 continue
-            # ATTACH: s_hook(h->i, j) = <s(h->m), s_span(i, j, m)>, i <= m <= j
+            # ATTACH: s_hook(h->i, j) = <s(h->m), s_span(i, j, m)>, i <= m < j
             # [n, seq_len, batch_size, ...]
             s = semiring.dot(expanded_stripe(s_dep, n, w), diagonal_stripe(s_span, w).unsqueeze(2), 1)
             s_hook.diagonal(w).copy_(s.movedim(0, -1))
