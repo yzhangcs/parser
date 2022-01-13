@@ -432,12 +432,10 @@ class ConstituencyCRF(StructuredDistribution):
         # [seq_len, seq_len, batch_size, ...], (l->r)
         scores = semiring.convert(self.scores.movedim((1, 2), (0, 1)))
         s = semiring.zeros_like(scores)
+        s.diagonal(1).copy_(scores.diagonal(1))
 
-        for w in range(1, seq_len):
+        for w in range(2, seq_len):
             n = seq_len - w
-            if w == 1:
-                s.diagonal(w).copy_(scores.diagonal(w))
-                continue
             # [n, batch_size, ...]
             s_s = semiring.dot(stripe(s, n, w-1, (0, 1)), stripe(s, n, w-1, (1, w), False), 1)
             s.diagonal(w).copy_(semiring.mul(s_s, scores.diagonal(w).movedim(-1, 0)).movedim(0, -1))
