@@ -25,6 +25,10 @@ class Semiring(object):
         return x.sum(dim)
 
     @classmethod
+    def add(cls, x, y):
+        return cls.sum(torch.stack((x, y)), 0)
+
+    @classmethod
     def mul(cls, x, y):
         return x * y
 
@@ -66,11 +70,11 @@ class Semiring(object):
 
     @classmethod
     def zeros_like(cls, x):
-        return torch.full_like(x, cls.zero)
+        return x.new_full(x.shape, cls.zero)
 
     @classmethod
     def ones_like(cls, x):
-        return torch.full_like(x, cls.one)
+        return x.new_full(x.shape, cls.one)
 
     @classmethod
     def convert(cls, x):
