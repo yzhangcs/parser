@@ -334,7 +334,7 @@ class SemanticDependencyMFVI(nn.Module):
         return loss, marginals
 
     def mfvi(self, s_edge, s_sib, s_cop, s_grd, mask):
-        batch_size, seq_len, _ = mask.shape
+        _, seq_len, _ = mask.shape
         hs, ms = torch.stack(torch.where(torch.ones_like(mask[0]))).view(-1, seq_len, seq_len)
         # [seq_len, seq_len, batch_size], (h->m)
         mask = mask.permute(2, 1, 0)
@@ -342,6 +342,7 @@ class SemanticDependencyMFVI(nn.Module):
         mask2o = mask.unsqueeze(1) & mask.unsqueeze(2)
         mask2o = mask2o & hs.unsqueeze(-1).ne(hs.new_tensor(range(seq_len))).unsqueeze(-1)
         mask2o = mask2o & ms.unsqueeze(-1).ne(ms.new_tensor(range(seq_len))).unsqueeze(-1)
+        mask2o.diagonal().fill_(0)
         # [seq_len, seq_len, batch_size], (h->m)
         s_edge = s_edge.permute(2, 1, 0)
         # [seq_len, seq_len, seq_len, batch_size], (h->m->s)
@@ -416,6 +417,7 @@ class SemanticDependencyLBP(nn.Module):
         mask2o = mask.unsqueeze(1) & mask.unsqueeze(2)
         mask2o = mask2o & hs.unsqueeze(-1).ne(hs.new_tensor(range(seq_len))).unsqueeze(-1)
         mask2o = mask2o & ms.unsqueeze(-1).ne(ms.new_tensor(range(seq_len))).unsqueeze(-1)
+        mask2o.diagonal().fill_(0)
         # [2, seq_len, seq_len, batch_size], (h->m)
         s_edge = torch.stack((torch.zeros_like(s_edge), s_edge)).permute(0, 3, 2, 1)
         # [seq_len, seq_len, seq_len, batch_size], (h->m->s)
