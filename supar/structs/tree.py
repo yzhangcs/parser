@@ -103,12 +103,14 @@ class MatrixTree(StructuredDistribution):
     def forward(self, semiring):
         s_arc = self.scores
         batch_size, *_ = s_arc.shape
-        mask = self.mask.index_fill(1, self.lens.new_tensor(0), 1)
-        s_arc = semiring.zero_mask(s_arc, ~(mask.unsqueeze(-1) & mask.unsqueeze(-2)))
+        mask, lens = self.mask.index_fill(1, self.lens.new_tensor(0), 1), self.lens
+        # double precision to prevent overflows
+        s_arc = semiring.zero_mask(s_arc, ~(mask.unsqueeze(-1) & mask.unsqueeze(-2))).double()
 
         # A(i, j) = exp(s(i, j))
-        # double precision to prevent overflows
-        A = torch.exp(s_arc).double()
+        m = s_arc.view(batch_size, -1).max(-1)[0]
+        A = torch.exp(s_arc - m.view(-1, 1, 1))
+
         # Weighted degree matrix
         # D(i, j) = sum_j(A(i, j)), if h == m
         #           0,              otherwise
@@ -121,8 +123,9 @@ class MatrixTree(StructuredDistribution):
             L.diagonal(0, 1, 2).add_(-A[..., 0])
             L[..., 1] = A[..., 0]
         L = nn.init.eye_(torch.empty_like(A[0])).repeat(batch_size, 1, 1).masked_scatter_(mask.unsqueeze(-1), L[mask])
+        L = L + nn.init.eye_(torch.empty_like(A[0])) * torch.finfo().tiny
         # Z = L^(0, 0), the minor of L w.r.t row 0 and column 0
-        return L[:, 1:, 1:].slogdet()[1].float()
+        return (L[:, 1:, 1:].logdet() + m * lens).float()
 
 
 class DependencyCRF(StructuredDistribution):
