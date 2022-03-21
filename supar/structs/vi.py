@@ -409,7 +409,7 @@ class SemanticDependencyLBP(nn.Module):
         return loss, marginals
 
     def lbp(self, s_edge, s_sib, s_cop, s_grd, mask):
-        batch_size, seq_len, _ = mask.shape
+        _, seq_len, _ = mask.shape
         hs, ms = torch.stack(torch.where(torch.ones_like(mask[0]))).view(-1, seq_len, seq_len)
         # [seq_len, seq_len, batch_size], (h->m)
         mask = mask.permute(2, 1, 0)
@@ -432,22 +432,21 @@ class SemanticDependencyLBP(nn.Module):
         q = s_edge
         # log messages of siblings
         # [2, seq_len, seq_len, seq_len, batch_size], (h->m->s)
-        m_sib = s_sib.new_zeros(2, seq_len, seq_len, seq_len, batch_size)
+        m_sib = s_sib.new_zeros(2, *mask2o.shape)
         # log messages of co-parents
         # [2, seq_len, seq_len, seq_len, batch_size], (h->m->c)
-        m_cop = s_cop.new_zeros(2, seq_len, seq_len, seq_len, batch_size)
+        m_cop = s_cop.new_zeros(2, *mask2o.shape)
         # log messages of grand-parents
         # [2, seq_len, seq_len, seq_len, batch_size], (h->m->g)
-        m_grd = s_grd.new_zeros(2, seq_len, seq_len, seq_len, batch_size)
+        m_grd = s_grd.new_zeros(2, *mask2o.shape)
 
         for _ in range(self.max_iter):
             q = q.log_softmax(0)
-            # m(ik->ij) = logsumexp(q(ik) - m(ij->ik) + s(ij->ik))
-            m = q.unsqueeze(3) - m_sib
+            m = q.unsqueeze(2) - m_sib
             m_sib = torch.stack((m.logsumexp(0), torch.stack((m[0], m[1] + s_sib)).logsumexp(0))).log_softmax(0)
-            m = q.unsqueeze(3) - m_cop
+            m = q.transpose(1, 2).unsqueeze(1) - m_cop
             m_cop = torch.stack((m.logsumexp(0), torch.stack((m[0], m[1] + s_cop)).logsumexp(0))).log_softmax(0)
-            m = q.unsqueeze(3) - m_grd
+            m = q.unsqueeze(1) - m_grd
             m_grd = torch.stack((m.logsumexp(0), torch.stack((m[0], m[1] + s_grd)).logsumexp(0))).log_softmax(0)
             # q(ij) = s(ij) + sum(m(ik->ij)), k != i,j
             q = s_edge + ((m_sib + m_cop + m_grd).transpose(2, 3) * mask2o).sum(3)
