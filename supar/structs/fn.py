@@ -230,7 +230,7 @@ class SampledLogsumexp(Function):
         return None, None
 
 
-class SparsemaxFunction(Function):
+class Sparsemax(Function):
 
     @staticmethod
     def forward(ctx, x, dim=-1):
@@ -254,4 +254,4 @@ class SparsemaxFunction(Function):
 
 sampled_logsumexp = SampledLogsumexp.apply
 
-sparsemax = SparsemaxFunction.apply
+sparsemax = Sparsemax.apply
