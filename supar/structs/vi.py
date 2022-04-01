@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from supar.structs import DependencyCRF
 from supar.utils.common import MIN
 
 
@@ -195,13 +196,13 @@ class ConstituencyMFVI(nn.Module):
         batch_size, seq_len, _ = mask.shape
         ls, rs = torch.stack(torch.where(torch.ones_like(mask[0]))).view(-1, seq_len, seq_len).sort(0)[0]
         # [seq_len, seq_len, batch_size], (l->r)
-        mask = mask.permute(1, 2, 0)
+        mask = mask.movedim(0, 2)
         # [seq_len, seq_len, seq_len, batch_size], (l->r->b)
         mask2o = mask.unsqueeze(2).repeat(1, 1, seq_len, 1)
         mask2o = mask2o & ls.unsqueeze(-1).ne(ls.new_tensor(range(seq_len))).unsqueeze(-1)
         mask2o = mask2o & rs.unsqueeze(-1).ne(rs.new_tensor(range(seq_len))).unsqueeze(-1)
         # [seq_len, seq_len, batch_size], (l->r)
-        s_span = s_span.permute(1, 2, 0)
+        s_span = s_span.movedim(0, 2)
         # [seq_len, seq_len, seq_len, batch_size], (l->r->b)
         s_pair = s_pair.permute(1, 2, 3, 0) * mask2o
 
@@ -262,7 +263,7 @@ class ConstituencyLBP(nn.Module):
         batch_size, seq_len, _ = mask.shape
         ls, rs = torch.stack(torch.where(torch.ones_like(mask[0]))).view(-1, seq_len, seq_len).sort(0)[0]
         # [seq_len, seq_len, batch_size], (l->r)
-        mask = mask.permute(1, 2, 0)
+        mask = mask.movedim(0, 2)
         # [seq_len, seq_len, seq_len, batch_size], (l->r->b)
         mask2o = mask.unsqueeze(2).repeat(1, 1, seq_len, 1)
         mask2o = mask2o & ls.unsqueeze(-1).ne(ls.new_tensor(range(seq_len))).unsqueeze(-1)
@@ -409,6 +410,7 @@ class SemanticDependencyLBP(nn.Module):
         return loss, marginals
 
     def lbp(self, s_edge, s_sib, s_cop, s_grd, mask):
+        lens = mask[..., 0].sum(1)
         _, seq_len, _ = mask.shape
         hs, ms = torch.stack(torch.where(torch.ones_like(mask[0]))).view(-1, seq_len, seq_len)
         # [seq_len, seq_len, batch_size], (h->m)
@@ -430,25 +432,35 @@ class SemanticDependencyLBP(nn.Module):
         # log beliefs
         # [2, seq_len, seq_len, batch_size], (h->m)
         q = s_edge
-        # log messages of siblings
+        # sibling factor
         # [2, seq_len, seq_len, seq_len, batch_size], (h->m->s)
         m_sib = s_sib.new_zeros(2, *mask2o.shape)
-        # log messages of co-parents
+        # coparent factor
         # [2, seq_len, seq_len, seq_len, batch_size], (h->m->c)
         m_cop = s_cop.new_zeros(2, *mask2o.shape)
-        # log messages of grand-parents
+        # grandparent factor
         # [2, seq_len, seq_len, seq_len, batch_size], (h->m->g)
         m_grd = s_grd.new_zeros(2, *mask2o.shape)
+        # tree factor
+        # [2, seq_len, seq_len, batch_size], (h->m)
+        m_tree = torch.zeros_like(s_edge)
 
         for _ in range(self.max_iter):
-            q = q.log_softmax(0)
-            m = q.unsqueeze(2) - m_sib
-            m_sib = torch.stack((m.logsumexp(0), torch.stack((m[0], m[1] + s_sib)).logsumexp(0))).log_softmax(0)
-            m = q.transpose(1, 2).unsqueeze(1) - m_cop
-            m_cop = torch.stack((m.logsumexp(0), torch.stack((m[0], m[1] + s_cop)).logsumexp(0))).log_softmax(0)
-            m = q.unsqueeze(1) - m_grd
-            m_grd = torch.stack((m.logsumexp(0), torch.stack((m[0], m[1] + s_grd)).logsumexp(0))).log_softmax(0)
+            # sibling factor
+            v_sib = q.unsqueeze(2) - m_sib
+            m_sib = torch.stack((v_sib.logsumexp(0), torch.stack((v_sib[0], v_sib[1] + s_sib)).logsumexp(0))).log_softmax(0)
+            # coparent factor
+            v_cop = q.transpose(1, 2).unsqueeze(1) - m_cop
+            m_cop = torch.stack((v_cop.logsumexp(0), torch.stack((v_cop[0], v_cop[1] + s_cop)).logsumexp(0))).log_softmax(0)
+            # grandparent factor
+            v_grd = q.unsqueeze(1) - m_grd
+            m_grd = torch.stack((v_grd.logsumexp(0), torch.stack((v_grd[0], v_grd[1] + s_grd)).logsumexp(0))).log_softmax(0)
+            # tree factor
+            v_tree = q - m_tree
+            b_tree = DependencyCRF((v_tree[1] - v_tree[0]).permute(2, 1, 0), lens).marginals.permute(2, 1, 0)
+            b_tree = torch.stack((1 - b_tree, b_tree))
+            m_tree = (b_tree.clamp(torch.finfo().eps).log() - v_tree).log_softmax(0)
             # q(ij) = s(ij) + sum(m(ik->ij)), k != i,j
-            q = s_edge + ((m_sib + m_cop + m_grd).transpose(2, 3) * mask2o).sum(3)
+            q = s_edge + ((m_sib + m_cop + m_grd).transpose(2, 3) * mask2o).sum(3) + m_tree
 
         return q.permute(3, 2, 1, 0)
