@@ -67,8 +67,10 @@ class CRFConstituencyModel(Model):
         bert_pad_index (int):
             The index of the padding token in BERT vocabulary, required if ``encoder='bert'`` or using BERT features.
             Default: 0.
-        freeze (bool):
-            If ``True``, freezes BERT parameters, required if using BERT features. Default: ``True``.
+        finetune (bool):
+            If ``False``, freezes all parameters, required if using pretrained layers. Default: ``False``.
+        n_plm_embed (int):
+            The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
         n_lstm_hidden (int):
@@ -112,7 +114,8 @@ class CRFConstituencyModel(Model):
                  mix_dropout=.0,
                  bert_pooling='mean',
                  bert_pad_index=0,
-                 freeze=True,
+                 finetune=False,
+                 n_plm_embed=0,
                  embed_dropout=.33,
                  n_lstm_hidden=400,
                  n_lstm_layers=3,
@@ -276,8 +279,10 @@ class VIConstituencyModel(CRFConstituencyModel):
         bert_pad_index (int):
             The index of the padding token in BERT vocabulary, required if ``encoder='bert'`` or using BERT features.
             Default: 0.
-        freeze (bool):
-            If ``True``, freezes BERT parameters, required if using BERT features. Default: ``True``.
+        finetune (bool):
+            If ``False``, freezes all parameters, required if using pretrained layers. Default: ``False``.
+        n_plm_embed (int):
+            The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
         n_lstm_hidden (int):
@@ -329,7 +334,8 @@ class VIConstituencyModel(CRFConstituencyModel):
                  mix_dropout=.0,
                  bert_pooling='mean',
                  bert_pad_index=0,
-                 freeze=True,
+                 finetune=False,
+                 n_plm_embed=0,
                  embed_dropout=.33,
                  n_lstm_hidden=400,
                  n_lstm_layers=3,

@@ -32,7 +32,8 @@ class Model(nn.Module):
                  mix_dropout=.0,
                  bert_pooling='mean',
                  bert_pad_index=0,
-                 freeze=False,
+                 finetune=False,
+                 n_plm_embed=0,
                  embed_dropout=.33,
                  n_lstm_hidden=400,
                  n_lstm_layers=3,
@@ -67,19 +68,19 @@ class Model(nn.Module):
                                                 embedding_dim=n_feat_embed)
                 n_input += n_feat_embed
             if 'elmo' in feat:
-                self.elmo_embed = ELMoEmbedding(n_out=n_feat_embed,
+                self.elmo_embed = ELMoEmbedding(n_out=n_plm_embed,
                                                 bos_eos=elmo_bos_eos,
                                                 dropout=elmo_dropout,
-                                                requires_grad=(not freeze))
+                                                finetune=finetune)
                 n_input += self.elmo_embed.n_out
             if 'bert' in feat:
                 self.bert_embed = TransformerEmbedding(model=bert,
                                                        n_layers=n_bert_layers,
-                                                       n_out=n_feat_embed,
+                                                       n_out=n_plm_embed,
                                                        pooling=bert_pooling,
                                                        pad_index=bert_pad_index,
-                                                       dropout=mix_dropout,
-                                                       requires_grad=(not freeze))
+                                                       mix_dropout=mix_dropout,
+                                                       finetune=finetune)
                 n_input += self.bert_embed.n_out
             self.embed_dropout = IndependentDropout(p=embed_dropout)
         if encoder == 'lstm':
@@ -95,8 +96,8 @@ class Model(nn.Module):
                                                 n_layers=n_bert_layers,
                                                 pooling=bert_pooling,
                                                 pad_index=pad_index,
-                                                dropout=mix_dropout,
-                                                requires_grad=True)
+                                                mix_dropout=mix_dropout,
+                                                finetune=True)
             self.encoder_dropout = nn.Dropout(p=encoder_dropout)
             self.args.n_hidden = self.encoder.n_out
 

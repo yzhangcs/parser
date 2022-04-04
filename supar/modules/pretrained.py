@@ -26,21 +26,21 @@ class TransformerEmbedding(nn.Module):
             Default: ``mean``.
         pad_index (int):
             The index of the padding token in BERT vocabulary. Default: 0.
-        dropout (float):
-            The dropout ratio of BERT layers. Default: 0. This value will be passed into the :class:`ScalarMix` layer.
-        requires_grad (bool):
+        mix_dropout (float):
+            The dropout ratio of BERT layers. This value will be passed into the :class:`ScalarMix` layer. Default: 0.
+        finetune (bool):
             If ``True``, the model parameters will be updated together with the downstream task. Default: ``False``.
 
     .. _transformers:
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self, model, n_layers, n_out=0, stride=256, pooling='mean', pad_index=0, dropout=0, requires_grad=False):
+    def __init__(self, model, n_layers, n_out=0, stride=256, pooling='mean', pad_index=0, mix_dropout=0, finetune=False):
         super().__init__()
 
         from transformers import AutoConfig, AutoModel, AutoTokenizer
         self.bert = AutoModel.from_pretrained(model, config=AutoConfig.from_pretrained(model, output_hidden_states=True))
-        self.bert = self.bert.requires_grad_(requires_grad)
+        self.bert = self.bert.requires_grad_(finetune)
 
         self.model = model
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
@@ -48,23 +48,23 @@ class TransformerEmbedding(nn.Module):
         self.n_out = n_out or self.hidden_size
         self.pooling = pooling
         self.pad_index = pad_index
-        self.dropout = dropout
-        self.requires_grad = requires_grad
+        self.mix_dropout = mix_dropout
+        self.finetune = finetune
         self.max_len = int(max(0, self.bert.config.max_position_embeddings) or 1e12) - 2
         self.stride = min(stride, self.max_len)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model)
 
-        self.scalar_mix = ScalarMix(self.n_layers, dropout)
+        self.scalar_mix = ScalarMix(self.n_layers, mix_dropout)
         self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
 
     def __repr__(self):
         s = f"{self.model}, n_layers={self.n_layers}, n_out={self.n_out}, "
         s += f"stride={self.stride}, pooling={self.pooling}, pad_index={self.pad_index}"
-        if self.dropout > 0:
-            s += f", dropout={self.dropout}"
-        if self.requires_grad:
-            s += f", requires_grad={self.requires_grad}"
+        if self.mix_dropout > 0:
+            s += f", mix_dropout={self.mix_dropout}"
+        if self.finetune:
+            s += f", finetune={self.finetune}"
         return f"{self.__class__.__name__}({s})"
 
     def forward(self, subwords):
@@ -125,7 +125,7 @@ class ELMoEmbedding(nn.Module):
             The requested size of the embeddings. If 0, uses the default size of ELMo outputs. Default: 0.
         dropout (float):
             The dropout ratio for the ELMo layer. Default: 0.
-        requires_grad (bool):
+        finetune (bool):
             If ``True``, the model parameters will be updated together with the downstream task. Default: ``False``.
     """
 
@@ -142,7 +142,7 @@ class ELMoEmbedding(nn.Module):
         'original_5b': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5',  # noqa
     }
 
-    def __init__(self, model='original_5b', bos_eos=(True, True), n_out=0, dropout=0.5, requires_grad=False):
+    def __init__(self, model='original_5b', bos_eos=(True, True), n_out=0, dropout=0.5, finetune=False):
         super().__init__()
 
         from allennlp.modules import Elmo
@@ -151,7 +151,7 @@ class ELMoEmbedding(nn.Module):
                          weight_file=self.WEIGHT[model],
                          num_output_representations=1,
                          dropout=dropout,
-                         requires_grad=requires_grad,
+                         finetune=finetune,
                          keep_sentence_boundaries=True)
 
         self.model = model
@@ -159,7 +159,7 @@ class ELMoEmbedding(nn.Module):
         self.hidden_size = self.elmo.get_output_dim()
         self.n_out = n_out or self.hidden_size
         self.dropout = dropout
-        self.requires_grad = requires_grad
+        self.finetune = finetune
 
         self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
 
@@ -167,8 +167,8 @@ class ELMoEmbedding(nn.Module):
         s = f"{self.model}, n_out={self.n_out}"
         if self.dropout > 0:
             s += f", dropout={self.dropout}"
-        if self.requires_grad:
-            s += f", requires_grad={self.requires_grad}"
+        if self.finetune:
+            s += f", finetune={self.finetune}"
         return f"{self.__class__.__name__}({s})"
 
     def forward(self, chars):
