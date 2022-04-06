@@ -113,14 +113,14 @@ class StructuredDistribution(Distribution):
 
         return (self + other).forward(KLDivergenceSemiring)
 
-    def log_prob(self, value, **kwargs):
+    def log_prob(self, value, *args, **kwargs):
         """
         Computes log probability over values :math:`p(y)`.
         """
 
-        return self.score(value, **kwargs) - self.log_partition
+        return self.score(value, *args, **kwargs) - self.log_partition
 
-    def score(self, value):
+    def score(self, value, *args, **kwargs):
         raise NotImplementedError
 
     @torch.enable_grad()
