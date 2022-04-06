@@ -462,7 +462,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         >>> batch_size, seq_len = 2, 5
         >>> lens = torch.tensor([3, 4])
         >>> deps = torch.tensor([[0, 0, 1, 1, 0], [0, 3, 1, 0, 3]])
-        >>> cons = torch.tensor([[[0, 1, 1, 0, 0],
+        >>> cons = torch.tensor([[[0, 1, 1, 1, 0],
                                   [0, 0, 1, 0, 0],
                                   [0, 0, 0, 1, 0],
                                   [0, 0, 0, 0, 0],
@@ -475,20 +475,20 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         >>> s1 = BiLexicalizedConstituencyCRF(torch.randn(2, batch_size, seq_len, seq_len), lens)
         >>> s2 = BiLexicalizedConstituencyCRF(torch.randn(2, batch_size, seq_len, seq_len), lens)
         >>> s1.max
-        tensor([1.3564, 0.9958], grad_fn=<MaxBackward0>)
+        tensor([-0.3567,  2.2451], grad_fn=<MaxBackward0>)
         >>> s1.argmax[0]
-        tensor([[0, 2, 0, 2, 0],
-                [0, 0, 1, 1, 3]])
+        tensor([[0, 3, 3, 0, 0],
+                [0, 4, 1, 2, 0]])
         >>> s1.argmax[1]
-        [[[0, 3], [0, 2], [0, 1], [1, 2], [2, 3]], [[0, 4], [0, 2], [0, 1], [1, 2], [2, 4], [2, 3], [3, 4]]]
+        [[[0, 3], [0, 1], [1, 3], [1, 2], [2, 3]], [[0, 4], [0, 3], [0, 1], [1, 3], [1, 2], [2, 3], [3, 4]]]
         >>> s1.log_partition
-        tensor([2.4153, 2.3289], grad_fn=<LogsumexpBackward>)
+        tensor([-0.0680,  4.0414], grad_fn=<LogsumexpBackward>)
         >>> s1.log_prob((deps, cons))
-        tensor([-1.4234, -4.1386], grad_fn=<SubBackward0>)
+        tensor([-5.8947, -2.4143], grad_fn=<SubBackward0>)
         >>> s1.entropy
-        tensor([1.6121, 2.7814], grad_fn=<SelectBackward>)
+        tensor([0.9499, 2.8079], grad_fn=<SelectBackward>)
         >>> s1.kl(s2)
-        tensor([2.1838, 5.6104], grad_fn=<SelectBackward>)
+        tensor([3.1349, 2.9843], grad_fn=<SelectBackward>)
     """
 
     def __init__(self, scores, lens=None):
@@ -516,10 +516,21 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
                                for i in marginals]))
         return dep_preds, con_preds
 
-    def score(self, value):
+    def score(self, value, partial=False):
         deps, cons = value
         s_dep, s_con = self.scores
-        dep_mask, con_mask = self.mask[:, 0], self.mask
+        mask, lens = self.mask, self.lens
+        dep_mask, con_mask = mask[:, 0], mask
+        if partial:
+            if deps is not None:
+                dep_mask = dep_mask.index_fill(1, self.lens.new_tensor(0), 1)
+                dep_mask = dep_mask.unsqueeze(1) & dep_mask.unsqueeze(2)
+                deps = deps.index_fill(1, lens.new_tensor(0), -1).unsqueeze(-1)
+                deps = deps.eq(lens.new_tensor(range(mask.shape[1]))) | deps.lt(0)
+                s_dep = LogSemiring.zero_mask(s_dep, ~(deps & dep_mask))
+            if cons is not None:
+                s_con = LogSemiring.zero_mask(s_con, ~(cons & con_mask))
+            return self.__class__((s_dep, s_con), lens, **self.kwargs).log_partition
         s_dep = LogSemiring.prod(LogSemiring.one_mask(s_dep.gather(-1, deps.unsqueeze(-1)).squeeze(-1), ~dep_mask), -1)
         s_con = LogSemiring.prod(LogSemiring.prod(LogSemiring.one_mask(s_con, ~(con_mask & cons)), -1), -1)
         return LogSemiring.mul(s_dep, s_con)
