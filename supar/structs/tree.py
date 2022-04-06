@@ -96,7 +96,7 @@ class MatrixTree(StructuredDistribution):
             arcs = arcs.index_fill(1, lens.new_tensor(0), -1).unsqueeze(-1)
             arcs = arcs.eq(lens.new_tensor(range(mask.shape[1]))) | arcs.lt(0)
             scores = LogSemiring.zero_mask(self.scores, ~(arcs & mask))
-            return self.__class__(scores, self.mask, **self.kwargs).log_partition
+            return self.__class__(scores, lens, **self.kwargs).log_partition
         return LogSemiring.prod(LogSemiring.one_mask(self.scores.gather(-1, arcs.unsqueeze(-1)).squeeze(-1), ~self.mask), -1)
 
     @torch.enable_grad()
@@ -195,7 +195,7 @@ class DependencyCRF(StructuredDistribution):
             arcs = arcs.index_fill(1, lens.new_tensor(0), -1).unsqueeze(-1)
             arcs = arcs.eq(lens.new_tensor(range(mask.shape[1]))) | arcs.lt(0)
             scores = LogSemiring.zero_mask(self.scores, ~(arcs & mask))
-            return self.__class__(scores, self.mask, **self.kwargs).log_partition
+            return self.__class__(scores, lens, **self.kwargs).log_partition
         return LogSemiring.prod(LogSemiring.one_mask(self.scores.gather(-1, arcs.unsqueeze(-1)).squeeze(-1), ~self.mask), -1)
 
     def forward(self, semiring):
@@ -303,7 +303,7 @@ class Dependency2oCRF(StructuredDistribution):
             arcs = arcs.index_fill(1, lens.new_tensor(0), -1).unsqueeze(-1)
             arcs = arcs.eq(lens.new_tensor(range(mask.shape[1]))) | arcs.lt(0)
             s_arc, s_sib = LogSemiring.zero_mask(self.scores[0], ~(arcs & mask)), self.scores[1]
-            return self.__class__((s_arc, s_sib), self.mask, **self.kwargs).log_partition
+            return self.__class__((s_arc, s_sib), lens, **self.kwargs).log_partition
         s_arc = self.scores[0].gather(-1, arcs.unsqueeze(-1)).squeeze(-1)
         s_arc = LogSemiring.prod(LogSemiring.one_mask(s_arc, ~self.mask), -1)
         s_sib = self.scores[1].gather(-1, sibs.unsqueeze(-1)).squeeze(-1)
