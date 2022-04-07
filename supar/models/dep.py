@@ -564,7 +564,8 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
 
         arc_dist = Dependency2oCRF((s_arc, s_sib), mask.sum(-1))
         arc_loss = -arc_dist.log_prob((arcs, sibs), partial=partial).sum() / mask.sum()
-        arc_probs = arc_dist.marginals if mbr else s_arc
+        if mbr:
+            s_arc, s_sib = arc_dist.marginals
         # -1 denotes un-annotated arcs
         if partial:
             mask = mask & arcs.ge(0)
@@ -572,7 +573,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         s_rel = s_rel[torch.arange(len(rels)), arcs[mask]]
         rel_loss = self.criterion(s_rel, rels)
         loss = arc_loss + rel_loss
-        return loss, arc_probs
+        return loss, s_arc, s_sib
 
     def decode(self, s_arc, s_sib, s_rel, mask, tree=False, mbr=True, proj=False):
         r"""
@@ -601,10 +602,10 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         arc_preds = s_arc.argmax(-1)
         bad = [not CoNLL.istree(seq[1:i+1], proj) for i, seq in zip(lens.tolist(), arc_preds.tolist())]
         if tree and any(bad):
-            if proj and not mbr:
+            if proj:
                 arc_preds[bad] = Dependency2oCRF((s_arc[bad], s_sib[bad]), mask[bad].sum(-1)).argmax
             else:
-                arc_preds[bad] = (DependencyCRF if proj else MatrixTree)(s_arc[bad], mask[bad].sum(-1)).argmax
+                arc_preds[bad] = MatrixTree(s_arc[bad], mask[bad].sum(-1)).argmax
         rel_preds = s_rel.argmax(-1).gather(-1, arc_preds.unsqueeze(-1)).squeeze(-1)
 
         return arc_preds, rel_preds

@@ -58,7 +58,8 @@ class StructuredDistribution(Distribution):
         r"""
         Computes :math:`\arg\max_y p(y)` of the distribution :math:`p(y)`.
         """
-        raise NotImplementedError
+
+        return self.backward(self.max.sum())
 
     @lazy_property
     def mode(self):
@@ -128,6 +129,5 @@ class StructuredDistribution(Distribution):
         raise NotImplementedError
 
     def backward(self, log_partition):
-        return autograd.grad(log_partition,
-                             self.scores if isinstance(self.scores, torch.Tensor) else self.scores[0],
-                             create_graph=True)[0]
+        grads = autograd.grad(log_partition, self.scores, create_graph=True)
+        return grads[0] if isinstance(self.scores, torch.Tensor) else grads
