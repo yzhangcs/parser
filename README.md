@@ -173,8 +173,7 @@ $ biaffine-dep train -b -d 0 -c biaffine-dep-en -p model -f char
 
 To accommodate large models, distributed training is also supported:
 ```sh
-$ python -m torch.distributed.launch --nproc_per_node=4  \
-    -m supar.cmds.biaffine_dep train -b -c biaffine-dep-en -d 0,1,2,3 -p model -f char
+$ python -m supar.cmds.biaffine_dep train -b -c biaffine-dep-en -d 0,1,2,3 -p model -f char
 ```
 You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
 

@@ -3,7 +3,7 @@
 import argparse
 
 from supar import CRFConstituencyParser
-from supar.cmds.cmd import parse
+from supar.cmds.cmd import init
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
     subparser.add_argument('--data', default='data/ptb/test.pid', help='path to dataset')
     subparser.add_argument('--pred', default='pred.pid', help='path to predicted result')
     subparser.add_argument('--prob', action='store_true', help='whether to output probs')
-    parse(parser)
+    init(parser)
 
 
 if __name__ == "__main__":

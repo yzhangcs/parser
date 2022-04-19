@@ -3,7 +3,7 @@
 import argparse
 
 from supar import VISemanticDependencyParser
-from supar.cmds.cmd import parse
+from supar.cmds.cmd import init
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
     subparser.add_argument('--data', default='data/sdp/DM/test.conllu', help='path to dataset')
     subparser.add_argument('--pred', default='pred.conllu', help='path to predicted result')
     subparser.add_argument('--prob', action='store_true', help='whether to output probs')
-    parse(parser)
+    init(parser)
 
 
 if __name__ == "__main__":
