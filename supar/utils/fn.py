@@ -7,6 +7,7 @@ import urllib
 import zipfile
 
 import torch
+from supar.utils.common import CACHE
 
 
 def ispunct(token):
@@ -238,7 +239,7 @@ def pad(tensors, padding_value=0, total_length=None, padding_side='right'):
 
 
 def download(url, reload=False):
-    path = os.path.join(os.path.expanduser('~/.cache/supar'), os.path.basename(urllib.parse.urlparse(url).path))
+    path = os.path.join(CACHE, os.path.basename(urllib.parse.urlparse(url).path))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if reload:
         os.remove(path) if os.path.exists(path) else None
