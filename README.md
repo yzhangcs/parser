@@ -19,14 +19,14 @@ A Python package designed for structured prediction, including reproductions of 
 
 highly-parallelized implementations of several well-known structured prediction algorithms.[^1]
 
+* Chain:
+  * LinearChainCRF ([Lafferty et al., 2001](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2001/crf.pdf))
 * Tree
   * MatrixTree ([Koo et al., 2007](https://www.aclweb.org/anthology/D07-1015); [Ma and Hovy, 2017](https://aclanthology.org/I17-1007))
   * DependencyCRF ([Eisner et al., 2000](https://www.cs.jhu.edu/~jason/papers/eisner.iwptbook00.pdf); [Zhang et al., 2020](https://aclanthology.org/2020.acl-main.302))
   * Dependency2oCRF ([McDonald et al., 2006](https://www.aclweb.org/anthology/E06-1011); [Zhang et al., 2020](https://aclanthology.org/2020.acl-main.302))
   * ConstituencyCRF ([Stern et al. 2017](https://aclanthology.org/P17-1076); [Zhang et al., 2020b](https://www.ijcai.org/Proceedings/2020/560/))
   * BiLexicalizedConstituencyCRF ([Eisner et al. 1999](https://aclanthology.org/P99-1059/); [Yang et al., 2021](https://aclanthology.org/2021.acl-long.209/))
-* Linear Chain:
-  * LinearChainCRF ([Lafferty et al., 2001](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2001/crf.pdf))
 
 ## Installation
 

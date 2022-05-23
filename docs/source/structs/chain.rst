@@ -1,7 +1,7 @@
-Linear Chain
+Chain
 ================================================================
 
-.. currentmodule:: supar.structs.linearchain
+.. currentmodule:: supar.structs.chain
 
 LinearChainCRF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

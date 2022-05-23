@@ -8,7 +8,7 @@ Structs
 
    dist
    semiring
+   chain
    tree
-   linearchain
    vi
    fn
