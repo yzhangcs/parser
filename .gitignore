@@ -17,8 +17,12 @@ exp
 results
 
 # log and config files
+log.*
 *.log
+*.cfg
 *.ini
+*.yml
+*.yaml
 
 # pycache
 __pycache__
