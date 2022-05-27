@@ -26,8 +26,10 @@ setup(
         'numpy<1.21.5; python_version<"3.8"',
         'torch>=1.7.1',
         'transformers>=4.0.0',
+        'hydra-core>=1.2',
         'nltk',
         'stanza',
+        'omegaconf',
         'dill'],
     extras_require={
         'elmo': ['allennlp']
