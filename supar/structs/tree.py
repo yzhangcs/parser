@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
 from supar.structs.dist import StructuredDistribution
 from supar.structs.fn import mst
-from supar.structs.semiring import LogSemiring
+from supar.structs.semiring import LogSemiring, Semiring
 from supar.utils.fn import diagonal_stripe, expanded_stripe, stripe
 from torch.distributions.utils import lazy_property
 
@@ -44,7 +48,12 @@ class MatrixTree(StructuredDistribution):
         tensor([1.3354, 2.6914], grad_fn=<AddBackward0>)
     """
 
-    def __init__(self, scores, lens=None, multiroot=False):
+    def __init__(
+        self,
+        scores: torch.Tensor,
+        lens: Optional[torch.LongTensor] = None,
+        multiroot: bool = False
+    ) -> MatrixTree:
         super().__init__(scores)
 
         batch_size, seq_len, *_ = scores.shape
@@ -70,7 +79,7 @@ class MatrixTree(StructuredDistribution):
         with torch.no_grad():
             return mst(self.scores, self.mask, self.multiroot)
 
-    def kmax(self, k):
+    def kmax(self, k: int) -> torch.Tensor:
         # TODO: Camerini algorithm
         raise NotImplementedError
 
@@ -81,13 +90,13 @@ class MatrixTree(StructuredDistribution):
     def entropy(self):
         return self.log_partition - (self.marginals * self.scores).sum((-1, -2))
 
-    def cross_entropy(self, other):
+    def cross_entropy(self, other: 'MatrixTree') -> torch.Tensor:
         return other.log_partition - (self.marginals * other.scores).sum((-1, -2))
 
-    def kl(self, other):
+    def kl(self, other: 'MatrixTree') -> torch.Tensor:
         return other.log_partition - self.log_partition + (self.marginals * (self.scores - other.scores)).sum((-1, -2))
 
-    def score(self, value, partial=False):
+    def score(self, value: torch.LongTensor, partial: bool = False) -> torch.Tensor:
         arcs = value
         if partial:
             mask, lens = self.mask, self.lens
@@ -100,7 +109,7 @@ class MatrixTree(StructuredDistribution):
         return LogSemiring.prod(LogSemiring.one_mask(self.scores.gather(-1, arcs.unsqueeze(-1)).squeeze(-1), ~self.mask), -1)
 
     @torch.enable_grad()
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         s_arc = self.scores
         batch_size, *_ = s_arc.shape
         mask, lens = self.mask.index_fill(1, self.lens.new_tensor(0), 1), self.lens
@@ -162,7 +171,11 @@ class DependencyCRF(StructuredDistribution):
         tensor([1.6631, 2.6558], grad_fn=<IndexBackward>)
     """
 
-    def __init__(self, scores, lens=None, multiroot=False):
+    def __init__(self,
+                 scores: torch.Tensor,
+                 lens: Optional[torch.LongTensor] = None,
+                 multiroot: bool = False
+                 ) -> DependencyCRF:
         super().__init__(scores)
 
         batch_size, seq_len, *_ = scores.shape
@@ -182,11 +195,11 @@ class DependencyCRF(StructuredDistribution):
     def argmax(self):
         return self.lens.new_zeros(self.mask.shape).masked_scatter_(self.mask, torch.where(self.backward(self.max.sum()))[2])
 
-    def topk(self, k):
+    def topk(self, k: int) -> torch.LongTensor:
         preds = torch.stack([torch.where(self.backward(i))[2] for i in self.kmax(k).sum(0)], -1)
         return self.lens.new_zeros(*self.mask.shape, k).masked_scatter_(self.mask.unsqueeze(-1), preds)
 
-    def score(self, value, partial=False):
+    def score(self, value: torch.Tensor, partial: bool = False) -> torch.Tensor:
         arcs = value
         if partial:
             mask, lens = self.mask, self.lens
@@ -198,7 +211,7 @@ class DependencyCRF(StructuredDistribution):
             return self.__class__(scores, lens, **self.kwargs).log_partition
         return LogSemiring.prod(LogSemiring.one_mask(self.scores.gather(-1, arcs.unsqueeze(-1)).squeeze(-1), ~self.mask), -1)
 
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         s_arc = self.scores
         batch_size, seq_len = s_arc.shape[:2]
         # [seq_len, seq_len, batch_size, ...], (h->m)
@@ -236,8 +249,9 @@ class Dependency2oCRF(StructuredDistribution):
     Second-order TreeCRF for projective dependency trees :cite:`mcdonald-pereira-2006-online,zhang-etal-2020-efficient`.
 
     Args:
-        scores (~torch.Tensor): ``[batch_size, seq_len, seq_len]``.
-            Scores of all possible dependent-head pairs.
+        scores (tuple(~torch.Tensor, ~torch.Tensor)):
+            Scores of all possible dependent-head pairs (``[batch_size, seq_len, seq_len]``) and
+            dependent-head-sibling triples ``[batch_size, seq_len, seq_len, seq_len]``.
         lens (~torch.LongTensor): ``[batch_size]``.
             Sentence lengths for masking, regardless of root positions. Default: ``None``.
         multiroot (bool):
@@ -270,7 +284,12 @@ class Dependency2oCRF(StructuredDistribution):
         tensor([0.4929, 2.0759], grad_fn=<IndexBackward>)
     """
 
-    def __init__(self, scores, lens=None, multiroot=False):
+    def __init__(
+        self,
+        scores: Tuple[torch.Tensor, torch.Tensor],
+        lens: Optional[torch.LongTensor] = None,
+        multiroot: bool = False
+    ) -> Dependency2oCRF:
         super().__init__(scores)
 
         batch_size, seq_len, *_ = scores[0].shape
@@ -291,11 +310,11 @@ class Dependency2oCRF(StructuredDistribution):
         return self.lens.new_zeros(self.mask.shape).masked_scatter_(self.mask,
                                                                     torch.where(self.backward(self.max.sum())[0])[2])
 
-    def topk(self, k):
+    def topk(self, k: int) -> torch.LongTensor:
         preds = torch.stack([torch.where(self.backward(i)[0])[2] for i in self.kmax(k).sum(0)], -1)
         return self.lens.new_zeros(*self.mask.shape, k).masked_scatter_(self.mask.unsqueeze(-1), preds)
 
-    def score(self, value, partial=False):
+    def score(self, value: Tuple[torch.LongTensor, torch.LongTensor], partial: bool = False) -> torch.Tensor:
         arcs, sibs = value
         if partial:
             mask, lens = self.mask, self.lens
@@ -312,7 +331,7 @@ class Dependency2oCRF(StructuredDistribution):
         return LogSemiring.mul(s_arc, s_sib)
 
     @torch.enable_grad()
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         s_arc, s_sib = self.scores
         batch_size, seq_len = s_arc.shape[:2]
         # [seq_len, seq_len, batch_size, ...], (h->m)
@@ -405,7 +424,11 @@ class ConstituencyCRF(StructuredDistribution):
         tensor([0.0362, 2.9017], grad_fn=<IndexBackward>)
     """
 
-    def __init__(self, scores, lens=None):
+    def __init__(
+        self,
+        scores: torch.Tensor,
+        lens: Optional[torch.LongTensor] = None
+    ) -> ConstituencyCRF:
         super().__init__(scores)
 
         batch_size, seq_len, *_ = scores.shape
@@ -423,15 +446,15 @@ class ConstituencyCRF(StructuredDistribution):
     def argmax(self):
         return [sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in self.backward(self.max.sum())]
 
-    def topk(self, k):
+    def topk(self, k: int) -> List[List[Tuple]]:
         return list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x:(x[0], -x[1])) for j in self.backward(i)]
                           for i in self.kmax(k).sum(0)]))
 
-    def score(self, value):
+    def score(self, value: torch.BoolTensor) -> torch.Tensor:
         return LogSemiring.prod(LogSemiring.prod(LogSemiring.one_mask(self.scores, ~(self.mask & value)), -1), -1)
 
     @torch.enable_grad()
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         batch_size, seq_len = self.scores.shape[:2]
         # [seq_len, seq_len, batch_size, ...], (l->r)
         scores = semiring.convert(self.scores.movedim((1, 2), (0, 1)))
@@ -508,7 +531,11 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         tensor([1.0617, 2.7839], grad_fn=<SelectBackward>)
     """
 
-    def __init__(self, scores, lens=None):
+    def __init__(
+        self,
+        scores: List[torch.Tensor],
+        lens: Optional[torch.LongTensor] = None
+    ) -> BiLexicalizedConstituencyCRF:
         super().__init__(scores)
 
         batch_size, seq_len, *_ = scores[1].shape
@@ -527,7 +554,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         con = [sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in marginals[1]]
         return dep, con
 
-    def topk(self, k):
+    def topk(self, k: int) -> Tuple[torch.LongTensor, List[List[Tuple]]]:
         dep_mask = self.mask[:, 0]
         marginals = [self.backward(i) for i in self.kmax(k).sum(0)]
         dep_preds = torch.stack([torch.where(i)[2] for i in marginals[0]], -1)
@@ -536,7 +563,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
                                for i in marginals[1]]))
         return dep_preds, con_preds
 
-    def score(self, value, partial=False):
+    def score(self, value: List[Union[torch.LongTensor, torch.BoolTensor]], partial: bool = False) -> torch.Tensor:
         deps, cons, heads = value
         s_dep, s_con, s_head = self.scores
         mask, lens = self.mask, self.lens
@@ -560,7 +587,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         s_head = LogSemiring.prod(LogSemiring.prod(LogSemiring.one_mask(s_head, ~(con_mask & cons)), -1), -1)
         return LogSemiring.mul(s_dep, s_head)
 
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         s_dep, s_con, s_head = self.scores
         batch_size, seq_len, *_ = s_con.shape
         # [seq_len, seq_len, batch_size, ...], (m<-h)

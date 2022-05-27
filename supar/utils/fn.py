@@ -5,32 +5,34 @@ import sys
 import unicodedata
 import urllib
 import zipfile
+from typing import Dict, List, Tuple, Union
 
 import torch
+from omegaconf import DictConfig, OmegaConf
 from supar.utils.common import CACHE
 
 
-def ispunct(token):
+def ispunct(token: str) -> bool:
     return all(unicodedata.category(char).startswith('P') for char in token)
 
 
-def isfullwidth(token):
+def isfullwidth(token: str) -> bool:
     return all(unicodedata.east_asian_width(char) in ['W', 'F', 'A'] for char in token)
 
 
-def islatin(token):
+def islatin(token: str) -> bool:
     return all('LATIN' in unicodedata.name(char) for char in token)
 
 
-def isdigit(token):
+def isdigit(token: str) -> bool:
     return all('DIGIT' in unicodedata.name(char) for char in token)
 
 
-def tohalfwidth(token):
+def tohalfwidth(token: str) -> str:
     return unicodedata.normalize('NFKC', token)
 
 
-def kmeans(x, k, max_it=32):
+def kmeans(x: List[int], k: int, max_it: int = 32) -> Tuple[List[float], List[List[int]]]:
     r"""
     KMeans algorithm for clustering the sentences by length.
 
@@ -103,7 +105,7 @@ def kmeans(x, k, max_it=32):
     return centroids, clusters
 
 
-def stripe(x, n, w, offset=(0, 0), horizontal=True):
+def stripe(x: torch.Tensor, n: int, w: int, offset: Tuple = (0, 0), horizontal: bool = True) -> torch.Tensor:
     r"""
     Returns a parallelogram stripe of the tensor.
 
@@ -144,7 +146,7 @@ def stripe(x, n, w, offset=(0, 0), horizontal=True):
                         storage_offset=(offset[0]*seq_len+offset[1])*numel)
 
 
-def diagonal_stripe(x, offset=1):
+def diagonal_stripe(x: torch.Tensor, offset: int = 1) -> torch.Tensor:
     r"""
     Returns a diagonal parallelogram stripe of the tensor.
 
@@ -180,7 +182,7 @@ def diagonal_stripe(x, offset=1):
                         storage_offset=offset*stride[1] if offset > 0 else abs(offset)*stride[0])
 
 
-def expanded_stripe(x, n, w, offset=(0, 0)):
+def expanded_stripe(x: torch.Tensor, n: int, w: int, offset: Tuple = (0, 0)) -> torch.Tensor:
     r"""
     Returns an expanded parallelogram stripe of the tensor.
 
@@ -226,7 +228,12 @@ def expanded_stripe(x, n, w, offset=(0, 0)):
                         storage_offset=(offset[1])*stride[0])
 
 
-def pad(tensors, padding_value=0, total_length=None, padding_side='right'):
+def pad(
+    tensors: List[torch.Tensor],
+    padding_value: int = 0,
+    total_length: int = None,
+    padding_side: str = 'right'
+) -> torch.Tensor:
     size = [len(tensors)] + [max(tensor.size(i) for tensor in tensors)
                              for i in range(len(tensors[0].size()))]
     if total_length is not None:
@@ -238,7 +245,7 @@ def pad(tensors, padding_value=0, total_length=None, padding_side='right'):
     return out_tensor
 
 
-def download(url, reload=False):
+def download(url: str, reload: bool = False) -> str:
     path = os.path.join(CACHE, os.path.basename(urllib.parse.urlparse(url).path))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if reload:
@@ -247,7 +254,7 @@ def download(url, reload=False):
         sys.stderr.write(f"Downloading: {url} to {path}\n")
         try:
             torch.hub.download_url_to_file(url, path, progress=True)
-        except urllib.error.URLError:
+        except (ValueError, urllib.error.URLError):
             raise RuntimeError(f"File {url} unavailable. Please try other sources.")
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as f:
@@ -265,7 +272,19 @@ def get_rng_state():
     return state
 
 
-def set_rng_state(state):
+def set_rng_state(state: Dict):
     torch.set_rng_state(state['rng_state'])
     if torch.cuda.is_available():
         torch.cuda.set_rng_state(state['cuda_rng_state'])
+
+
+def resolve_config(args: Union[Dict, DictConfig]) -> DictConfig:
+    OmegaConf.register_new_resolver("eval", eval)
+    return DictConfig(OmegaConf.to_container(args, resolve=True))
+
+
+def collect_args(args: Union[Dict, DictConfig]) -> DictConfig:
+    for key in ('self', 'cls', '__class__'):
+        args.pop(key, None)
+    args.update(args.pop('kwargs', dict()))
+    return DictConfig(args)

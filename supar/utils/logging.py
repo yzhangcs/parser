@@ -2,12 +2,14 @@
 
 import logging
 import os
+from logging import Logger, Handler
+from typing import Iterable, Optional
 
 from supar.utils.parallel import is_master
 from tqdm import tqdm
 
 
-def get_logger(name):
+def get_logger(name: str) -> Logger:
     return logging.getLogger(name)
 
 
@@ -27,12 +29,14 @@ class TqdmHandler(logging.StreamHandler):
             self.handleError(record)
 
 
-def init_logger(logger,
-                path=None,
-                mode='w',
-                level=None,
-                handlers=None,
-                verbose=True):
+def init_logger(
+    logger: Logger,
+    path: Optional[str] = None,
+    mode: str = 'w',
+    level: Optional[int] = None,
+    handlers: Optional[Iterable[Handler]] = None,
+    verbose: bool = True
+) -> None:
     level = level or logging.WARNING
     if not handlers:
         handlers = [TqdmHandler()]
@@ -46,11 +50,13 @@ def init_logger(logger,
     logger.setLevel(logging.INFO if is_master() and verbose else logging.WARNING)
 
 
-def progress_bar(iterator,
-                 ncols=None,
-                 bar_format='{l_bar}{bar:18}| {n_fmt}/{total_fmt} {elapsed}<{remaining}, {rate_fmt}{postfix}',
-                 leave=False,
-                 **kwargs):
+def progress_bar(
+    iterator: Iterable,
+    ncols: Optional[int] = None,
+    bar_format: str = '{l_bar}{bar:18}| {n_fmt}/{total_fmt} {elapsed}<{remaining}, {rate_fmt}{postfix}',
+    leave: bool = False,
+    **kwargs
+) -> tqdm:
     return tqdm(iterator,
                 ncols=ncols,
                 bar_format=bar_format,

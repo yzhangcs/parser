@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import Optional
+
 import torch
 from supar.structs.dist import StructuredDistribution
-from supar.structs.semiring import LogSemiring
+from supar.structs.semiring import LogSemiring, Semiring
 from torch.distributions.utils import lazy_property
 
 
@@ -45,7 +49,12 @@ class LinearChainCRF(StructuredDistribution):
             tensor([4.0333, 4.3807], grad_fn=<SelectBackward>)
     """
 
-    def __init__(self, scores, trans=None, lens=None):
+    def __init__(
+        self,
+        scores: torch.Tensor,
+        trans: Optional[torch.Tensor] = None,
+        lens: Optional[torch.LongTensor] = None
+    ) -> LinearChainCRF:
         super().__init__(scores, lens=lens)
 
         batch_size, seq_len, self.n_tags = scores.shape[:3]
@@ -66,11 +75,11 @@ class LinearChainCRF(StructuredDistribution):
     def argmax(self):
         return self.lens.new_zeros(self.mask.shape).masked_scatter_(self.mask, torch.where(self.backward(self.max.sum()))[2])
 
-    def topk(self, k):
+    def topk(self, k: int) -> torch.LongTensor:
         preds = torch.stack([torch.where(self.backward(i))[2] for i in self.kmax(k).sum(0)], -1)
         return self.lens.new_zeros(*self.mask.shape, k).masked_scatter_(self.mask.unsqueeze(-1), preds)
 
-    def score(self, value):
+    def score(self, value: torch.LongTensor) -> torch.Tensor:
         scores, mask, value = self.scores.transpose(0, 1), self.mask.t(), value.t()
         prev, succ = torch.cat((torch.full_like(value[:1], -1), value[:-1]), 0), value
         # [seq_len, batch_size]
@@ -80,7 +89,7 @@ class LinearChainCRF(StructuredDistribution):
         alpha = alpha + self.trans[value.gather(0, self.lens.unsqueeze(0) - 1).squeeze(0), torch.full_like(value[0], -1)]
         return alpha
 
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         # [seq_len, batch_size, n_tags, ...]
         scores = semiring.convert(self.scores.transpose(0, 1))
         trans = semiring.convert(self.trans)

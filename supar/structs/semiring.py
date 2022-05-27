@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import reduce
+from typing import Iterable
 
 import torch
 from supar.utils.common import MIN
@@ -21,67 +22,67 @@ class Semiring(object):
     one = 1
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.sum(dim)
 
     @classmethod
-    def add(cls, x, y):
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return cls.sum(torch.stack((x, y)), 0)
 
     @classmethod
-    def mul(cls, x, y):
+    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x * y
 
     @classmethod
-    def dot(cls, x, y, dim=-1):
+    def dot(cls, x: torch.Tensor, y: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return cls.sum(cls.mul(x, y), dim)
 
     @classmethod
-    def prod(cls, x, dim=-1):
+    def prod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.prod(dim)
 
     @classmethod
-    def times(cls, *x):
+    def times(cls, *x: Iterable[torch.Tensor]) -> torch.Tensor:
         return reduce(lambda i, j: cls.mul(i, j), x)
 
     @classmethod
-    def zero_(cls, x):
+    def zero_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.zero)
 
     @classmethod
-    def one_(cls, x):
+    def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
 
     @classmethod
-    def zero_mask(cls, x, mask):
+    def zero_mask(cls, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         return x.masked_fill(mask, cls.zero)
 
     @classmethod
-    def zero_mask_(cls, x, mask):
+    def zero_mask_(cls, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         return x.masked_fill_(mask, cls.zero)
 
     @classmethod
-    def one_mask(cls, x, mask):
+    def one_mask(cls, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         return x.masked_fill(mask, cls.one)
 
     @classmethod
-    def one_mask_(cls, x, mask):
+    def one_mask_(cls, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         return x.masked_fill_(mask, cls.one)
 
     @classmethod
-    def zeros_like(cls, x):
+    def zeros_like(cls, x: torch.Tensor) -> torch.Tensor:
         return x.new_full(x.shape, cls.zero)
 
     @classmethod
-    def ones_like(cls, x):
+    def ones_like(cls, x: torch.Tensor) -> torch.Tensor:
         return x.new_full(x.shape, cls.one)
 
     @classmethod
-    def convert(cls, x):
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
         return x
 
     @classmethod
-    def unconvert(cls, x):
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
         return x
 
 
@@ -94,15 +95,15 @@ class LogSemiring(Semiring):
     one = 0
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.logsumexp(dim)
 
     @classmethod
-    def mul(cls, x, y):
+    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x + y
 
     @classmethod
-    def prod(cls, x, dim=-1):
+    def prod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.sum(dim)
 
 
@@ -112,7 +113,7 @@ class MaxSemiring(LogSemiring):
     """
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.max(dim)[0]
 
 
@@ -124,19 +125,19 @@ def KMaxSemiring(k):
     class KMaxSemiring(LogSemiring):
 
         @classmethod
-        def convert(cls, x):
+        def convert(cls, x: torch.Tensor) -> torch.Tensor:
             return torch.cat((x.unsqueeze(-1), cls.zero_(x.new_empty(*x.shape, k - 1))), -1)
 
         @classmethod
-        def sum(cls, x, dim=-1):
+        def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
             return x.movedim(dim, -1).flatten(-2).topk(k, -1)[0]
 
         @classmethod
-        def mul(cls, x, y):
+        def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
             return (x.unsqueeze(-1) + y.unsqueeze(-2)).flatten(-2).topk(k, -1)[0]
 
         @classmethod
-        def one_(cls, x):
+        def one_(cls, x: torch.Tensor) -> torch.Tensor:
             x[..., :1].fill_(cls.one)
             x[..., 1:].fill_(cls.zero)
             return x
@@ -152,32 +153,32 @@ class EntropySemiring(LogSemiring):
     """
 
     @classmethod
-    def convert(cls, x):
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
         return torch.stack((x, cls.ones_like(x)), -1)
 
     @classmethod
-    def unconvert(cls, x):
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
         return x[..., -1]
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         p = x[..., 0].logsumexp(dim)
         r = x[..., 0] - p.unsqueeze(dim)
         r = r.exp().mul((x[..., -1] - r)).sum(dim)
         return torch.stack((p, r), -1)
 
     @classmethod
-    def mul(cls, x, y):
+    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x + y
 
     @classmethod
-    def zero_(cls, x):
+    def zero_(cls, x: torch.Tensor) -> torch.Tensor:
         x[..., :-1].fill_(cls.zero)
         x[..., -1].fill_(cls.one)
         return x
 
     @classmethod
-    def one_(cls, x):
+    def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
 
 
@@ -189,32 +190,32 @@ class CrossEntropySemiring(LogSemiring):
     """
 
     @classmethod
-    def convert(cls, x):
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
         return torch.cat((x, cls.one_(torch.empty_like(x[..., :1]))), -1)
 
     @classmethod
-    def unconvert(cls, x):
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
         return x[..., -1]
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         p = x[..., :-1].logsumexp(dim)
         r = x[..., :-1] - p.unsqueeze(dim)
         r = r[..., 0].exp().mul((x[..., -1] - r[..., 1])).sum(dim)
         return torch.cat((p, r.unsqueeze(-1)), -1)
 
     @classmethod
-    def mul(cls, x, y):
+    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x + y
 
     @classmethod
-    def zero_(cls, x):
+    def zero_(cls, x: torch.Tensor) -> torch.Tensor:
         x[..., :-1].fill_(cls.zero)
         x[..., -1].fill_(cls.one)
         return x
 
     @classmethod
-    def one_(cls, x):
+    def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
 
 
@@ -226,32 +227,32 @@ class KLDivergenceSemiring(LogSemiring):
     """
 
     @classmethod
-    def convert(cls, x):
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
         return torch.cat((x, cls.one_(torch.empty_like(x[..., :1]))), -1)
 
     @classmethod
-    def unconvert(cls, x):
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
         return x[..., -1]
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         p = x[..., :-1].logsumexp(dim)
         r = x[..., :-1] - p.unsqueeze(dim)
         r = r[..., 0].exp().mul((x[..., -1] - r[..., 1] + r[..., 0])).sum(dim)
         return torch.cat((p, r.unsqueeze(-1)), -1)
 
     @classmethod
-    def mul(cls, x, y):
+    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x + y
 
     @classmethod
-    def zero_(cls, x):
+    def zero_(cls, x: torch.Tensor) -> torch.Tensor:
         x[..., :-1].fill_(cls.zero)
         x[..., -1].fill_(cls.one)
         return x
 
     @classmethod
-    def one_(cls, x):
+    def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
 
 
@@ -262,7 +263,7 @@ class SampledSemiring(LogSemiring):
     """
 
     @classmethod
-    def sum(cls, x, dim=-1):
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return sampled_logsumexp(x, dim)
 
 
@@ -273,6 +274,6 @@ class SparsemaxSemiring(LogSemiring):
     """
 
     @staticmethod
-    def sum(x, dim=-1):
+    def sum(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         p = sparsemax(x, dim)
         return x.mul(p).sum(dim) - p.norm(p=2, dim=dim)

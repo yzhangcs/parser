@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 from collections import Counter
+from typing import Callable, List, Optional
 
 import torch
+from supar.utils.data import Dataset
+from supar.utils.embedding import Embedding
 from supar.utils.fn import pad
 from supar.utils.vocab import Vocab
 
@@ -21,20 +26,20 @@ class RawField(object):
             The function used for preprocessing the examples. Default: ``None``.
     """
 
-    def __init__(self, name, fn=None):
+    def __init__(self, name: str, fn: Optional[Callable] = None) -> RawField:
         self.name = name
         self.fn = fn
 
     def __repr__(self):
         return f"({self.name}): {self.__class__.__name__}()"
 
-    def preprocess(self, sequence):
+    def preprocess(self, sequence: List) -> List:
         return self.fn(sequence) if self.fn is not None else sequence
 
-    def transform(self, sequences):
+    def transform(self, sequences: List[List]) -> List[List]:
         return [self.preprocess(seq) for seq in sequences]
 
-    def compose(self, sequences):
+    def compose(self, sequences: List[List]) -> List[List]:
         return sequences
 
 
@@ -71,8 +76,18 @@ class Field(RawField):
             The function used for preprocessing the examples. Default: ``None``.
     """
 
-    def __init__(self, name, pad=None, unk=None, bos=None, eos=None,
-                 lower=False, use_vocab=True, tokenize=None, fn=None):
+    def __init__(
+        self,
+        name: str,
+        pad: Optional[str] = None,
+        unk: Optional[str] = None,
+        bos: Optional[str] = None,
+        eos: Optional[str] = None,
+        lower: bool = False,
+        use_vocab: bool = True,
+        tokenize: Optional[Callable] = None,
+        fn: Optional[Callable] = None
+    ) -> Field:
         self.name = name
         self.pad = pad
         self.unk = unk
@@ -152,7 +167,7 @@ class Field(RawField):
     def device(self):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    def preprocess(self, sequence):
+    def preprocess(self, sequence: List) -> List:
         r"""
         Loads a single example using this field, tokenizing if necessary.
         The sequence will be first passed to ``fn`` if available.
@@ -176,7 +191,7 @@ class Field(RawField):
 
         return sequence
 
-    def build(self, dataset, min_freq=1, embed=None):
+    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None) -> None:
         r"""
         Constructs a :class:`~supar.utils.vocab.Vocab` object for this field from the dataset.
         If the vocabulary has already existed, this function will have no effect.
@@ -213,7 +228,7 @@ class Field(RawField):
             self.embed[self.vocab[tokens]] = embed.vectors
             self.embed /= torch.std(self.embed)
 
-    def transform(self, sequences):
+    def transform(self, sequences: List[List[str]]) -> List[torch.Tensor]:
         r"""
         Turns a list of sequences that use this field into tensors.
 
@@ -238,7 +253,7 @@ class Field(RawField):
 
         return sequences
 
-    def compose(self, sequences):
+    def compose(self, sequences: List[torch.Tensor]) -> torch.Tensor:
         r"""
         Composes a batch of sequences into a padded tensor.
 
@@ -291,7 +306,7 @@ class SubwordField(Field):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
         super().__init__(*args, **kwargs)
 
-    def build(self, dataset, min_freq=1, embed=None):
+    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None) -> None:
         if hasattr(self, 'vocab'):
             return
         sequences = getattr(dataset, self.name)
@@ -314,7 +329,7 @@ class SubwordField(Field):
             self.embed = torch.zeros(len(self.vocab), embed.dim)
             self.embed[self.vocab[tokens]] = embed.vectors
 
-    def transform(self, sequences):
+    def transform(self, sequences: List[List[str]]) -> List[torch.Tensor]:
         sequences = [[self.preprocess(token) for token in seq]
                      for seq in sequences]
         if self.fix_len <= 0:
@@ -353,7 +368,7 @@ class ChartField(Field):
                 [ -1,  -1,  -1,  -1,  -1,  -1]])
     """
 
-    def build(self, dataset, min_freq=1):
+    def build(self, dataset: Dataset, min_freq: int = 1) -> None:
         counter = Counter(i
                           for chart in getattr(dataset, self.name)
                           for row in self.preprocess(chart)
@@ -361,7 +376,7 @@ class ChartField(Field):
 
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
-    def transform(self, charts):
+    def transform(self, charts: List[List[List]]) -> List[torch.Tensor]:
         charts = [self.preprocess(chart) for chart in charts]
         if self.use_vocab:
             charts = [[[self.vocab[i] if i is not None else -1 for i in row] for row in chart] for chart in charts]

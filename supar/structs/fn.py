@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from typing import List, Tuple, Union
+
 import torch
 from supar.utils.common import MIN
 from supar.utils.fn import pad
 from torch.autograd import Function
 
 
-def tarjan(sequence):
+def tarjan(sequence: List[int]) -> List[int]:
     r"""
     Tarjan algorithm for finding Strongly Connected Components (SCCs) of a graph.
 
@@ -62,7 +64,7 @@ def tarjan(sequence):
             yield from connect(i, timestep)
 
 
-def chuliu_edmonds(s):
+def chuliu_edmonds(s: torch.Tensor) -> torch.Tensor:
     r"""
     ChuLiu/Edmonds algorithm for non-projective decoding :cite:`mcdonald-etal-2005-non`.
 
@@ -154,7 +156,7 @@ def chuliu_edmonds(s):
     return tree
 
 
-def mst(scores, mask, multiroot=False):
+def mst(scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False) -> torch.Tensor:
     r"""
     MST algorithm for decoding non-projective trees.
     This is a wrapper for ChuLiu/Edmonds algorithm.
@@ -189,7 +191,7 @@ def mst(scores, mask, multiroot=False):
         tensor([[0, 2, 0, 2]])
     """
 
-    batch_size, seq_len, _ = scores.shape
+    _, seq_len, _ = scores.shape
     scores = scores.cpu().unbind()
 
     preds = []
@@ -216,13 +218,13 @@ def mst(scores, mask, multiroot=False):
 class SampledLogsumexp(Function):
 
     @staticmethod
-    def forward(ctx, x, dim=-1):
+    def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         ctx.dim = dim
         ctx.save_for_backward(x)
         return x.logsumexp(dim=dim)
 
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, grad_output: torch.Tensor) -> Tuple[Union[torch.Tensor, None], None]:
         from torch.distributions import OneHotCategorical
         x, dim = ctx.saved_tensors, ctx.dim
         if ctx.needs_input_grad[0]:
@@ -233,7 +235,7 @@ class SampledLogsumexp(Function):
 class Sparsemax(Function):
 
     @staticmethod
-    def forward(ctx, x, dim=-1):
+    def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         ctx.dim = dim
         sorted_x, _ = x.sort(dim, True)
         z = sorted_x.cumsum(dim) - 1
@@ -245,7 +247,7 @@ class Sparsemax(Function):
         return p
 
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, grad_output: torch.Tensor) -> Tuple[torch.Tensor, None]:
         k, p, dim = *ctx.saved_tensors, ctx.dim
         grad = grad_output.masked_fill(p.eq(0), 0)
         grad = torch.where(p.ne(0), grad - grad.sum(dim, True) / k, grad)

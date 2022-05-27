@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import List
+
 import torch
 import torch.nn as nn
 
@@ -27,7 +31,7 @@ class SharedDropout(nn.Module):
                  [2., 0., 2., 0., 2.]]])
     """
 
-    def __init__(self, p=0.5, batch_first=True):
+    def __init__(self, p: float = 0.5, batch_first: bool = True) -> SharedDropout:
         super().__init__()
 
         self.p = p
@@ -40,7 +44,7 @@ class SharedDropout(nn.Module):
 
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             x (~torch.Tensor):
@@ -59,7 +63,7 @@ class SharedDropout(nn.Module):
         return x
 
     @staticmethod
-    def get_mask(x, p):
+    def get_mask(x: torch.Tensor, p: float) -> torch.FloatTensor:
         return x.new_empty(x.shape).bernoulli_(1 - p) / (1 - p)
 
 
@@ -86,7 +90,7 @@ class IndependentDropout(nn.Module):
                  [0., 0., 0., 0., 0.]]])
     """
 
-    def __init__(self, p=0.5):
+    def __init__(self, p: float = 0.5) -> IndependentDropout:
         super().__init__()
 
         self.p = p
@@ -94,7 +98,7 @@ class IndependentDropout(nn.Module):
     def __repr__(self):
         return f"{self.__class__.__name__}(p={self.p})"
 
-    def forward(self, *items):
+    def forward(self, *items: List[torch.Tensor]) -> List[torch.Tensor]:
         r"""
         Args:
             items (list[~torch.Tensor]):

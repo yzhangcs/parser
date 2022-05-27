@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +16,7 @@ class DependencyMFVI(nn.Module):
     of dependency trees :cite:`wang-tu-2020-second`.
     """
 
-    def __init__(self, max_iter=3):
+    def __init__(self, max_iter: int = 3) -> DependencyMFVI:
         super().__init__()
 
         self.max_iter = max_iter
@@ -22,7 +25,12 @@ class DependencyMFVI(nn.Module):
         return f"{self.__class__.__name__}(max_iter={self.max_iter})"
 
     @torch.enable_grad()
-    def forward(self, scores, mask, target=None):
+    def forward(
+        self,
+        scores: List[torch.Tensor],
+        mask: torch.BoolTensor,
+        target: Optional[torch.LongTensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""
         Args:
             scores (~torch.Tensor, ~torch.Tensor):
@@ -82,7 +90,7 @@ class DependencyLBP(nn.Module):
     of dependency trees :cite:`smith-eisner-2008-dependency`.
     """
 
-    def __init__(self, max_iter=3):
+    def __init__(self, max_iter: int = 3) -> DependencyLBP:
         super().__init__()
 
         self.max_iter = max_iter
@@ -91,7 +99,12 @@ class DependencyLBP(nn.Module):
         return f"{self.__class__.__name__}(max_iter={self.max_iter})"
 
     @torch.enable_grad()
-    def forward(self, scores, mask, target=None):
+    def forward(
+        self,
+        scores: List[torch.Tensor],
+        mask: torch.BoolTensor,
+        target: Optional[torch.LongTensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""
         Args:
             scores (~torch.Tensor, ~torch.Tensor):
@@ -156,7 +169,7 @@ class ConstituencyMFVI(nn.Module):
     Mean Field Variational Inference for approximately calculating marginals of constituent trees.
     """
 
-    def __init__(self, max_iter=3):
+    def __init__(self, max_iter: int = 3) -> ConstituencyMFVI:
         super().__init__()
 
         self.max_iter = max_iter
@@ -165,7 +178,12 @@ class ConstituencyMFVI(nn.Module):
         return f"{self.__class__.__name__}(max_iter={self.max_iter})"
 
     @torch.enable_grad()
-    def forward(self, scores, mask, target=None):
+    def forward(
+        self,
+        scores: List[torch.Tensor],
+        mask: torch.BoolTensor,
+        target: Optional[torch.LongTensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""
         Args:
             scores (~torch.Tensor, ~torch.Tensor):
@@ -223,7 +241,7 @@ class ConstituencyLBP(nn.Module):
     Loopy Belief Propagation for approximately calculating marginals of constituent trees.
     """
 
-    def __init__(self, max_iter=3):
+    def __init__(self, max_iter: int = 3) -> ConstituencyLBP:
         super().__init__()
 
         self.max_iter = max_iter
@@ -232,7 +250,12 @@ class ConstituencyLBP(nn.Module):
         return f"{self.__class__.__name__}(max_iter={self.max_iter})"
 
     @torch.enable_grad()
-    def forward(self, scores, mask, target=None):
+    def forward(
+        self,
+        scores: List[torch.Tensor],
+        mask: torch.BoolTensor,
+        target: Optional[torch.LongTensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""
         Args:
             scores (~torch.Tensor, ~torch.Tensor):
@@ -296,7 +319,7 @@ class SemanticDependencyMFVI(nn.Module):
     of semantic dependency trees :cite:`wang-etal-2019-second`.
     """
 
-    def __init__(self, max_iter=3):
+    def __init__(self, max_iter: int = 3) -> SemanticDependencyMFVI:
         super().__init__()
 
         self.max_iter = max_iter
@@ -305,7 +328,12 @@ class SemanticDependencyMFVI(nn.Module):
         return f"{self.__class__.__name__}(max_iter={self.max_iter})"
 
     @torch.enable_grad()
-    def forward(self, scores, mask, target=None):
+    def forward(
+        self,
+        scores: List[torch.Tensor],
+        mask: torch.BoolTensor,
+        target: Optional[torch.LongTensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""
         Args:
             scores (~torch.Tensor, ~torch.Tensor):
@@ -371,7 +399,7 @@ class SemanticDependencyLBP(nn.Module):
     of semantic dependency trees :cite:`wang-etal-2019-second`.
     """
 
-    def __init__(self, max_iter=3):
+    def __init__(self, max_iter: int = 3) -> SemanticDependencyLBP:
         super().__init__()
 
         self.max_iter = max_iter
@@ -380,7 +408,12 @@ class SemanticDependencyLBP(nn.Module):
         return f"{self.__class__.__name__}(max_iter={self.max_iter})"
 
     @torch.enable_grad()
-    def forward(self, scores, mask, target=None):
+    def forward(
+        self,
+        scores: List[torch.Tensor],
+        mask: torch.BoolTensor,
+        target: Optional[torch.LongTensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""
         Args:
             scores (~torch.Tensor, ~torch.Tensor):

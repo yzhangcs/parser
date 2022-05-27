@@ -1,14 +1,24 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 from torch.nn import TransformerEncoderLayer
+from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 
 class NoamLR(_LRScheduler):
 
-    def __init__(self, optimizer, d_model, warmup_steps, factor=1, last_epoch=-1):
+    def __init__(
+        self,
+        optimizer: Optimizer,
+        d_model: int,
+        warmup_steps: int,
+        factor: float = 1,
+        last_epoch: int = -1
+    ) -> NoamLR:
         self.warmup_steps = warmup_steps
         self.factor = factor * d_model ** -0.5
         super(NoamLR, self).__init__(optimizer, last_epoch)
@@ -21,7 +31,7 @@ class NoamLR(_LRScheduler):
 
 class PositionalEmbedding(nn.Module):
 
-    def __init__(self, n_model, max_len=1024):
+    def __init__(self, n_model: int, max_len: int = 1024) -> PositionalEmbedding:
         super().__init__()
 
         self.embed = nn.Embedding(max_len, n_model)
@@ -36,13 +46,13 @@ class PositionalEmbedding(nn.Module):
         w[:, 0::2], w[:, 1::2] = w[:, 0::2].sin(), w[:, 1::2].cos()
         self.embed.weight.copy_(w)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.embed(x.new_tensor(range(x.shape[1])).long())
 
 
 class RelativePositionalEmbedding(nn.Module):
 
-    def __init__(self, n_model, max_len=1024):
+    def __init__(self, n_model: int, max_len: int = 1024) -> RelativePositionalEmbedding:
         super().__init__()
 
         self.embed = nn.Embedding(max_len, n_model)
@@ -58,7 +68,7 @@ class RelativePositionalEmbedding(nn.Module):
         w[:, 0::2], w[:, 1::2] = w[:, 0::2].sin(), w[:, 1::2].cos()
         self.embed.weight.copy_(w)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         pos = x.new_tensor(range(x.shape[1])).long()
         offset = sum(divmod(self.embed.weight.shape[0], 2))
         return self.embed(pos - pos.unsqueeze(-1) + offset)
@@ -66,7 +76,7 @@ class RelativePositionalEmbedding(nn.Module):
 
 class SinusoidPositionalEmbedding(nn.Module):
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq_len, n_model = x[0].shape
         pos = x.new_tensor(range(seq_len)).unsqueeze(-1) / 10000 ** (x.new_tensor(range(n_model)) // 2 * 2 / n_model)
         pos[:, 0::2], pos[:, 1::2] = pos[:, 0::2].sin(), pos[:, 1::2].cos()
@@ -75,7 +85,7 @@ class SinusoidPositionalEmbedding(nn.Module):
 
 class SinusoidRelativePositionalEmbedding(nn.Module):
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq_len, n_model = x[0].shape
         pos = x.new_tensor(range(seq_len))
         pos = (pos - pos.unsqueeze(-1)).unsqueeze(-1) / 10000 ** (x.new_tensor(range(n_model)) // 2 * 2 / n_model)
@@ -85,7 +95,14 @@ class SinusoidRelativePositionalEmbedding(nn.Module):
 
 class TransformerEncoder(nn.Module):
 
-    def __init__(self, n_layers, n_heads=8, n_model=1024, n_inner=2048, dropout=0.1):
+    def __init__(
+        self,
+        n_layers: int,
+        n_heads: int = 8,
+        n_model: int = 1024,
+        n_inner: int = 2048,
+        dropout: float = 0.1
+    ) -> TransformerEncoder:
         super(TransformerEncoder, self).__init__()
 
         self.n_layers = n_layers
@@ -116,7 +133,7 @@ class TransformerEncoder(nn.Module):
             if param.dim() > 1:
                 nn.init.xavier_uniform_(param)
 
-    def forward(self, x, mask):
+    def forward(self, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         x += self.pos_embed(x)
         x, src_key_padding_mask = self.dropout(x).transpose(0, 1), ~mask
         for layer in self.layers:
@@ -126,7 +143,15 @@ class TransformerEncoder(nn.Module):
 
 class RelativePositionTransformerEncoder(nn.Module):
 
-    def __init__(self, n_layers, n_heads=8, n_model=1024, n_inner=2048, pre_norm=False, dropout=0.1):
+    def __init__(
+        self,
+        n_layers: int,
+        n_heads: int = 8,
+        n_model: int = 1024,
+        n_inner: int = 2048,
+        pre_norm: bool = False,
+        dropout: float = 0.1
+    ) -> RelativePositionTransformerEncoder:
         super(RelativePositionTransformerEncoder, self).__init__()
 
         self.n_layers = n_layers
@@ -161,7 +186,7 @@ class RelativePositionTransformerEncoder(nn.Module):
             if param.dim() > 1:
                 nn.init.xavier_uniform_(param)
 
-    def forward(self, x, mask):
+    def forward(self, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         x = self.dropout(x)
         for layer in self.layers:
             x = layer(x, mask)
@@ -172,7 +197,13 @@ class RelativePositionTransformerEncoder(nn.Module):
 
 class RelativePositionMultiHeadAttention(nn.Module):
 
-    def __init__(self, n_heads, n_model, n_embed, dropout=0.1):
+    def __init__(
+        self,
+        n_heads: int,
+        n_model: int,
+        n_embed: int,
+        dropout: float = 0.1
+    ) -> RelativePositionMultiHeadAttention:
         super(RelativePositionMultiHeadAttention, self).__init__()
 
         self.n_heads = n_heads
@@ -189,7 +220,7 @@ class RelativePositionMultiHeadAttention(nn.Module):
         self.wo = nn.Parameter(torch.zeros(n_embed, n_heads, n_model))
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, q, k, v, mask):
+    def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         # [batch_size, seq_len, n_embed, n_heads]
         q = torch.einsum('btm,meh->bteh', q, self.wq)
         # [batch_size, seq_len, n_embed, n_heads]
@@ -212,7 +243,15 @@ class RelativePositionMultiHeadAttention(nn.Module):
 
 class RelativePositionTransformerEncoderLayer(nn.Module):
 
-    def __init__(self, n_heads, n_model, n_inner, activation='relu', pre_norm=False, dropout=0.1):
+    def __init__(
+        self,
+        n_heads: int,
+        n_model: int,
+        n_inner: int,
+        activation: str = 'relu',
+        pre_norm: bool = False,
+        dropout: float = 0.1
+    ) -> RelativePositionTransformerEncoderLayer:
         super(RelativePositionTransformerEncoderLayer, self).__init__()
 
         self.pre_norm = pre_norm
@@ -228,7 +267,7 @@ class RelativePositionTransformerEncoderLayer(nn.Module):
         self.ffn_norm = nn.LayerNorm(n_model)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, mask):
+    def forward(self, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
         if self.pre_norm:
             y = self.attn_norm(x)
             x = x + self.dropout(self.attn(y, y, y, mask))

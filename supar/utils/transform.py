@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 import os
 from collections.abc import Iterable
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
 
 import nltk
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
+
+if TYPE_CHECKING:
+    from supar.utils import Field
 
 logger = get_logger(__name__)
 
@@ -77,7 +83,7 @@ class Transform(object):
     def tgt(self):
         raise AttributeError
 
-    def save(self, path, sentences):
+    def save(self, path: str, sentences: List['Sentence']) -> None:
         with open(path, 'w') as f:
             f.write('\n'.join([str(i) for i in sentences]) + '\n')
 
@@ -115,9 +121,19 @@ class CoNLL(Transform):
 
     fields = ['ID', 'FORM', 'LEMMA', 'CPOS', 'POS', 'FEATS', 'HEAD', 'DEPREL', 'PHEAD', 'PDEPREL']
 
-    def __init__(self,
-                 ID=None, FORM=None, LEMMA=None, CPOS=None, POS=None,
-                 FEATS=None, HEAD=None, DEPREL=None, PHEAD=None, PDEPREL=None):
+    def __init__(
+        self,
+        ID: Optional[Union[Field, Iterable[Field]]] = None,
+        FORM: Optional[Union[Field, Iterable[Field]]] = None,
+        LEMMA: Optional[Union[Field, Iterable[Field]]] = None,
+        CPOS: Optional[Union[Field, Iterable[Field]]] = None,
+        POS: Optional[Union[Field, Iterable[Field]]] = None,
+        FEATS: Optional[Union[Field, Iterable[Field]]] = None,
+        HEAD: Optional[Union[Field, Iterable[Field]]] = None,
+        DEPREL: Optional[Union[Field, Iterable[Field]]] = None,
+        PHEAD: Optional[Union[Field, Iterable[Field]]] = None,
+        PDEPREL: Optional[Union[Field, Iterable[Field]]] = None
+    ) -> CoNLL:
         super().__init__()
 
         self.ID = ID
@@ -188,7 +204,7 @@ class CoNLL(Transform):
         return sequence
 
     @classmethod
-    def toconll(cls, tokens):
+    def toconll(cls, tokens: List[Union[str, Tuple]]) -> str:
         r"""
         Converts a list of tokens to a string in CoNLL-X format.
         Missing fields are filled with underscores.
@@ -235,7 +251,7 @@ class CoNLL(Transform):
         return s + '\n'
 
     @classmethod
-    def isprojective(cls, sequence):
+    def isprojective(cls, sequence: List[int]) -> bool:
         r"""
         Checks if a dependency tree is projective.
         This also works for partial annotation.
@@ -270,7 +286,7 @@ class CoNLL(Transform):
         return True
 
     @classmethod
-    def istree(cls, sequence, proj=False, multiroot=False):
+    def istree(cls, sequence: List[int], proj: bool = False, multiroot: bool = False) -> bool:
         r"""
         Checks if the arcs form an valid dependency tree.
 
@@ -304,7 +320,14 @@ class CoNLL(Transform):
             return False
         return next(tarjan(sequence), None) is None
 
-    def load(self, data, lang=None, proj=False, max_len=None, **kwargs):
+    def load(
+        self,
+        data: Union[List[List], str],
+        lang: Optional[str] = None,
+        proj: bool = False,
+        max_len: Optional[int] = None,
+        **kwargs
+    ) -> List['CoNLLSentence']:
         r"""
         Loads the data in CoNLL-X format.
         Also supports for loading data from CoNLL-U file with comments and non-integer IDs.
@@ -369,7 +392,13 @@ class Tree(Transform):
     root = ''
     fields = ['WORD', 'POS', 'TREE', 'CHART']
 
-    def __init__(self, WORD=None, POS=None, TREE=None, CHART=None):
+    def __init__(
+        self,
+        WORD: Optional[Union[Field, Iterable[Field]]] = None,
+        POS: Optional[Union[Field, Iterable[Field]]] = None,
+        TREE: Optional[Union[Field, Iterable[Field]]] = None,
+        CHART: Optional[Union[Field, Iterable[Field]]] = None
+    ) -> Tree:
         super().__init__()
 
         self.WORD = WORD
@@ -386,7 +415,12 @@ class Tree(Transform):
         return self.CHART,
 
     @classmethod
-    def totree(cls, tokens, root='', special_tokens={'(': '-LRB-', ')': '-RRB-'}):
+    def totree(
+        cls,
+        tokens: List[Union[str, Tuple]],
+        root: str = '',
+        special_tokens: Dict = {'(': '-LRB-', ')': '-RRB-'}
+    ) -> nltk.Tree:
         r"""
         Converts a list of tokens to a :class:`nltk.tree.Tree`.
         Missing fields are filled with underscores.
@@ -421,7 +455,7 @@ class Tree(Transform):
         return tree
 
     @classmethod
-    def binarize(cls, tree):
+    def binarize(cls, tree: nltk.Tree) -> nltk.Tree:
         r"""
         Conducts binarization over the tree.
 
@@ -476,7 +510,12 @@ class Tree(Transform):
         return tree
 
     @classmethod
-    def factorize(cls, tree, delete_labels=None, equal_labels=None):
+    def factorize(
+        cls,
+        tree: nltk.Tree,
+        delete_labels: Optional[Set[str]] = None,
+        equal_labels: Optional[Dict[str, str]] = None
+    ) -> List[Tuple]:
         r"""
         Factorizes the tree into a sequence.
         The tree is traversed in pre-order.
@@ -534,7 +573,7 @@ class Tree(Transform):
         return track(tree, 0)[1]
 
     @classmethod
-    def build(cls, tree, sequence):
+    def build(cls, tree: nltk.Tree, sequence: List[Tuple]) -> nltk.Tree:
         r"""
         Builds a constituency tree from the sequence. The sequence is generated in pre-order.
         During building the tree, the sequence is de-binarized to the original format (i.e.,
@@ -581,7 +620,13 @@ class Tree(Transform):
             return [tree]
         return nltk.Tree(root, track(iter(sequence)))
 
-    def load(self, data, lang=None, max_len=None, **kwargs):
+    def load(
+        self,
+        data: Union[List[List], str],
+        lang: Optional[str] = None,
+        max_len: Optional[int] = None,
+        **kwargs
+    ) -> List['TreeSentence']:
         r"""
         Args:
             data (list[list] or str):
@@ -738,7 +783,7 @@ class CoNLLSentence(Sentence):
         12      .       _       _       _       _       3       punct   _       _
     """
 
-    def __init__(self, transform, lines):
+    def __init__(self, transform: CoNLL, lines: List[str]) -> CoNLLSentence:
         super().__init__(transform)
 
         self.values = []
@@ -771,7 +816,7 @@ class TreeSentence(Sentence):
             A :class:`nltk.tree.Tree` object.
     """
 
-    def __init__(self, transform, tree):
+    def __init__(self, transform: Tree, tree: nltk.Tree) -> TreeSentence:
         super().__init__(transform)
 
         words, tags = zip(*tree.pos())

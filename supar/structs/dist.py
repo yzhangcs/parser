@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import Iterable, Union
+
 import torch
 import torch.autograd as autograd
 from supar.structs.semiring import (CrossEntropySemiring, EntropySemiring,
                                     KLDivergenceSemiring, KMaxSemiring,
-                                    LogSemiring, MaxSemiring, SampledSemiring)
+                                    LogSemiring, MaxSemiring, SampledSemiring,
+                                    Semiring)
 from torch.distributions.distribution import Distribution
 from torch.distributions.utils import lazy_property
 
@@ -19,14 +24,14 @@ class StructuredDistribution(Distribution):
 
     """
 
-    def __init__(self, scores, **kwargs):
+    def __init__(self, scores: torch.Tensor, **kwargs) -> StructuredDistribution:
         self.scores = scores.requires_grad_() if isinstance(scores, torch.Tensor) else [s.requires_grad_() for s in scores]
         self.kwargs = kwargs
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
-    def __add__(self, other):
+    def __add__(self, other: 'StructuredDistribution') -> StructuredDistribution:
         return self.__class__(torch.stack((self.scores, other.scores), -1), lens=self.lens)
 
     @lazy_property
@@ -65,14 +70,14 @@ class StructuredDistribution(Distribution):
     def mode(self):
         return self.argmax
 
-    def kmax(self, k):
+    def kmax(self, k: int) -> torch.Tensor:
         r"""
         Computes the k-max of the distribution :math:`p(y)`.
         """
 
         return self.forward(KMaxSemiring(k))
 
-    def topk(self, k):
+    def topk(self, k: int) -> Union[torch.Tensor, Iterable]:
         r"""
         Computes the k-argmax of the distribution :math:`p(y)`.
         """
@@ -94,7 +99,7 @@ class StructuredDistribution(Distribution):
 
         return self.forward(EntropySemiring)
 
-    def cross_entropy(self, other):
+    def cross_entropy(self, other: 'StructuredDistribution') -> torch.Tensor:
         r"""
         Computes cross-entropy :math:`H[p,q]` of self and another distribution.
 
@@ -104,7 +109,7 @@ class StructuredDistribution(Distribution):
 
         return (self + other).forward(CrossEntropySemiring)
 
-    def kl(self, other):
+    def kl(self, other: 'StructuredDistribution') -> torch.Tensor:
         r"""
         Computes KL-divergence :math:`KL[p \parallel q]=H[p,q]-H[p]` of self and another distribution.
 
@@ -114,20 +119,20 @@ class StructuredDistribution(Distribution):
 
         return (self + other).forward(KLDivergenceSemiring)
 
-    def log_prob(self, value, *args, **kwargs):
+    def log_prob(self, value: torch.LongTensor, *args, **kwargs) -> torch.Tensor:
         """
         Computes log probability over values :math:`p(y)`.
         """
 
         return self.score(value, *args, **kwargs) - self.log_partition
 
-    def score(self, value, *args, **kwargs):
+    def score(self, value: torch.LongTensor, *args, **kwargs) -> torch.Tensor:
         raise NotImplementedError
 
     @torch.enable_grad()
-    def forward(self, semiring):
+    def forward(self, semiring: Semiring) -> torch.Tensor:
         raise NotImplementedError
 
-    def backward(self, log_partition):
+    def backward(self, log_partition: torch.Tensor) -> Union[torch.Tensor, Iterable[torch.Tensor]]:
         grads = autograd.grad(log_partition, self.scores, create_graph=True)
         return grads[0] if isinstance(self.scores, torch.Tensor) else grads

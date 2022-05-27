@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 
@@ -26,7 +28,14 @@ class Biaffine(nn.Module):
             If ``True``, adds a bias term for tensor :math:`y`. Default: ``True``.
     """
 
-    def __init__(self, n_in, n_out=1, scale=0, bias_x=True, bias_y=True):
+    def __init__(
+        self,
+        n_in: int,
+        n_out: int = 1,
+        scale: int = 0,
+        bias_x: bool = True,
+        bias_y: bool = True
+    ) -> Biaffine:
         super().__init__()
 
         self.n_in = n_in
@@ -54,7 +63,7 @@ class Biaffine(nn.Module):
     def reset_parameters(self):
         nn.init.zeros_(self.weight)
 
-    def forward(self, x, y):
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
@@ -102,7 +111,15 @@ class Triaffine(nn.Module):
             If ``True``, represents the weight as the product of 3 independent matrices. Default: ``False``.
     """
 
-    def __init__(self, n_in, n_out=1, scale=0, bias_x=False, bias_y=False, decompose=False):
+    def __init__(
+        self,
+        n_in: int,
+        n_out: int = 1,
+        scale: int = 0,
+        bias_x: bool = False,
+        bias_y: bool = False,
+        decompose: bool = False
+    ) -> Triaffine:
         super().__init__()
 
         self.n_in = n_in
@@ -143,7 +160,7 @@ class Triaffine(nn.Module):
         else:
             nn.init.zeros_(self.weight)
 
-    def forward(self, x, y, z):
+    def forward(self, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             x (torch.Tensor): ``[batch_size, seq_len, n_in]``.

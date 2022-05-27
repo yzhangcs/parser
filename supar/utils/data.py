@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import Dict, List, Union
+
 import torch
 import torch.distributed as dist
 from supar.utils.fn import kmeans
-from supar.utils.transform import Batch
+from supar.utils.transform import Batch, Transform
 from torch.utils.data import DataLoader
 
 
@@ -30,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
             Each sentence includes fields obeying the data format defined in ``transform``.
     """
 
-    def __init__(self, transform, data, **kwargs):
+    def __init__(self, transform: Transform, data: Union[List[List], str], **kwargs) -> Dataset:
         super(Dataset, self).__init__()
 
         self.transform = transform
@@ -74,7 +78,7 @@ class Dataset(torch.utils.data.Dataset):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
-    def build(self, batch_size, n_buckets=1, shuffle=False, distributed=False):
+    def build(self, batch_size: int, n_buckets: int = 1, shuffle: bool = False, distributed: bool = False) -> Dataset:
         # numericalize all fields
         fields = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
@@ -103,7 +107,13 @@ class Sampler(torch.utils.data.Sampler):
             Default: ``False``.
     """
 
-    def __init__(self, buckets, batch_size, shuffle=False, distributed=False):
+    def __init__(
+        self,
+        buckets: Dict[float, List],
+        batch_size: int,
+        shuffle: bool = False,
+        distributed: bool = False
+    ) -> Sampler:
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.sizes, self.buckets = zip(*[(size, bucket) for size, bucket in buckets.items()])

@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from collections import defaultdict
+from __future__ import annotations
+
+from collections import Counter, defaultdict
 from collections.abc import Iterable
+from typing import Tuple
 
 
 class Vocab(object):
@@ -13,7 +16,7 @@ class Vocab(object):
             :class:`~collections.Counter` object holding the frequencies of each value found in the data.
         min_freq (int):
             The minimum frequency needed to include a token in the vocabulary. Default: 1.
-        specials (list[str]):
+        specials (tuple[str]):
             The list of special tokens (e.g., pad, unk, bos and eos) that will be prepended to the vocabulary. Default: [].
         unk_index (int):
             The index of unk token. Default: 0.
@@ -25,7 +28,7 @@ class Vocab(object):
             A :class:`~collections.defaultdict` object mapping token strings to numerical identifiers.
     """
 
-    def __init__(self, counter, min_freq=1, specials=[], unk_index=0):
+    def __init__(self, counter: Counter, min_freq: int = 1, specials: Tuple = tuple(), unk_index: int = 0) -> Vocab:
         self.itos = list(specials)
         self.stoi = defaultdict(lambda: unk_index)
         self.stoi.update({token: i for i, token in enumerate(self.itos)})
@@ -66,6 +69,6 @@ class Vocab(object):
     def items(self):
         return self.stoi.items()
 
-    def extend(self, tokens):
+    def extend(self, tokens: Iterable[str]) -> None:
         self.itos.extend(sorted(set(tokens).difference(self.stoi)))
         self.stoi.update({token: i for i, token in enumerate(self.itos)})

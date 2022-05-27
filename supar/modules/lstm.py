@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
+
 import torch
 import torch.nn as nn
 from supar.modules.dropout import SharedDropout
@@ -28,7 +32,15 @@ class CharLSTM(nn.Module):
             The dropout ratio of CharLSTM hidden states. Default: 0.
     """
 
-    def __init__(self, n_chars, n_embed, n_hidden, n_out=0, pad_index=0, dropout=0):
+    def __init__(
+        self,
+        n_chars: int,
+        n_embed: int,
+        n_hidden: int,
+        n_out: int = 0,
+        pad_index: int = 0,
+        dropout: float = 0
+    ) -> CharLSTM:
         super().__init__()
 
         self.n_chars = n_chars
@@ -52,7 +64,7 @@ class CharLSTM(nn.Module):
 
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             x (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
@@ -105,7 +117,14 @@ class VariationalLSTM(nn.Module):
             Default: 0.
     """
 
-    def __init__(self, input_size, hidden_size, num_layers=1, bidirectional=False, dropout=0):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        num_layers: int = 1,
+        bidirectional: bool = False,
+        dropout: float = .0
+    ) -> VariationalLSTM:
         super().__init__()
 
         self.input_size = input_size
@@ -146,7 +165,11 @@ class VariationalLSTM(nn.Module):
             else:
                 nn.init.zeros_(param)
 
-    def permute_hidden(self, hx, permutation):
+    def permute_hidden(
+        self,
+        hx: Tuple[torch.Tensor, torch.Tensor],
+        permutation: torch.LongTensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         if permutation is None:
             return hx
         h = apply_permutation(hx[0], permutation)
@@ -154,7 +177,14 @@ class VariationalLSTM(nn.Module):
 
         return h, c
 
-    def layer_forward(self, x, hx, cell, batch_sizes, reverse=False):
+    def layer_forward(
+        self,
+        x: List[torch.Tensor],
+        hx: Tuple[torch.Tensor, torch.Tensor],
+        cell: nn.LSTMCell,
+        batch_sizes: List[int],
+        reverse: bool = False
+    ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         hx_0 = hx_i = hx
         hx_n, output = [], []
         steps = reversed(range(len(x))) if reverse else range(len(x))
@@ -182,7 +212,11 @@ class VariationalLSTM(nn.Module):
 
         return output, hx_n
 
-    def forward(self, sequence, hx=None):
+    def forward(
+        self,
+        sequence: PackedSequence,
+        hx: Optional[Tuple[torch.Tensor, torch.Tensor]] = None
+    ) -> Tuple[PackedSequence, Tuple[torch.Tensor, torch.Tensor]]:
         r"""
         Args:
             sequence (~torch.nn.utils.rnn.PackedSequence):

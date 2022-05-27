@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import List, Optional
+
 import torch
 
 
 class Embedding(object):
 
-    def __init__(self, tokens, vectors, unk=None):
+    def __init__(self, tokens: List[str], vectors: List[List[float]], unk: Optional[str] = None) -> Embedding:
         self.tokens = tokens
         self.vectors = torch.tensor(vectors)
         self.pretrained = {w: v for w, v in zip(tokens, vectors)}
@@ -29,7 +33,7 @@ class Embedding(object):
             raise AttributeError
 
     @classmethod
-    def load(cls, path, unk=None):
+    def load(cls, path: str, unk: Optional[str] = None) -> Embedding:
         with open(path, 'r') as f:
             lines = [line for line in f]
         splits = [line.split() for line in lines]

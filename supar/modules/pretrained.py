@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 from supar.modules.scalar_mix import ScalarMix
@@ -35,7 +39,17 @@ class TransformerEmbedding(nn.Module):
         https://github.com/huggingface/transformers
     """
 
-    def __init__(self, model, n_layers, n_out=0, stride=256, pooling='mean', pad_index=0, mix_dropout=0, finetune=False):
+    def __init__(
+        self,
+        model: str,
+        n_layers: int,
+        n_out: int = 0,
+        stride: int = 256,
+        pooling: str = 'mean',
+        pad_index: int = 0,
+        mix_dropout: float = .0,
+        finetune: bool = False
+    ) -> TransformerEmbedding:
         super().__init__()
 
         from transformers import AutoConfig, AutoModel, AutoTokenizer
@@ -67,7 +81,7 @@ class TransformerEmbedding(nn.Module):
             s += f", finetune={self.finetune}"
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, subwords):
+    def forward(self, subwords: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             subwords (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
@@ -142,7 +156,14 @@ class ELMoEmbedding(nn.Module):
         'original_5b': 'https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5',  # noqa
     }
 
-    def __init__(self, model='original_5b', bos_eos=(True, True), n_out=0, dropout=0.5, finetune=False):
+    def __init__(
+        self,
+        model: str = 'original_5b',
+        bos_eos: Tuple[bool, bool] = (True, True),
+        n_out: int = 0,
+        dropout: float = 0.5,
+        finetune: bool = False
+    ) -> ELMoEmbedding:
         super().__init__()
 
         from allennlp.modules import Elmo
@@ -171,10 +192,10 @@ class ELMoEmbedding(nn.Module):
             s += f", finetune={self.finetune}"
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, chars):
+    def forward(self, chars: torch.LongTensor) -> torch.Tensor:
         r"""
         Args:
-            chars (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+            chars (~torch.LongTensor): ``[batch_size, seq_len, fix_len]``.
 
         Returns:
             ~torch.Tensor:

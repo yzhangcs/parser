@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+from typing import List
+
 import torch
 import torch.nn as nn
 
@@ -20,7 +24,7 @@ class ScalarMix(nn.Module):
             Default: 0.
     """
 
-    def __init__(self, n_layers, dropout=0):
+    def __init__(self, n_layers: int, dropout: float = .0) -> ScalarMix:
         super().__init__()
 
         self.n_layers = n_layers
@@ -36,7 +40,7 @@ class ScalarMix(nn.Module):
 
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, tensors):
+    def forward(self, tensors: List[torch.Tensor]) -> torch.Tensor:
         r"""
         Args:
             tensors (list[~torch.Tensor]):

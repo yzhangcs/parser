@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
+import torch
 import torch.nn as nn
 from supar.modules.dropout import SharedDropout
 
@@ -20,7 +23,7 @@ class MLP(nn.Module):
             Whether to use activations. Default: True.
     """
 
-    def __init__(self, n_in, n_out, dropout=0, activation=True):
+    def __init__(self, n_in: int, n_out: int, dropout: float = .0, activation: bool = True) -> MLP:
         super().__init__()
 
         self.n_in = n_in
@@ -42,7 +45,7 @@ class MLP(nn.Module):
         nn.init.orthogonal_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
             x (~torch.Tensor):

@@ -1,20 +1,25 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 from collections import Counter
+from typing import List, Tuple
+
+import torch
 
 
 class Metric(object):
 
-    def __lt__(self, other):
+    def __lt__(self, other: 'Metric') -> bool:
         return self.score < other
 
-    def __le__(self, other):
+    def __le__(self, other: 'Metric') -> bool:
         return self.score <= other
 
-    def __ge__(self, other):
+    def __ge__(self, other: 'Metric') -> bool:
         return self.score >= other
 
-    def __gt__(self, other):
+    def __gt__(self, other: 'Metric') -> bool:
         return self.score > other
 
     @property
@@ -24,7 +29,7 @@ class Metric(object):
 
 class AttachmentMetric(Metric):
 
-    def __init__(self, eps=1e-12):
+    def __init__(self, eps: float = 1e-12) -> AttachmentMetric:
         super().__init__()
 
         self.eps = eps
@@ -41,7 +46,14 @@ class AttachmentMetric(Metric):
         s += f"UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
         return s
 
-    def __call__(self, arc_preds, rel_preds, arc_golds, rel_golds, mask):
+    def __call__(
+        self,
+        arc_preds: torch.Tensor,
+        rel_preds: torch.Tensor,
+        arc_golds: torch.Tensor,
+        rel_golds: torch.Tensor,
+        mask: torch.BoolTensor
+    ) -> AttachmentMetric:
         lens = mask.sum(1)
         arc_mask = arc_preds.eq(arc_golds) & mask
         rel_mask = rel_preds.eq(rel_golds) & arc_mask
@@ -79,7 +91,7 @@ class AttachmentMetric(Metric):
 
 class SpanMetric(Metric):
 
-    def __init__(self, eps=1e-12):
+    def __init__(self, eps: float = 1e-12) -> SpanMetric:
         super().__init__()
 
         self.n = 0.0
@@ -91,7 +103,7 @@ class SpanMetric(Metric):
         self.gold = 0.0
         self.eps = eps
 
-    def __call__(self, preds, golds):
+    def __call__(self, preds: List[List[Tuple]], golds: List[List[Tuple]]) -> SpanMetric:
         for pred, gold in zip(preds, golds):
             upred, ugold = Counter([tuple(span[:-1]) for span in pred]), Counter([tuple(span[:-1]) for span in gold])
             lpred, lgold = Counter([tuple(span) for span in pred]), Counter([tuple(span) for span in gold])
@@ -151,7 +163,7 @@ class SpanMetric(Metric):
 
 class ChartMetric(Metric):
 
-    def __init__(self, eps=1e-12):
+    def __init__(self, eps: float = 1e-12) -> ChartMetric:
         super(ChartMetric, self).__init__()
 
         self.tp = 0.0
@@ -160,7 +172,7 @@ class ChartMetric(Metric):
         self.gold = 0.0
         self.eps = eps
 
-    def __call__(self, preds, golds):
+    def __call__(self, preds: torch.Tensor, golds: torch.Tensor) -> ChartMetric:
         pred_mask = preds.ge(0)
         gold_mask = golds.ge(0)
         span_mask = pred_mask & gold_mask
