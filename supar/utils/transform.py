@@ -44,7 +44,7 @@ class Transform(object):
         # numericalize the fields of each sentence
         for sentence in progress_bar(sentences):
             for f in self.flattened_fields:
-                sentence.transformed[f.name] = f.transform([getattr(sentence, f.name)])[0]
+                sentence.fields[f.name] = f.transform([getattr(sentence, f.name)])[0]
         return self.flattened_fields
 
     def __getitem__(self, index):
@@ -322,12 +322,12 @@ class CoNLL(Transform):
 
     def load(
         self,
-        data: Union[List[List], str],
+        data: Union[str, List[List]],
         lang: Optional[str] = None,
         proj: bool = False,
         max_len: Optional[int] = None,
         **kwargs
-    ) -> List['CoNLLSentence']:
+    ) -> List[CoNLLSentence]:
         r"""
         Loads the data in CoNLL-X format.
         Also supports for loading data from CoNLL-U file with comments and non-integer IDs.
@@ -622,11 +622,11 @@ class Tree(Transform):
 
     def load(
         self,
-        data: Union[List[List], str],
+        data: Union[str, List[List]],
         lang: Optional[str] = None,
         max_len: Optional[int] = None,
         **kwargs
-    ) -> List['TreeSentence']:
+    ) -> List[TreeSentence]:
         r"""
         Args:
             data (list[list] or str):
@@ -665,24 +665,22 @@ class Tree(Transform):
 
 class Batch(object):
 
-    def __init__(self, sentences):
+    def __init__(self, transform, sentences):
         self.sentences = sentences
-        self.transformed = {f.name: f.compose([s.transformed[f.name] for s in sentences])
-                            for f in sentences[0].transform.flattened_fields}
-        self.fields = list(self.transformed.keys())
+        self.fields = {f.name: f.compose([s.fields[f.name] for s in sentences]) for f in transform.flattened_fields}
+        self.names = list(self.fields.keys())
 
     def __repr__(self):
-        s = ', '.join([f"{name}" for name in self.fields])
-        return f"{self.__class__.__name__}({s})"
+        return f'{self.__class__.__name__}({", ".join([f"{name}" for name in self.names])})'
 
     def __getitem__(self, index):
-        return self.transformed[self.fields[index]]
+        return self.fields[self.names[index]]
 
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
-        if name in self.transformed:
-            return self.transformed[name]
+        if name in self.fields:
+            return self.fields[name]
         if hasattr(self.sentences[0], name):
             return [getattr(s, name) for s in self.sentences]
         raise AttributeError
@@ -691,13 +689,11 @@ class Batch(object):
 class Sentence(object):
 
     def __init__(self, transform):
-        self.transform = transform
-
         # mapping from each nested field to their proper position
         self.maps = dict()
         # names of each field
         self.keys = set()
-        for i, field in enumerate(self.transform):
+        for i, field in enumerate(transform):
             if not isinstance(field, Iterable):
                 field = [field]
             for f in field:
@@ -706,7 +702,7 @@ class Sentence(object):
                     self.keys.add(f.name)
         # original values and numericalized values of each position
         self.values = []
-        self.transformed = {key: None for key in self.keys}
+        self.fields = {key: None for key in self.keys}
 
     def __contains__(self, key):
         return key in self.keys

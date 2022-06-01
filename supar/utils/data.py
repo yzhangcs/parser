@@ -34,7 +34,7 @@ class Dataset(torch.utils.data.Dataset):
             Each sentence includes fields obeying the data format defined in ``transform``.
     """
 
-    def __init__(self, transform: Transform, data: Union[List[List], str], **kwargs) -> Dataset:
+    def __init__(self, transform: Transform, data: Union[str, List[List]], **kwargs) -> Dataset:
         super(Dataset, self).__init__()
 
         self.transform = transform
@@ -82,10 +82,10 @@ class Dataset(torch.utils.data.Dataset):
         # numericalize all fields
         fields = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.buckets = dict(zip(*kmeans([len(s.transformed[fields[0].name]) for s in self], n_buckets)))
+        self.buckets = dict(zip(*kmeans([len(s.fields[fields[0].name]) for s in self], n_buckets)))
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
-                                 collate_fn=lambda x: Batch(x))
+                                 collate_fn=lambda x: Batch(self.transform, x))
         return self
 
 
