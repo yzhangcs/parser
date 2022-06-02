@@ -10,17 +10,20 @@ import torch
 
 class Metric(object):
 
-    def __lt__(self, other: 'Metric') -> bool:
+    def __lt__(self, other: Metric) -> bool:
         return self.score < other
 
-    def __le__(self, other: 'Metric') -> bool:
+    def __le__(self, other: Metric) -> bool:
         return self.score <= other
 
-    def __ge__(self, other: 'Metric') -> bool:
+    def __ge__(self, other: Metric) -> bool:
         return self.score >= other
 
-    def __gt__(self, other: 'Metric') -> bool:
+    def __gt__(self, other: Metric) -> bool:
         return self.score > other
+
+    def __add__(self, other: Metric) -> Metric:
+        raise NotImplementedError
 
     @property
     def score(self):
@@ -68,6 +71,16 @@ class AttachmentMetric(Metric):
         self.correct_rels += rel_mask_seq.sum().item()
         return self
 
+    def __add__(self, other: AttachmentMetric) -> AttachmentMetric:
+        metric = AttachmentMetric(self.eps)
+        metric.n = self.n + other.n
+        metric.n_ucm = self.n_ucm + other.n_ucm
+        metric.n_lcm = self.n_lcm + other.n_lcm
+        metric.total = self.total + other.total
+        metric.correct_arcs = self.correct_arcs + other.correct_arcs
+        metric.correct_rels = self.correct_rels + other.correct_rels
+        return metric
+
     @property
     def score(self):
         return self.las
@@ -103,6 +116,13 @@ class SpanMetric(Metric):
         self.gold = 0.0
         self.eps = eps
 
+    def __repr__(self):
+        s = f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
+        s += f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} "
+        s += f"LP: {self.lp:6.2%} LR: {self.lr:6.2%} LF: {self.lf:6.2%}"
+
+        return s
+
     def __call__(self, preds: List[List[Tuple]], golds: List[List[Tuple]]) -> SpanMetric:
         for pred, gold in zip(preds, golds):
             upred, ugold = Counter([tuple(span[:-1]) for span in pred]), Counter([tuple(span[:-1]) for span in gold])
@@ -117,12 +137,16 @@ class SpanMetric(Metric):
             self.gold += len(gold)
         return self
 
-    def __repr__(self):
-        s = f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
-        s += f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} "
-        s += f"LP: {self.lp:6.2%} LR: {self.lr:6.2%} LF: {self.lf:6.2%}"
-
-        return s
+    def __add__(self, other: SpanMetric) -> SpanMetric:
+        metric = SpanMetric(self.eps)
+        metric.n = self.n + other.n
+        metric.n_ucm = self.n_ucm + other.n_ucm
+        metric.n_lcm = self.n_lcm + other.n_lcm
+        metric.utp = self.utp + other.utp
+        metric.ltp = self.ltp + other.ltp
+        metric.pred = self.pred + other.pred
+        metric.gold = self.gold + other.gold
+        return metric
 
     @property
     def score(self):
@@ -172,6 +196,9 @@ class ChartMetric(Metric):
         self.gold = 0.0
         self.eps = eps
 
+    def __repr__(self):
+        return f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} P: {self.p:6.2%} R: {self.r:6.2%} F: {self.f:6.2%}"
+
     def __call__(self, preds: torch.Tensor, golds: torch.Tensor) -> ChartMetric:
         pred_mask = preds.ge(0)
         gold_mask = golds.ge(0)
@@ -182,8 +209,13 @@ class ChartMetric(Metric):
         self.utp += span_mask.sum().item()
         return self
 
-    def __repr__(self):
-        return f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} P: {self.p:6.2%} R: {self.r:6.2%} F: {self.f:6.2%}"
+    def __add__(self, other: ChartMetric) -> ChartMetric:
+        metric = ChartMetric(self.eps)
+        metric.tp = self.tp + other.tp
+        metric.utp = self.utp + other.utp
+        metric.pred = self.pred + other.pred
+        metric.gold = self.gold + other.gold
+        return metric
 
     @property
     def score(self):
