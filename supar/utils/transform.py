@@ -11,7 +11,7 @@ from supar.utils.logging import get_logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
 
 if TYPE_CHECKING:
-    from supar.utils import Field
+    from supar.utils import Dataset, Field
 
 logger = get_logger(__name__)
 
@@ -83,9 +83,10 @@ class Transform(object):
     def tgt(self):
         raise AttributeError
 
-    def save(self, path: str, sentences: List['Sentence']) -> None:
+    def save(self, path: str, data: Dataset) -> None:
         with open(path, 'w') as f:
-            f.write('\n'.join([str(i) for i in sentences]) + '\n')
+            for i in data:
+                f.write(str(i) + '\n')
 
 
 class CoNLL(Transform):
@@ -679,11 +680,14 @@ class Batch(object):
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
-        if name in self.fields:
-            return self.fields[name]
-        if hasattr(self.sentences[0], name):
-            return [getattr(s, name) for s in self.sentences]
-        raise AttributeError
+        return [getattr(s, name) for s in self.sentences]
+
+    def __setattr__(self, name, value):
+        if name not in ('sentences', 'fields', 'names'):
+            for s, v in zip(self.sentences, value):
+                setattr(s, name, v)
+        else:
+            self.__dict__[name] = value
 
 
 class Sentence(object):

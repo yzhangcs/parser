@@ -179,7 +179,6 @@ class BiaffineSemanticDependencyParser(Parser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'labels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, *feats = batch
             word_mask = words.ne(self.args.pad_index)
@@ -189,13 +188,11 @@ class BiaffineSemanticDependencyParser(Parser):
             lens = mask[:, 1].sum(-1).tolist()
             s_edge, s_label = self.model(words, feats)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
-            preds['labels'].extend(chart[1:i, :i].tolist() for i, chart in zip(lens, label_preds))
+            batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
+                                                   for row in chart[1:i, :i].tolist()])
+                            for i, chart in zip(lens, label_preds)]
             if self.args.prob:
-                preds['probs'].extend([prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.softmax(-1).unbind())])
-        preds['labels'] = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row] for row in chart])
-                           for chart in preds['labels']]
-
-        return preds
+                batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.softmax(-1).unbind())]
 
     @classmethod
     def build(cls, path, min_freq=7, fix_len=20, **kwargs):
@@ -459,7 +456,6 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'labels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, *feats = batch
             word_mask = words.ne(self.args.pad_index)
@@ -470,10 +466,8 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
             s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
-            preds['labels'].extend(chart[1:i, :i].tolist() for i, chart in zip(lens, label_preds))
+            batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
+                                                   for row in chart[1:i, :i].tolist()])
+                            for i, chart in zip(lens, label_preds)]
             if self.args.prob:
-                preds['probs'].extend([prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())])
-        preds['labels'] = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row] for row in chart])
-                           for chart in preds['labels']]
-
-        return preds
+                batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())]

@@ -212,7 +212,6 @@ class BiaffineDependencyParser(Parser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
@@ -222,14 +221,10 @@ class BiaffineDependencyParser(Parser):
             lens = mask.sum(1).tolist()
             s_arc, s_rel = self.model(words, feats)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
-            preds['arcs'].extend(arc_preds[mask].split(lens))
-            preds['rels'].extend(rel_preds[mask].split(lens))
+            batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
+            batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
             if self.args.prob:
-                preds['probs'].extend([prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.softmax(-1).unbind())])
-        preds['arcs'] = [seq.tolist() for seq in preds['arcs']]
-        preds['rels'] = [self.REL.vocab[seq.tolist()] for seq in preds['rels']]
-
-        return preds
+                batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.softmax(-1).unbind())]
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -526,7 +521,6 @@ class CRFDependencyParser(BiaffineDependencyParser):
         self.model.eval()
 
         CRF = DependencyCRF if self.args.proj else MatrixTree
-        preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, _, *feats = batch
             word_mask = words.ne(self.args.pad_index)
@@ -538,15 +532,11 @@ class CRFDependencyParser(BiaffineDependencyParser):
             s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             lens = lens.tolist()
-            preds['arcs'].extend(arc_preds[mask].split(lens))
-            preds['rels'].extend(rel_preds[mask].split(lens))
+            batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
+            batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
             if self.args.prob:
                 arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
-                preds['probs'].extend([prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())])
-        preds['arcs'] = [seq.tolist() for seq in preds['arcs']]
-        preds['rels'] = [self.REL.vocab[seq.tolist()] for seq in preds['rels']]
-
-        return preds
+                batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
 
 
 class CRF2oDependencyParser(BiaffineDependencyParser):
@@ -745,7 +735,6 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
@@ -757,15 +746,11 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
             lens = lens.tolist()
-            preds['arcs'].extend(arc_preds[mask].split(lens))
-            preds['rels'].extend(rel_preds[mask].split(lens))
+            batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
+            batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
             if self.args.prob:
                 arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
-                preds['probs'].extend([prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())])
-        preds['arcs'] = [seq.tolist() for seq in preds['arcs']]
-        preds['rels'] = [self.REL.vocab[seq.tolist()] for seq in preds['rels']]
-
-        return preds
+                batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -1054,7 +1039,6 @@ class VIDependencyParser(BiaffineDependencyParser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'arcs': [], 'rels': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, texts, *feats = batch
             word_mask = words.ne(self.args.pad_index)
@@ -1065,11 +1049,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             s_arc, s_sib, s_rel = self.model(words, feats)
             s_arc = self.model.inference((s_arc, s_sib), mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
-            preds['arcs'].extend(arc_preds[mask].split(lens))
-            preds['rels'].extend(rel_preds[mask].split(lens))
+            batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
+            batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
             if self.args.prob:
-                preds['probs'].extend([prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.unbind())])
-        preds['arcs'] = [seq.tolist() for seq in preds['arcs']]
-        preds['rels'] = [self.REL.vocab[seq.tolist()] for seq in preds['rels']]
-
-        return preds
+                batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.unbind())]

@@ -205,7 +205,6 @@ class CRFConstituencyParser(Parser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'trees': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, *feats, trees = batch
             word_mask = words.ne(self.args.pad_index)[:, 1:]
@@ -215,12 +214,10 @@ class CRFConstituencyParser(Parser):
             s_span, s_label = self.model(words, feats)
             s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
             chart_preds = self.model.decode(s_span, s_label, mask)
-            preds['trees'].extend([Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                                   for tree, chart in zip(trees, chart_preds)])
+            batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+                           for tree, chart in zip(trees, chart_preds)]
             if self.args.prob:
-                preds['probs'].extend([prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)])
-
-        return preds
+                batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -498,7 +495,6 @@ class VIConstituencyParser(CRFConstituencyParser):
     def _predict(self, loader):
         self.model.eval()
 
-        preds = {'trees': [], 'probs': [] if self.args.prob else None}
         for batch in progress_bar(loader):
             words, *feats, trees = batch
             word_mask = words.ne(self.args.pad_index)[:, 1:]
@@ -508,9 +504,7 @@ class VIConstituencyParser(CRFConstituencyParser):
             s_span, s_pair, s_label = self.model(words, feats)
             s_span = self.model.inference((s_span, s_pair), mask)
             chart_preds = self.model.decode(s_span, s_label, mask)
-            preds['trees'].extend([Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                                   for tree, chart in zip(trees, chart_preds)])
+            batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+                           for tree, chart in zip(trees, chart_preds)]
             if self.args.prob:
-                preds['probs'].extend([prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)])
-
-        return preds
+                batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]

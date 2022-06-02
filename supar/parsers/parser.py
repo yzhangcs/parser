@@ -134,14 +134,12 @@ class Parser(object):
 
         logger.info("Making predictions on the dataset")
         start = datetime.now()
-        preds = self._predict(dataset.loader)
+        self._predict(dataset.loader)
         elapsed = datetime.now() - start
 
-        for name, value in preds.items():
-            setattr(dataset, name, value)
         if pred is not None and is_master():
             logger.info(f"Saving predicted results to {pred}")
-            self.transform.save(pred, dataset.sentences)
+            self.transform.save(pred, dataset)
         logger.info(f"{elapsed}s elapsed, {len(dataset) / elapsed.total_seconds():.2f} Sents/s")
 
         return dataset
