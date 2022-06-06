@@ -91,9 +91,12 @@ class Parser(object):
                 logger.info(f"{t}s elapsed\n")
             if self.patience < 1:
                 break
+        dist.barrier()
         parser = self.load(**args)
         loss, metric = parser._evaluate(test.loader)
-        parser.save(args.path)
+        # only allow the master device to save models
+        if is_master():
+            parser.save(args.path)
 
         logger.info(f"Epoch {self.best_e} saved")
         logger.info(f"{'dev:':5} {self.best_metric}")
