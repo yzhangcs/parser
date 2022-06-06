@@ -34,13 +34,14 @@ def parse(local_rank, args):
     Parser = args.pop('Parser')
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
-    init_logger(logger, f"{args.path}.{args.mode}.log", 'a' if args.get('checkpoint') else 'w')
     if torch.cuda.device_count() > 1:
         dist.init_process_group(backend='nccl',
                                 init_method=f"{os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}",
                                 world_size=torch.cuda.device_count(),
                                 rank=local_rank)
     torch.cuda.set_device(local_rank)
+    # init logger after dist has been initialized
+    init_logger(logger, f"{args.path}.{args.mode}.log", 'a' if args.get('checkpoint') else 'w')
     logger.info('\n' + str(args))
 
     args.local_rank = local_rank
