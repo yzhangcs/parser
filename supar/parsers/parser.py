@@ -92,6 +92,7 @@ class Parser(object):
             if self.patience < 1:
                 break
         dist.barrier()
+        args.device = args.local_rank
         parser = self.load(**args)
         loss, metric = parser._evaluate(test.loader)
         # only allow the master device to save models
@@ -163,7 +164,7 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, reload=False, src='github', checkpoint=False, **kwargs):
+    def load(cls, path, reload=False, src='github', checkpoint=False, device=None, **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -181,6 +182,9 @@ class Parser(object):
                 Default: ``'github'``.
             checkpoint (bool):
                 If ``True``, loads all checkpoint states to restore the training process. Default: ``False``.
+            device (:class:`torch.device`):
+                The desired device of the model parameters.
+                If ``None``, uses the default GPU device (if available), otherwise uses the CPU device. Default: ``None``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -191,17 +195,20 @@ class Parser(object):
         """
 
         args = Config(**locals())
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        state = torch.load(path if os.path.exists(path) else download(supar.MODEL[src].get(path, path), reload=reload))
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if not os.path.exists(path):
+            path = download(supar.MODEL[src].get(path, path), reload=reload)
+        state = torch.load(path)
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args'].update(args)
         model = cls.MODEL(**args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
-        model.to(args.device)
+        model.to(device)
         transform = state['transform']
         parser = cls(args, model, transform)
-        parser.checkpoint_state_dict = state['checkpoint_state_dict'] if args.checkpoint else None
+        parser.checkpoint_state_dict = state['checkpoint_state_dict'] if checkpoint else None
         return parser
 
     def save(self, path):
