@@ -117,13 +117,14 @@ class Sampler(torch.utils.data.Sampler):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.sizes, self.buckets = zip(*[(size, bucket) for size, bucket in buckets.items()])
-        # number of chunks in each bucket, clipped by range [1, len(bucket)]
-        self.chunks = [min(len(bucket), max(round(size * len(bucket) / batch_size), 1))
-                       for size, bucket in zip(self.sizes, self.buckets)]
-
-        self.rank = dist.get_rank() if distributed else 0
-        self.replicas = dist.get_world_size() if distributed else 1
-        self.samples = sum(self.chunks) // self.replicas
+        # number of batches in each bucket, clipped by range [1, len(bucket)]
+        self.n_batches = [min(len(bucket), max(round(size * len(bucket) / batch_size), 1))
+                          for size, bucket in zip(self.sizes, self.buckets)]
+        self.rank, self.n_replicas, self.n_samples = 0, 1, sum(self.n_batches)
+        if distributed:
+            self.rank = dist.get_rank()
+            self.n_replicas = dist.get_world_size()
+            self.n_samples = sum(self.n_batches) // self.n_replicas + int(self.rank < sum(self.n_batches) % self.n_replicas)
         self.epoch = 1
 
     def __iter__(self):
@@ -133,18 +134,17 @@ class Sampler(torch.utils.data.Sampler):
         # if `shuffle=True`, shuffle both the buckets and samples in each bucket
         # for distributed training, make sure each process generates the same random sequence at each epoch
         range_fn = torch.arange if not self.shuffle else lambda x: torch.randperm(x, generator=g)
-        # TODO: more elegant way to deal with uneven data, which we directly discard right now
         for i in range_fn(len(self.buckets)).tolist():
-            split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1 for j in range(self.chunks[i])]
-            # DON'T use `torch.chunk` which may return wrong number of chunks
+            split_sizes = [(len(self.buckets[i]) - j - 1) // self.n_batches[i] + 1 for j in range(self.n_batches[i])]
+            # DON'T use `torch.chunk` which may return wrong number of batches
             for batch in range_fn(len(self.buckets[i])).split(split_sizes):
-                if count == self.samples:
+                if count == self.n_samples:
                     break
-                if total % self.replicas == self.rank:
+                if total % self.n_replicas == self.rank:
                     count += 1
                     yield [self.buckets[i][j] for j in batch.tolist()]
                 total += 1
         self.epoch += 1
 
     def __len__(self):
-        return self.samples
+        return self.n_samples

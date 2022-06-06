@@ -71,7 +71,8 @@ class Parser(object):
             start = datetime.now()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
-            self._train(train.loader)
+            with self.model.join():
+                self._train(train.loader)
             loss, dev_metric = self._evaluate(dev.loader)
             logger.info(f"{'dev:':5} loss: {loss:.4f} - {dev_metric}")
             loss, test_metric = self._evaluate(test.loader)
@@ -195,8 +196,8 @@ class Parser(object):
         """
 
         args = Config(**locals())
-        if device is None:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if args.device is None:
+            args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if not os.path.exists(path):
             path = download(supar.MODEL[src].get(path, path), reload=reload)
         state = torch.load(path)
@@ -205,7 +206,7 @@ class Parser(object):
         model = cls.MODEL(**args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
-        model.to(device)
+        model.to(args.device)
         transform = state['transform']
         parser = cls(args, model, transform)
         parser.checkpoint_state_dict = state['checkpoint_state_dict'] if checkpoint else None
