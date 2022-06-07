@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 
+import mmap
 import os
+import pickle
 import sys
 import unicodedata
 import urllib
 import zipfile
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 from omegaconf import DictConfig, OmegaConf
 from supar.utils.common import CACHE
+from supar.utils.logging import progress_bar
 
 
 def ispunct(token: str) -> bool:
@@ -263,6 +266,33 @@ def download(url: str, reload: bool = False) -> str:
             if reload or not os.path.exists(path):
                 f.extractall(os.path.dirname(path))
     return path
+
+
+def binarize(data: Iterable, fbin: str = None) -> None:
+    start, meta = 0, []
+    with open(fbin, 'wb') as f:
+        for s in progress_bar(data):
+            bytes = pickle.dumps(s)
+            f.write(bytes)
+            end = start + len(bytes)
+            meta.append((start, end))
+            start = end
+        meta = pickle.dumps(torch.tensor(meta))
+        # append the meta data to the end of the bin file
+        f.write(meta)
+        # record the positions of the meta data
+        f.write(pickle.dumps(torch.tensor((start, start + len(meta)))))
+
+
+def debinarize(fbin: str, offset: Optional[int] = 0, length: Optional[int] = 0, meta: bool = False) -> Any:
+    with open(fbin, 'rb') as f:
+        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+            if meta:
+                length = len(pickle.dumps(torch.tensor((offset, length))))
+                mm.seek(-length, os.SEEK_END)
+                offset, length = pickle.loads(mm.read(length)).tolist()
+            mm.seek(offset)
+            return pickle.loads(mm.read(length))
 
 
 def get_rng_state():
