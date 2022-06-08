@@ -274,9 +274,8 @@ def binarize(data: Iterable, fbin: str = None) -> None:
         for s in progress_bar(data):
             bytes = pickle.dumps(s)
             f.write(bytes)
-            end = start + len(bytes)
-            meta.append((start, end))
-            start = end
+            meta.append((start, len(bytes)))
+            start = start + len(bytes)
         meta = pickle.dumps(torch.tensor(meta))
         # append the meta data to the end of the bin file
         f.write(meta)
@@ -295,19 +294,6 @@ def debinarize(fbin: str, offset: Optional[int] = 0, length: Optional[int] = 0, 
             return pickle.loads(mm.read(length))
 
 
-def get_rng_state():
-    state = {'rng_state': torch.get_rng_state()}
-    if torch.cuda.is_available():
-        state['cuda_rng_state'] = torch.cuda.get_rng_state()
-    return state
-
-
-def set_rng_state(state: Dict):
-    torch.set_rng_state(state['rng_state'])
-    if torch.cuda.is_available():
-        torch.cuda.set_rng_state(state['cuda_rng_state'])
-
-
 def resolve_config(args: Union[Dict, DictConfig]) -> DictConfig:
     OmegaConf.register_new_resolver("eval", eval)
     return DictConfig(OmegaConf.to_container(args, resolve=True))
@@ -318,3 +304,16 @@ def collect_args(args: Union[Dict, DictConfig]) -> DictConfig:
         args.pop(key, None)
     args.update(args.pop('kwargs', dict()))
     return DictConfig(args)
+
+
+def get_rng_state() -> Dict[str, torch.Tensor]:
+    state = {'rng_state': torch.get_rng_state()}
+    if torch.cuda.is_available():
+        state['cuda_rng_state'] = torch.cuda.get_rng_state()
+    return state
+
+
+def set_rng_state(state: Dict) -> None:
+    torch.set_rng_state(state['rng_state'])
+    if torch.cuda.is_available():
+        torch.cuda.set_rng_state(state['cuda_rng_state'])
