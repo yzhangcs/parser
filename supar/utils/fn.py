@@ -4,6 +4,7 @@ import mmap
 import os
 import pickle
 import sys
+import tarfile
 import unicodedata
 import urllib
 import zipfile
@@ -248,24 +249,37 @@ def pad(
     return out_tensor
 
 
-def download(url: str, reload: bool = False) -> str:
-    path = os.path.join(CACHE, os.path.basename(urllib.parse.urlparse(url).path))
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    if reload:
-        os.remove(path) if os.path.exists(path) else None
+def download(url: str, path: Optional[str] = None, reload: bool = False, clean: bool = False) -> str:
+    filename = os.path.basename(urllib.parse.urlparse(url).path)
+    if path is None:
+        path = CACHE
+    os.makedirs(path, exist_ok=True)
+    path = os.path.join(path, filename)
+    if reload and os.path.exists(path):
+        os.remove(path)
     if not os.path.exists(path):
         sys.stderr.write(f"Downloading: {url} to {path}\n")
         try:
             torch.hub.download_url_to_file(url, path, progress=True)
         except (ValueError, urllib.error.URLError):
             raise RuntimeError(f"File {url} unavailable. Please try other sources.")
+    return extract(path, reload, clean)
+
+
+def extract(path: str, reload: bool = False, clean: bool = False) -> str:
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as f:
-            members = f.infolist()
-            path = os.path.join(os.path.dirname(path), members[0].filename)
-            if reload or not os.path.exists(path):
+            extracted = os.path.join(os.path.dirname(path), f.infolist()[0].filename)
+            if reload or not os.path.exists(extracted):
                 f.extractall(os.path.dirname(path))
-    return path
+    if tarfile.is_tarfile(path):
+        with tarfile.open(path) as f:
+            extracted = os.path.join(os.path.dirname(path), f.getnames()[0])
+            if reload or not os.path.exists(extracted):
+                f.extractall(os.path.dirname(path))
+    if clean:
+        os.remove(path)
+    return extracted
 
 
 def binarize(data: Iterable, fbin: str = None) -> None:
