@@ -71,7 +71,10 @@ class Parser(object):
             start = datetime.now()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
-            with self.model.join():
+            if dist.is_initialized():
+                with self.model.join():
+                    self._train(train.loader)
+            else:
                 self._train(train.loader)
             loss, dev_metric = self._evaluate(dev.loader)
             logger.info(f"{'dev:':5} loss: {loss:.4f} - {dev_metric}")
@@ -92,7 +95,8 @@ class Parser(object):
                 logger.info(f"{t}s elapsed\n")
             if self.patience < 1:
                 break
-        dist.barrier()
+        if dist.is_initialized():
+            dist.barrier()
         args.device = args.local_rank
         parser = self.load(**args)
         loss, metric = parser._evaluate(test.loader)
@@ -165,7 +169,7 @@ class Parser(object):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, reload=False, src='github', checkpoint=False, device=None, **kwargs):
+    def load(cls, path, reload=False, src='github', checkpoint=False, **kwargs):
         r"""
         Loads a parser with data fields and pretrained model parameters.
 
@@ -183,9 +187,6 @@ class Parser(object):
                 Default: ``'github'``.
             checkpoint (bool):
                 If ``True``, loads all checkpoint states to restore the training process. Default: ``False``.
-            device (:class:`torch.device`):
-                The desired device of the model parameters.
-                If ``None``, uses the default GPU device (if available), otherwise uses the CPU device. Default: ``None``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
@@ -196,11 +197,10 @@ class Parser(object):
         """
 
         args = Config(**locals())
-        if args.device is None:
-            args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if not os.path.exists(path):
             path = download(supar.MODEL[src].get(path, path), reload=reload)
-        state = torch.load(path)
+        state = torch.load(path, map_location='cpu')
         cls = supar.PARSER[state['name']] if cls.NAME is None else cls
         args = state['args'].update(args)
         model = cls.MODEL(**args)
