@@ -10,4 +10,5 @@ Utils
    field
    transform
    vocab
+   embed
    fn

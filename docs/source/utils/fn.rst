@@ -1,4 +1,4 @@
-Functions
+Function
 ==================================================================
 
 .. currentmodule:: supar.utils.fn

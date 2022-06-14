@@ -1,4 +1,4 @@
-Functions
+Function
 ==================================================================
 
 .. currentmodule:: supar.structs.fn
