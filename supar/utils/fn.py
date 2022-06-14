@@ -15,7 +15,6 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import torch
 from omegaconf import DictConfig, OmegaConf
 from supar.utils.common import CACHE
-from supar.utils.logging import progress_bar
 
 
 def ispunct(token: str) -> bool:
@@ -291,11 +290,11 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
     return extracted
 
 
-def binarize(data: Iterable, fbin: str = None) -> None:
+def binarize(data: Iterable, fbin: str = None, byte: bool = False) -> None:
     start, meta = 0, []
     with open(fbin, 'wb') as f:
-        for s in progress_bar(data):
-            bytes = pickle.dumps(s)
+        for s in data:
+            bytes = pickle.dumps(s) if not byte else s
             f.write(bytes)
             meta.append((start, len(bytes)))
             start = start + len(bytes)
@@ -306,15 +305,16 @@ def binarize(data: Iterable, fbin: str = None) -> None:
         f.write(pickle.dumps(torch.tensor((start, start + len(meta)))))
 
 
-def debinarize(fbin: str, offset: Optional[int] = 0, length: Optional[int] = 0, meta: bool = False) -> Any:
-    with open(fbin, 'rb') as f:
-        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-            if meta:
-                length = len(pickle.dumps(torch.tensor((offset, length))))
-                mm.seek(-length, os.SEEK_END)
-                offset, length = pickle.loads(mm.read(length)).tolist()
-            mm.seek(offset)
-            return pickle.loads(mm.read(length))
+def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bool = False, byte: bool = False) -> Any:
+    offset, length = position
+    with open(fbin, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+        if meta:
+            length = len(pickle.dumps(torch.tensor(position)))
+            mm.seek(-length, os.SEEK_END)
+            offset, length = pickle.loads(mm.read(length)).tolist()
+        mm.seek(offset)
+        bytes = mm.read(length)
+        return bytes if byte else pickle.loads(bytes)
 
 
 def resolve_config(args: Union[Dict, DictConfig]) -> DictConfig:
