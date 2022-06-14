@@ -14,15 +14,13 @@ $ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-en -p model
     --train ptb/train.conllx  \
     --dev ptb/dev.conllx  \
     --test ptb/test.conllx  \
-    --embed glove.6B.100d.txt  \
-    --unk unk
+    --embed glove-6b-100
 # crf2o
 $ python -u -m supar.cmds.crf2o_dep train -b -d 0 -c crf2o-dep-en -p model -f char  \
     --train ptb/train.conllx  \
     --dev ptb/dev.conllx  \
     --test ptb/test.conllx  \
-    --embed glove.6B.100d.txt  \
-    --unk unk  \
+    --embed glove-6b-100  \
     --mbr  \
     --proj
 ```
@@ -84,8 +82,7 @@ $ python -u -m supar.cmds.crf_con train -b -d 0 -c crf-con-en -p model -f char -
     --train ptb/train.pid  \
     --dev ptb/dev.pid  \
     --test ptb/test.pid  \
-    --embed glove.6B.100d.txt  \
-    --unk unk  \
+    --embed glove-6b-100  \
     --mbr
 ```
 
@@ -179,15 +176,13 @@ $ python -u -m supar.cmds.biaffine_sdp train -b -c biaffine-sdp-en -d 0 -f tag c
     --train dm/train.conllu  \
     --dev dm/dev.conllu  \
     --test dm/test.conllu  \
-    --embed glove.6B.100d.txt  \
-    --unk unk
+    --embed glove-6b-100
 # vi
 $ python -u -m supar.cmds.vi_sdp train -b -c vi-sdp-en -d 1 -f tag char lemma -p model  \
     --train dm/train.conllu  \
     --dev dm/dev.conllu  \
     --test dm/test.conllu  \
-    --embed glove.6B.100d.txt  \
-    --unk unk  \
+    --embed glove-6b-100  \
     --inference mfvi
 ```
 

@@ -3,7 +3,7 @@
 from . import field, fn, metric, transform
 from .config import Config
 from .data import Dataset
-from .embedding import Embedding
+from .embed import Embedding
 from .field import ChartField, Field, RawField, SubwordField
 from .transform import CoNLL, Transform, Tree
 from .vocab import Vocab

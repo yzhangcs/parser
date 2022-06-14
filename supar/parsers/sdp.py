@@ -265,7 +265,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         train = Dataset(transform, args.train)
         if args.encoder != 'bert':
-            WORD.build(train, args.min_freq, (Embedding.load(args.embed, args.unk) if args.embed else None))
+            WORD.build(train, args.min_freq, (Embedding.load(args.embed) if args.embed else None), lambda x: x / torch.std(x))
             if TAG is not None:
                 TAG.build(train)
             if CHAR is not None:

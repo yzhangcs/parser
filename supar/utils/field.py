@@ -7,7 +7,7 @@ from typing import Callable, List, Optional
 
 import torch
 from supar.utils.data import Dataset
-from supar.utils.embedding import Embedding
+from supar.utils.embed import Embedding
 from supar.utils.fn import pad
 from supar.utils.vocab import Vocab
 
@@ -191,7 +191,7 @@ class Field(RawField):
 
         return sequence
 
-    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None) -> None:
+    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None, norm: Callable = None) -> None:
         r"""
         Constructs a :class:`~supar.utils.vocab.Vocab` object for this field from the dataset.
         If the vocabulary has already existed, this function will have no effect.
@@ -204,6 +204,8 @@ class Field(RawField):
                 The minimum frequency needed to include a token in the vocabulary. Default: 1.
             embed (Embedding):
                 An Embedding object, words in which will be extended to the vocabulary. Default: ``None``.
+            norm (Callable):
+                Callable function used for normalizing embedding weights. Default: ``None``.
         """
 
         if hasattr(self, 'vocab'):
@@ -226,7 +228,8 @@ class Field(RawField):
             self.vocab.extend(tokens)
             self.embed = torch.zeros(len(self.vocab), embed.dim)
             self.embed[self.vocab[tokens]] = embed.vectors
-            self.embed /= torch.std(self.embed)
+            if norm is not None:
+                self.embed = norm(self.embed)
 
     def transform(self, sequences: List[List[str]]) -> List[torch.Tensor]:
         r"""
@@ -306,7 +309,7 @@ class SubwordField(Field):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
         super().__init__(*args, **kwargs)
 
-    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None) -> None:
+    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None, norm: Callable = None) -> None:
         if hasattr(self, 'vocab'):
             return
         sequences = getattr(dataset, self.name)
@@ -328,6 +331,8 @@ class SubwordField(Field):
             self.vocab.extend(tokens)
             self.embed = torch.zeros(len(self.vocab), embed.dim)
             self.embed[self.vocab[tokens]] = embed.vectors
+            if norm is not None:
+                self.embed = norm(self.embed)
 
     def transform(self, sequences: List[List[str]]) -> List[torch.Tensor]:
         sequences = [[self.preprocess(token) for token in seq]

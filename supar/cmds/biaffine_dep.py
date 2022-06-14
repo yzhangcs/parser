@@ -25,9 +25,7 @@ def main():
     subparser.add_argument('--train', default='data/ptb/train.conllx', help='path to train file')
     subparser.add_argument('--dev', default='data/ptb/dev.conllx', help='path to dev file')
     subparser.add_argument('--test', default='data/ptb/test.conllx', help='path to test file')
-    subparser.add_argument('--embed', default='data/glove.6B.100d.txt', help='path to pretrained embeddings')
-    subparser.add_argument('--unk', default='unk', help='unk token in pretrained embeddings')
-    subparser.add_argument('--n-embed', default=100, type=int, help='dimension of embeddings')
+    subparser.add_argument('--embed', default='glove-6b-100', help='file or embeddings available at `supar.utils.Embedding`')
     subparser.add_argument('--bert', default='bert-base-cased', help='which BERT model to use')
     # evaluate
     subparser = subparsers.add_parser('evaluate', help='Evaluate the specified parser and dataset.')
