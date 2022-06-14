@@ -126,11 +126,11 @@ class Embedding(object):
     def __call__(self, key: Union[int, Iterable[int], torch.Tensor]) -> torch.Tensor:
         return self[key]
 
-    @property
+    @lazy_property
     def dim(self):
         return len(self[0])
 
-    @property
+    @lazy_property
     def unk_index(self):
         if self.unk is not None:
             return self.vocab[self.unk]
@@ -181,8 +181,10 @@ class GloVeEmbedding(Embedding):
     and the resulting representations showcase interesting linear substructures of the word vector space.
 
     Args:
-        lang (str):
-            Language code. Default: ``en``.
+        src (str):
+            Size of the source data for training. Default: ``6B``.
+        dim (int):
+            Which dimension of the embeddings to use. Default: 100.
         reload (bool):
                 If ``True``, forces a fresh download. Default: ``False``.
 
@@ -276,9 +278,16 @@ class TencentEmbedding(Embedding):
         dim (int):
             Which dimension of the embeddings to use. Currently 100 and 200 are available. Default: 100.
         large (bool):
-            If ``True``, uses large version with larger vocab size (12,287,936); 2,000,000 otherwise. Default: ``False``.
+            If ``True``, uses large version with larger vocab size (12,287,933); 2,000,000 otherwise. Default: ``False``.
         reload (bool):
             If ``True``, forces a fresh download. Default: ``False``.
+
+    Examples:
+        >>> from supar.utils.embed import Embedding
+        >>> Embedding.load('tencent-100')
+        TencentEmbedding(n_tokens=2000000, dim=100, skip_first=True, cache=True)
+        >>> Embedding.load('tencent-100-large')
+        TencentEmbedding(n_tokens=12287933, dim=100, skip_first=True, cache=True)
 
     .. _Tencent:
         https://ai.tencent.com/ailab/nlp/zh/download.html
@@ -319,7 +328,7 @@ PRETRAINED = {
     'fasttext-ru': {'_target_': FasttextEmbedding, 'lang': 'ru'},
     'giga-100': {'_target_': GigaEmbedding},
     'tencent-100': {'_target_': TencentEmbedding, 'dim': 100},
-    'tencent-100-b': {'_target_': TencentEmbedding, 'dim': 100, 'large': True},
+    'tencent-100-large': {'_target_': TencentEmbedding, 'dim': 100, 'large': True},
     'tencent-200': {'_target_': TencentEmbedding, 'dim': 200},
-    'tencent-200-b': {'_target_': TencentEmbedding, 'dim': 200, 'large': True},
+    'tencent-200-large': {'_target_': TencentEmbedding, 'dim': 200, 'large': True},
 }
