@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import gzip
 import mmap
 import os
 import pickle
+import shutil
 import sys
 import tarfile
 import unicodedata
@@ -272,11 +274,18 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
             extracted = os.path.join(os.path.dirname(path), f.infolist()[0].filename)
             if reload or not os.path.exists(extracted):
                 f.extractall(os.path.dirname(path))
-    if tarfile.is_tarfile(path):
+    elif tarfile.is_tarfile(path):
         with tarfile.open(path) as f:
             extracted = os.path.join(os.path.dirname(path), f.getnames()[0])
             if reload or not os.path.exists(extracted):
                 f.extractall(os.path.dirname(path))
+    elif path.endswith('.gz'):
+        extracted = path[:-3]
+        with gzip.open(path) as fgz:
+            with open(extracted, 'wb') as f:
+                shutil.copyfileobj(fgz, f)
+    else:
+        raise Warning("Not supported format. Return the archive file instead")
     if clean:
         os.remove(path)
     return extracted
