@@ -25,13 +25,14 @@ setup(
     ],
     install_requires=[
         'numpy<1.21.5; python_version<"3.8"',
-        'torch>=1.7.1',
+        'torch>=1.8',
         'transformers>=4.0.0',
         'hydra-core>=1.2',
         'nltk',
         'stanza',
         'omegaconf',
-        'dill'],
+        'dill',
+        'pathos'],
     extras_require={
         'elmo': ['allennlp']
     },
