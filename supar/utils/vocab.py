@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from typing import Tuple
+from typing import Tuple, Union
 
 
 class Vocab(object):
@@ -40,7 +40,7 @@ class Vocab(object):
     def __len__(self):
         return len(self.itos)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Union[int, str, Iterable]) -> Union[str, int, Iterable]:
         if isinstance(key, str):
             return self.stoi[key]
         elif not isinstance(key, Iterable):
