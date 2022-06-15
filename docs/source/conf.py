@@ -19,7 +19,7 @@ import supar
 # -- Project information -----------------------------------------------------
 
 project = 'SuPar'
-copyright = '2018-2021, Yu Zhang'
+copyright = '2018-2022, Yu Zhang'
 author = 'Yu Zhang'
 
 # The short X.Y version
