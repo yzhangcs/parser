@@ -697,8 +697,8 @@ class Batch(object):
         return [f.compose([s.fields[f.name] for s in self.sentences]) for f in transform.flattened_fields]
 
     def pin_memory(self):
-        for name in self.names:
-            for i in getattr(self, name):
+        for s in self.sentences:
+            for i in s.fields.values():
                 if isinstance(i, torch.Tensor):
                     i.pin_memory()
         return self
