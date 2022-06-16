@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Callable, List, Optional
+from typing import Callable, Iterable, List, Optional
 
 import torch
 from supar.utils.data import Dataset
 from supar.utils.embed import Embedding
 from supar.utils.fn import pad
+from supar.utils.logging import progress_bar
 from supar.utils.vocab import Vocab
 
 
@@ -36,10 +37,10 @@ class RawField(object):
     def preprocess(self, sequence: List) -> List:
         return self.fn(sequence) if self.fn is not None else sequence
 
-    def transform(self, sequences: List[List]) -> List[List]:
-        return [self.preprocess(seq) for seq in sequences]
+    def transform(self, sequences: Iterable[List]) -> Iterable[List]:
+        return (self.preprocess(seq) for seq in sequences)
 
-    def compose(self, sequences: List[List]) -> List[List]:
+    def compose(self, sequences: Iterable[List]) -> Iterable[List]:
         return sequences
 
 
@@ -102,6 +103,8 @@ class Field(RawField):
 
     def __repr__(self):
         s, params = f"({self.name}): {self.__class__.__name__}(", []
+        if hasattr(self, 'vocab'):
+            params.append(f"vocab_size={len(self.vocab)}")
         if self.pad is not None:
             params.append(f"pad={self.pad}")
         if self.unk is not None:
@@ -114,10 +117,7 @@ class Field(RawField):
             params.append(f"lower={self.lower}")
         if not self.use_vocab:
             params.append(f"use_vocab={self.use_vocab}")
-        s += ", ".join(params)
-        s += ")"
-
-        return s
+        return s + ', '.join(params) + ')'
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -210,9 +210,8 @@ class Field(RawField):
 
         if hasattr(self, 'vocab'):
             return
-        sequences = getattr(dataset, self.name)
         counter = Counter(token
-                          for seq in sequences
+                          for seq in progress_bar(getattr(dataset, self.name))
                           for token in self.preprocess(seq))
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
@@ -231,44 +230,43 @@ class Field(RawField):
             if norm is not None:
                 self.embed = norm(self.embed)
 
-    def transform(self, sequences: List[List[str]]) -> List[torch.Tensor]:
+    def transform(self, sequences: Iterable[List[str]]) -> Iterable[torch.Tensor]:
         r"""
         Turns a list of sequences that use this field into tensors.
 
         Each sequence is first preprocessed and then numericalized if needed.
 
         Args:
-            sequences (list[list[str]]):
+            sequences (Iterable[list[str]]):
                 A list of sequences.
 
         Returns:
             A list of tensors transformed from the input sequences.
         """
 
-        sequences = [self.preprocess(seq) for seq in sequences]
-        if self.use_vocab:
-            sequences = [self.vocab[seq] for seq in sequences]
-        if self.bos:
-            sequences = [[self.bos_index] + seq for seq in sequences]
-        if self.eos:
-            sequences = [seq + [self.eos_index] for seq in sequences]
-        sequences = [torch.tensor(seq) for seq in sequences]
+        for seq in sequences:
+            seq = self.preprocess(seq)
+            if self.use_vocab:
+                seq = self.vocab[seq]
+            if self.bos:
+                seq = [self.bos_index] + seq
+            if self.eos:
+                seq = seq + [self.eos_index]
+            yield torch.tensor(seq)
 
-        return sequences
-
-    def compose(self, sequences: List[torch.Tensor]) -> torch.Tensor:
+    def compose(self, batch: List[torch.Tensor]) -> torch.Tensor:
         r"""
         Composes a batch of sequences into a padded tensor.
 
         Args:
-            sequences (list[~torch.Tensor]):
+            batch (list[~torch.Tensor]):
                 A list of tensors.
 
         Returns:
             A padded tensor converted to proper device.
         """
 
-        return pad(sequences, self.pad_index).to(self.device)
+        return pad(batch, self.pad_index).to(self.device)
 
 
 class SubwordField(Field):
@@ -295,7 +293,7 @@ class SubwordField(Field):
                                  fix_len=20,
                                  tokenize=tokenizer.tokenize)
         >>> field.vocab = tokenizer.get_vocab()  # no need to re-build the vocab
-        >>> field.transform([['This', 'field', 'performs', 'token-level', 'tokenization']])[0]
+        >>> next(field.transform([['This', 'field', 'performs', 'token-level', 'tokenization']]))
         tensor([[  101,     0,     0],
                 [ 1188,     0,     0],
                 [ 1768,     0,     0],
@@ -312,9 +310,8 @@ class SubwordField(Field):
     def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None, norm: Callable = None) -> None:
         if hasattr(self, 'vocab'):
             return
-        sequences = getattr(dataset, self.name)
         counter = Counter(piece
-                          for seq in sequences
+                          for seq in progress_bar(getattr(dataset, self.name))
                           for token in seq
                           for piece in self.preprocess(token))
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
@@ -334,23 +331,19 @@ class SubwordField(Field):
             if norm is not None:
                 self.embed = norm(self.embed)
 
-    def transform(self, sequences: List[List[str]]) -> List[torch.Tensor]:
-        sequences = [[self.preprocess(token) for token in seq]
-                     for seq in sequences]
-        if self.fix_len <= 0:
-            self.fix_len = max(len(token) for seq in sequences for token in seq)
-        if self.use_vocab:
-            sequences = [[[self.vocab[i] if i in self.vocab else self.unk_index for i in token] if token else [self.unk_index]
-                          for token in seq] for seq in sequences]
-        if self.bos:
-            sequences = [[[self.bos_index]] + seq for seq in sequences]
-        if self.eos:
-            sequences = [seq + [[self.eos_index]] for seq in sequences]
-        lens = [min(self.fix_len, max(len(ids) for ids in seq)) for seq in sequences]
-        sequences = [pad([torch.tensor(ids[:i]) for ids in seq], self.pad_index, i)
-                     for i, seq in zip(lens, sequences)]
-
-        return sequences
+    def transform(self, sequences: Iterable[List[str]]) -> Iterable[torch.Tensor]:
+        for seq in sequences:
+            seq = [self.preprocess(token) for token in seq]
+            if self.use_vocab:
+                seq = [[self.vocab[i] if i in self.vocab else self.unk_index for i in token] if token else [self.unk_index]
+                       for token in seq]
+            if self.bos:
+                seq = [[self.bos_index]] + seq
+            if self.eos:
+                seq = seq + [[self.eos_index]]
+            if self.fix_len > 0:
+                seq = [ids[:self.fix_len] for ids in seq]
+            yield pad([torch.tensor(ids) for ids in seq], self.pad_index)
 
 
 class ChartField(Field):
@@ -364,7 +357,7 @@ class ChartField(Field):
                      [    None,    None,    None,    None,    'NP',    None],
                      [    None,    None,    None,    None,    None,  'S|<>'],
                      [    None,    None,    None,    None,    None,    None]]
-        >>> field.transform([chart])[0]
+        >>> next(field.transform([chart]))
         tensor([[ -1,  37,  -1,  -1, 107,  79],
                 [ -1,  -1, 120,  -1, 112,  -1],
                 [ -1,  -1,  -1, 120,  86,  -1],
@@ -375,19 +368,19 @@ class ChartField(Field):
 
     def build(self, dataset: Dataset, min_freq: int = 1) -> None:
         counter = Counter(i
-                          for chart in getattr(dataset, self.name)
+                          for chart in progress_bar(getattr(dataset, self.name))
                           for row in self.preprocess(chart)
                           for i in row if i is not None)
 
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
 
-    def transform(self, charts: List[List[List]]) -> List[torch.Tensor]:
-        charts = [self.preprocess(chart) for chart in charts]
-        if self.use_vocab:
-            charts = [[[self.vocab[i] if i is not None else -1 for i in row] for row in chart] for chart in charts]
-        if self.bos:
-            charts = [[[self.bos_index]*len(chart[0])] + chart for chart in charts]
-        if self.eos:
-            charts = [chart + [[self.eos_index]*len(chart[0])] for chart in charts]
-        charts = [torch.tensor(chart) for chart in charts]
-        return charts
+    def transform(self, charts: Iterable[List[List]]) -> Iterable[torch.Tensor]:
+        for chart in charts:
+            chart = self.preprocess(chart)
+            if self.use_vocab:
+                chart = [[self.vocab[i] if i is not None else -1 for i in row] for row in chart]
+            if self.bos:
+                chart = [[self.bos_index]*len(chart[0])] + chart
+            if self.eos:
+                chart = chart + [[self.eos_index]*len(chart[0])]
+            yield torch.tensor(chart)

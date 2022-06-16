@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from typing import Dict, Iterable, List, Union
 
 import torch
 import torch.distributed as dist
-from supar.utils.fn import kmeans
+from supar.utils.fn import debinarize, kmeans
+from supar.utils.logging import logger
 from supar.utils.transform import Batch, Transform
 from torch.utils.data import DataLoader
 
@@ -23,6 +25,13 @@ class Dataset(torch.utils.data.Dataset):
             The instance holds a series of loading and processing behaviours with regard to the specific data format.
         data (str or Iterable):
             A filename or a list of instances that will be passed into :meth:`transform.load`.
+        cache (bool):
+            If ``True``, tries to use the previously cached binarized data for fast loading.
+            In this way, sentences are loaded on-the-fly according to the meta data.
+            If ``False``, all sentences will be directly loaded into the memory.
+            Default: ``False``.
+        binarize (bool):
+            If ``True``, binarizes the dataset once building it. Only works if ``cache=True``. Default: ``False``.
         kwargs (dict):
             Together with `data`, kwargs will be passed into :meth:`transform.load` to control the loading behaviour.
 
@@ -32,18 +41,39 @@ class Dataset(torch.utils.data.Dataset):
         sentences (list[Sentence]):
             A list of sentences loaded from the data.
             Each sentence includes fields obeying the data format defined in ``transform``.
+            If ``cache=True``, each is a pointer to the sentence stored in the cache file.
     """
 
     def __init__(
         self,
         transform: Transform,
         data: Union[str, Iterable],
+        cache: bool = False,
+        binarize: bool = False,
         **kwargs
     ) -> Dataset:
         super(Dataset, self).__init__()
 
         self.transform = transform
-        self.sentences = transform.load(data, **kwargs)
+        self.data = data
+        self.cache = cache
+        self.binarize = binarize
+        self.kwargs = kwargs
+
+        if cache:
+            if not isinstance(data, str) or not os.path.exists(data):
+                raise RuntimeError("Only files are allowed in order to load/save the binarized data")
+            self.fbin = data + '.pt'
+            if self.binarize or not os.path.exists(self.fbin):
+                logger.info(f"Seeking to cache the data to {self.fbin} first")
+            else:
+                try:
+                    self.sentences = debinarize(self.fbin, meta=True)
+                except Exception:
+                    raise RuntimeError(f"Error found while debinarizing {self.fbin}, which may have been corrupted. "
+                                       "Try re-binarizing it first")
+        else:
+            self.sentences = list(transform.load(data, **kwargs))
 
     def __repr__(self):
         s = f"{self.__class__.__name__}("
@@ -60,21 +90,15 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.sentences)
 
     def __getitem__(self, index):
-        return self.sentences[index]
+        return debinarize(self.fbin, self.sentences[index]) if self.cache else self.sentences[index]
 
     def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
+        if name not in {f.name for f in self.transform.flattened_fields}:
+            raise AttributeError
+        if self.cache:
+            sentences = self if os.path.exists(self.fbin) else self.transform.load(self.data, **self.kwargs)
+            return (getattr(sentence, name) for sentence in sentences)
         return [getattr(sentence, name) for sentence in self.sentences]
-
-    def __setattr__(self, name, value):
-        if 'sentences' in self.__dict__ and name in self.sentences[0]:
-            # restore the order of sequences in the buckets
-            indices = torch.tensor([i for bucket in self.buckets.values() for i in bucket]).argsort()
-            for index, sentence in zip(indices, self.sentences):
-                setattr(sentence, name, value[index])
-        else:
-            self.__dict__[name] = value
 
     def __getstate__(self):
         return self.__dict__
@@ -91,8 +115,16 @@ class Dataset(torch.utils.data.Dataset):
         n_workers: int = 0,
         pin_memory: bool = True
     ) -> Dataset:
+        fields = self.transform.flattened_fields
         # numericalize all fields
-        fields = self.transform(self.sentences)
+        if self.cache:
+            # if not forced to do binarization and the binarized file already exists, directly load the meta file
+            if os.path.exists(self.fbin) and not self.binarize:
+                self.sentences = debinarize(self.fbin, meta=True)
+            else:
+                self.sentences = self.transform(self.transform.load(self.data, **self.kwargs), self.fbin)
+        else:
+            self.sentences = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
         self.buckets = dict(zip(*kmeans([len(s.fields[fields[0].name]) for s in self], n_buckets)))
         self.loader = DataLoader(dataset=self,

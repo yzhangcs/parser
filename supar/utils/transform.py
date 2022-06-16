@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
 from collections.abc import Iterable
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 import nltk
+import pathos.multiprocessing as mp
 import torch
-from supar.utils.logging import progress_bar
+import torch.distributed as dist
+from supar.utils.fn import binarize, debinarize
+from supar.utils.logging import logger, progress_bar
+from supar.utils.parallel import is_master
 from supar.utils.tokenizer import Tokenizer
 from torch.distributions.utils import lazy_property
 
@@ -40,12 +47,49 @@ class Transform(object):
         s = '\n' + '\n'.join([f" {f}" for f in self.flattened_fields]) + '\n'
         return f"{self.__class__.__name__}({s})"
 
-    def __call__(self, sentences):
+    def __call__(self, sentences: Union[str, Iterable[Sentence]], fbin=None, workers=32, chunksize=1000):
+        if fbin is None:
+            sentences = list(sentences)
+            for sentence in progress_bar(sentences):
+                for f in self.flattened_fields:
+                    sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
+            return sentences
+
+        @contextmanager
+        def cache(transform, sentences):
+            ftemp = tempfile.mkdtemp()
+            ft, fs = os.path.join(ftemp, 'transform'), os.path.join(ftemp, 'sentences')
+            fb = os.path.join(ftemp, os.path.basename(fbin))
+            global flattened_fields
+            flattened_fields = self.flattened_fields
+            binarize(sentences, fs)
+            sentences = debinarize(fs, meta=True)
+            try:
+                yield ((sentences[s:s+chunksize], ft, fs, f"{fb}.{i}")
+                       for i, s in enumerate(range(0, len(sentences), chunksize)))
+            finally:
+                del flattened_fields
+                shutil.rmtree(ftemp)
+
+        def numericalize(sentences, ft, fs, fb):
+            chunk = []
+            fields = flattened_fields
+            for s in progress_bar(sentences):
+                sentence = debinarize(fs, s)
+                for f in fields:
+                    sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
+                chunk.append(sentence)
+            binarize(chunk, fb)
+            return [(fb, i) for i in debinarize(fb, meta=True)]
+
         # numericalize the fields of each sentence
-        for sentence in progress_bar(sentences):
-            for f in self.flattened_fields:
-                sentence.fields[f.name] = f.transform([getattr(sentence, f.name)])[0]
-        return self.flattened_fields
+        if is_master():
+            with cache(self, sentences) as chunks, mp.Pool(workers) as pool:
+                results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
+                binarize((debinarize(fb, i, byte=True) for r in results for fb, i in r.get()), fbin, True)
+        if dist.is_initialized():
+            dist.barrier()
+        return debinarize(fbin, meta=True)
 
     def __getitem__(self, index):
         return getattr(self, self.fields[index])
@@ -360,18 +404,21 @@ class CoNLL(Transform):
                 data = [data] if isinstance(data[0], str) else data
             lines = '\n'.join([self.toconll(i) for i in data]).split('\n')
 
-        i, start, sentences = 0, 0, []
-        for line in progress_bar(lines):
-            if not line:
-                sentences.append(CoNLLSentence(self, lines[start:i]))
-                start = i + 1
-            i += 1
-        if proj:
-            sentences = [i for i in sentences if self.isprojective(list(map(int, i.arcs)))]
-        if max_len is not None:
-            sentences = [i for i in sentences if len(i) < max_len]
-
-        return sentences
+        index, sentence = 0, []
+        for line in lines:
+            line = line.strip()
+            if len(line) == 0:
+                sentence = CoNLLSentence(self, sentence, index)
+                if proj and not self.isprojective(list(map(int, sentence.arcs))):
+                    logger.warning(f"Sentence {index} is not projective. Discarding it!")
+                elif max_len is not None and len(sentence) >= max_len:
+                    logger.warning(f"Sentence {index} has {len(sentence)} tokens, exceeding {max_len}. Discarding it!")
+                else:
+                    yield sentence
+                    index += 1
+                sentence = []
+            else:
+                sentence.append(line)
 
 
 class Tree(Transform):
@@ -644,25 +691,24 @@ class Tree(Transform):
         """
 
         if isinstance(data, str) and os.path.exists(data):
-            with open(data, 'r') as f:
-                trees = [nltk.Tree.fromstring(s) for s in f]
-            self.root = trees[0].label()
+            data = open(data, 'r')
         else:
             if lang is not None:
                 tokenizer = Tokenizer(lang)
                 data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
             else:
                 data = [data] if isinstance(data[0], str) else data
-            trees = [self.totree(i, self.root) for i in data]
 
-        i, sentences = 0, []
-        for tree in progress_bar(trees):
-            sentences.append(TreeSentence(self, tree))
-            i += 1
-        if max_len is not None:
-            sentences = [i for i in sentences if len(i) < max_len]
-
-        return sentences
+        index = 0
+        for s in data:
+            tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
+            sentence = TreeSentence(self, tree, index)
+            if max_len is not None and len(sentence) >= max_len:
+                logger.warning(f"Sentence {index} has {len(sentence)} tokens, exceeding {max_len}. Discarding it!")
+            else:
+                yield sentence
+                index += 1
+        self.root = tree.label()
 
 
 class Batch(object):
@@ -706,7 +752,8 @@ class Batch(object):
 
 class Sentence(object):
 
-    def __init__(self, transform):
+    def __init__(self, transform, index: Optional[int] = None) -> Sentence:
+        self.index = index
         # mapping from each nested field to their proper position
         self.maps = dict()
         # original values and numericalized values of each position
@@ -754,6 +801,8 @@ class CoNLLSentence(Sentence):
         lines (list[str]):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
+        index (Optional[int]):
+            Index of the sentence in the corpus. Default: ``None``.
 
     Examples:
         >>> lines = ['# text = But I found the location wonderful and the neighbors very kind.',
@@ -791,8 +840,8 @@ class CoNLLSentence(Sentence):
         12      .       _       _       _       _       3       punct   _       _
     """
 
-    def __init__(self, transform: CoNLL, lines: List[str]) -> CoNLLSentence:
-        super().__init__(transform)
+    def __init__(self, transform: CoNLL, lines: List[str], index: Optional[int] = None) -> CoNLLSentence:
+        super().__init__(transform, index)
 
         self.values = []
         # record annotations for post-recovery
@@ -822,10 +871,12 @@ class TreeSentence(Sentence):
             A :class:`Tree` object.
         tree (nltk.tree.Tree):
             A :class:`nltk.tree.Tree` object.
+        index (Optional[int]):
+            Index of the sentence in the corpus. Default: ``None``.
     """
 
-    def __init__(self, transform: Tree, tree: nltk.Tree) -> TreeSentence:
-        super().__init__(transform)
+    def __init__(self, transform: Tree, tree: nltk.Tree, index: Optional[int] = None) -> TreeSentence:
+        super().__init__(transform, index)
 
         words, tags = zip(*tree.pos())
         chart = [[None]*(len(words)+1) for _ in range(len(words)+1)]
