@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 class Transform(object):
     r"""
-    A Transform object corresponds to a specific data format.
-    It holds several instances of data fields that provide instructions for preprocessing and numericalizing, etc.
+    A Transform object corresponds to a specific data format, which holds several instances of data fields
+    that provide instructions for preprocessing and numericalization, etc.
 
     Attributes:
         training (bool):
@@ -323,19 +323,19 @@ class CoNLL(Transform):
 
     def load(
         self,
-        data: Union[str, List[List]],
+        data: Union[str, Iterable],
         lang: Optional[str] = None,
         proj: bool = False,
         max_len: Optional[int] = None,
         **kwargs
-    ) -> List[CoNLLSentence]:
+    ) -> Iterable[CoNLLSentence]:
         r"""
         Loads the data in CoNLL-X format.
         Also supports for loading data from CoNLL-U file with comments and non-integer IDs.
 
         Args:
-            data (list[list] or str):
-                A list of instances or a filename.
+            data (str or Iterable):
+                A filename or a list of instances.
             lang (str):
                 Language code (e.g., ``en``) or language name (e.g., ``English``) for the text to tokenize.
                 ``None`` if tokenization is not required.
@@ -623,15 +623,15 @@ class Tree(Transform):
 
     def load(
         self,
-        data: Union[str, List[List]],
+        data: Union[str, Iterable],
         lang: Optional[str] = None,
         max_len: Optional[int] = None,
         **kwargs
     ) -> List[TreeSentence]:
         r"""
         Args:
-            data (list[list] or str):
-                A list of instances or a filename.
+            data (str or Iterable):
+                A filename or a list of instances.
             lang (str):
                 Language code (e.g., ``en``) or language name (e.g., ``English``) for the text to tokenize.
                 ``None`` if tokenization is not required.
@@ -642,6 +642,7 @@ class Tree(Transform):
         Returns:
             A list of :class:`TreeSentence` instances.
         """
+
         if isinstance(data, str) and os.path.exists(data):
             with open(data, 'r') as f:
                 trees = [nltk.Tree.fromstring(s) for s in f]

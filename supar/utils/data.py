@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Union
+from typing import Dict, Iterable, List, Union
 
 import torch
 import torch.distributed as dist
@@ -21,8 +21,8 @@ class Dataset(torch.utils.data.Dataset):
         transform (Transform):
             An instance of :class:`~supar.utils.transform.Transform` or its derivations.
             The instance holds a series of loading and processing behaviours with regard to the specific data format.
-        data (list[list] or str):
-            A list of instances or a filename that will be passed into :meth:`transform.load`.
+        data (str or Iterable):
+            A filename or a list of instances that will be passed into :meth:`transform.load`.
         kwargs (dict):
             Together with `data`, kwargs will be passed into :meth:`transform.load` to control the loading behaviour.
 
@@ -34,7 +34,12 @@ class Dataset(torch.utils.data.Dataset):
             Each sentence includes fields obeying the data format defined in ``transform``.
     """
 
-    def __init__(self, transform: Transform, data: Union[str, List[List]], **kwargs) -> Dataset:
+    def __init__(
+        self,
+        transform: Transform,
+        data: Union[str, Iterable],
+        **kwargs
+    ) -> Dataset:
         super(Dataset, self).__init__()
 
         self.transform = transform
