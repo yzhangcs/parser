@@ -33,14 +33,16 @@ class BiaffineDependencyParser(Parser):
         self.TAG = self.transform.CPOS
         self.ARC, self.REL = self.transform.HEAD, self.transform.DEPREL
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -61,14 +63,16 @@ class BiaffineDependencyParser(Parser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000,
                  punct=False, tree=True, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             punct (bool):
@@ -90,12 +94,12 @@ class BiaffineDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
                 tree=True, proj=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -103,7 +107,9 @@ class BiaffineDependencyParser(Parser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -157,7 +163,7 @@ class BiaffineDependencyParser(Parser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, rels = batch
+            words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -189,7 +195,7 @@ class BiaffineDependencyParser(Parser):
         total_loss, metric = 0, AttachmentMetric()
 
         for batch in loader:
-            words, texts, *feats, arcs, rels = batch
+            words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -213,7 +219,7 @@ class BiaffineDependencyParser(Parser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, texts, *feats = batch
+            words, texts, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -335,14 +341,16 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -365,14 +373,16 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, punct=False,
                  mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             punct (bool):
@@ -396,12 +406,12 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -409,7 +419,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -465,7 +477,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, rels = batch
+            words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -497,7 +509,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
         total_loss, metric = 0, AttachmentMetric()
 
         for batch in loader:
-            words, texts, *feats, arcs, rels = batch
+            words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -522,7 +534,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         CRF = DependencyCRF if self.args.proj else MatrixTree
         for batch in progress_bar(loader):
-            words, _, *feats = batch
+            words, _, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -550,14 +562,16 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -580,14 +594,16 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, punct=False,
                  mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             punct (bool):
@@ -611,12 +627,12 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -624,7 +640,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -680,7 +698,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, sibs, rels = batch
+            words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -712,7 +730,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         total_loss, metric = 0, AttachmentMetric()
 
         for batch in loader:
-            words, texts, *feats, arcs, sibs, rels = batch
+            words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -736,7 +754,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, texts, *feats = batch
+            words, texts, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -860,14 +878,16 @@ class VIDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -888,14 +908,16 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, punct=False,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, punct=False,
                  tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             punct (bool):
@@ -917,12 +939,12 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
                 tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -930,7 +952,9 @@ class VIDependencyParser(BiaffineDependencyParser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -984,7 +1008,7 @@ class VIDependencyParser(BiaffineDependencyParser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, rels = batch
+            words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -1016,7 +1040,7 @@ class VIDependencyParser(BiaffineDependencyParser):
         total_loss, metric = 0, AttachmentMetric()
 
         for batch in loader:
-            words, texts, *feats, arcs, rels = batch
+            words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
@@ -1040,7 +1064,7 @@ class VIDependencyParser(BiaffineDependencyParser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, texts, *feats = batch
+            words, texts, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence

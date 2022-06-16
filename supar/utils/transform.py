@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 import nltk
-from supar.utils.logging import get_logger, progress_bar
+import torch
+from supar.utils.logging import progress_bar
 from supar.utils.tokenizer import Tokenizer
+from torch.distributions.utils import lazy_property
 
 if TYPE_CHECKING:
     from supar.utils import Dataset, Field
-
-logger = get_logger(__name__)
 
 
 class Transform(object):
@@ -666,28 +666,41 @@ class Tree(Transform):
 
 class Batch(object):
 
-    def __init__(self, transform, sentences):
+    def __init__(self, sentences: Iterable[Sentence]) -> Batch:
         self.sentences = sentences
-        self.fields = {f.name: f.compose([s.fields[f.name] for s in sentences]) for f in transform.flattened_fields}
-        self.names = list(self.fields.keys())
 
     def __repr__(self):
         return f'{self.__class__.__name__}({", ".join([f"{name}" for name in self.names])})'
 
-    def __getitem__(self, index):
-        return self.fields[self.names[index]]
-
     def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
         return [getattr(s, name) for s in self.sentences]
 
-    def __setattr__(self, name, value):
-        if name not in ('sentences', 'fields', 'names'):
+    def __setattr__(self, name: str, value: Iterable[Any]):
+        if name not in ('sentences', 'names'):
             for s, v in zip(self.sentences, value):
                 setattr(s, name, v)
         else:
             self.__dict__[name] = value
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+    @lazy_property
+    def names(self):
+        return [name for name in self.sentences[0].fields]
+
+    def compose(self, transform: Transform):
+        return [f.compose([s.fields[f.name] for s in self.sentences]) for f in transform.flattened_fields]
+
+    def pin_memory(self):
+        for name in self.names:
+            for i in getattr(self, name):
+                if isinstance(i, torch.Tensor):
+                    i.pin_memory()
+        return self
 
 
 class Sentence(object):
@@ -695,32 +708,26 @@ class Sentence(object):
     def __init__(self, transform):
         # mapping from each nested field to their proper position
         self.maps = dict()
-        # names of each field
-        self.keys = set()
+        # original values and numericalized values of each position
+        self.values, self.fields = [], {}
         for i, field in enumerate(transform):
             if not isinstance(field, Iterable):
                 field = [field]
             for f in field:
                 if f is not None:
                     self.maps[f.name] = i
-                    self.keys.add(f.name)
-        # original values and numericalized values of each position
-        self.values = []
-        self.fields = {key: None for key in self.keys}
+                    self.fields[f.name] = None
 
-    def __contains__(self, key):
-        return key in self.keys
+    def __contains__(self, name):
+        return name in self.fields
 
     def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        elif name in self.maps:
+        if name in self.fields:
             return self.values[self.maps[name]]
-        else:
-            raise AttributeError
+        raise AttributeError
 
     def __setattr__(self, name, value):
-        if 'keys' in self.__dict__ and name in self:
+        if 'fields' in self.__dict__ and name in self:
             index = self.maps[name]
             if index >= len(self.values):
                 self.__dict__[name] = value

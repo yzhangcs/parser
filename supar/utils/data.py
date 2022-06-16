@@ -72,20 +72,29 @@ class Dataset(torch.utils.data.Dataset):
             self.__dict__[name] = value
 
     def __getstate__(self):
-        # only pickle the Transform object and sentences
-        return {'transform': self.transform, 'sentences': self.sentences}
+        return self.__dict__
 
     def __setstate__(self, state):
         self.__dict__.update(state)
 
-    def build(self, batch_size: int, n_buckets: int = 1, shuffle: bool = False, distributed: bool = False) -> Dataset:
+    def build(
+        self,
+        batch_size: int,
+        n_buckets: int = 1,
+        shuffle: bool = False,
+        distributed: bool = False,
+        n_workers: int = 0,
+        pin_memory: bool = True
+    ) -> Dataset:
         # numericalize all fields
         fields = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
         self.buckets = dict(zip(*kmeans([len(s.fields[fields[0].name]) for s in self], n_buckets)))
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
-                                 collate_fn=lambda x: Batch(self.transform, x))
+                                 num_workers=n_workers,
+                                 collate_fn=lambda x: Batch(x),
+                                 pin_memory=pin_memory)
         return self
 
 

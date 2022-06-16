@@ -31,7 +31,7 @@ class CRFConstituencyParser(Parser):
         self.TREE = self.transform.TREE
         self.CHART = self.transform.CHART
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               mbr=True,
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
@@ -39,10 +39,12 @@ class CRFConstituencyParser(Parser):
               **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -63,17 +65,19 @@ class CRFConstituencyParser(Parser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, mbr=True,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, mbr=True,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
                  verbose=True,
                  **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             mbr (bool):
@@ -95,11 +99,12 @@ class CRFConstituencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False, mbr=True, verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, mbr=True,
+                verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -107,7 +112,9 @@ class CRFConstituencyParser(Parser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -159,7 +166,7 @@ class CRFConstituencyParser(Parser):
         bar = progress_bar(loader)
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, trees, charts = batch
+            words, *feats, trees, charts = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
@@ -183,7 +190,7 @@ class CRFConstituencyParser(Parser):
         total_loss, metric = 0, SpanMetric()
 
         for batch in loader:
-            words, *feats, trees, charts = batch
+            words, *feats, trees, charts = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
@@ -206,7 +213,7 @@ class CRFConstituencyParser(Parser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, *feats, trees = batch
+            words, *feats, trees = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
@@ -326,17 +333,19 @@ class VIConstituencyParser(CRFConstituencyParser):
     NAME = 'vi-constituency'
     MODEL = VIConstituencyModel
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
               verbose=True,
               **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -355,17 +364,19 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
                  verbose=True,
                  **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             delete (set[str]):
@@ -385,11 +396,11 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False,  verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,  verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -397,7 +408,9 @@ class VIConstituencyParser(CRFConstituencyParser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -449,7 +462,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         bar = progress_bar(loader)
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, trees, charts = batch
+            words, *feats, trees, charts = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
@@ -473,7 +486,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         total_loss, metric = 0, SpanMetric()
 
         for batch in loader:
-            words, *feats, trees, charts = batch
+            words, *feats, trees, charts = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
@@ -496,7 +509,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, *feats, trees = batch
+            words, *feats, trees = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)

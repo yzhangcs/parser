@@ -28,7 +28,7 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
               clip=5.0, epochs=5000, patience=100, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
@@ -38,9 +38,9 @@ class Parser(object):
         if dist.is_initialized():
             batch_size = batch_size // dist.get_world_size()
         logger.info("Loading the data")
-        train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized())
-        dev = Dataset(self.transform, args.dev).build(batch_size, buckets)
-        test = Dataset(self.transform, args.test).build(batch_size, buckets)
+        train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized(), workers)
+        dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, False, workers)
+        test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, False, workers)
         logger.info(f"\n{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
 
         if args.encoder == 'lstm':
@@ -109,14 +109,14 @@ class Parser(object):
         logger.info(f"{'test:':5} {metric}")
         logger.info(f"{self.elapsed}s elapsed, {self.elapsed / epoch}s/epoch")
 
-    def evaluate(self, data, buckets=8, batch_size=5000, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
 
         self.transform.train()
         logger.info("Loading the data")
         dataset = Dataset(self.transform, data)
-        dataset.build(batch_size, buckets)
+        dataset.build(batch_size, buckets, False, False, workers)
         logger.info(f"\n{dataset}")
 
         logger.info("Evaluating the dataset")
@@ -128,7 +128,7 @@ class Parser(object):
 
         return loss, metric
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, prob=False, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
 
@@ -138,7 +138,7 @@ class Parser(object):
 
         logger.info("Loading the data")
         dataset = Dataset(self.transform, data, lang=lang)
-        dataset.build(batch_size, buckets)
+        dataset.build(batch_size, buckets, False, False, workers)
         logger.info(f"\n{dataset}")
 
         logger.info("Making predictions on the dataset")

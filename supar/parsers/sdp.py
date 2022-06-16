@@ -32,13 +32,15 @@ class BiaffineSemanticDependencyParser(Parser):
         self.TAG = self.transform.POS
         self.LABEL = self.transform.PHEAD
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1, verbose=True, **kwargs):
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -51,13 +53,15 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             verbose (bool):
@@ -71,11 +75,11 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -83,7 +87,9 @@ class BiaffineSemanticDependencyParser(Parser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -133,7 +139,7 @@ class BiaffineSemanticDependencyParser(Parser):
         bar, metric = progress_bar(loader), ChartMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, labels = batch
+            words, *feats, labels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
@@ -160,7 +166,7 @@ class BiaffineSemanticDependencyParser(Parser):
         total_loss, metric = 0, ChartMetric()
 
         for batch in loader:
-            words, *feats, labels = batch
+            words, *feats, labels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
@@ -180,7 +186,7 @@ class BiaffineSemanticDependencyParser(Parser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, *feats = batch
+            words, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
@@ -309,13 +315,15 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         self.TAG = self.transform.POS
         self.LABEL = self.transform.PHEAD
 
-    def train(self, train, dev, test, buckets=32, batch_size=5000, update_steps=1, verbose=True, **kwargs):
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (list[list] or str):
+            train/dev/test (str or Iterable):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
@@ -328,13 +336,15 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, batch_size=5000, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
         r"""
         Args:
-            data (str):
-                The data for evaluation, both list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             verbose (bool):
@@ -348,11 +358,11 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, batch_size=5000, verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
         r"""
         Args:
-            data (list[list] or str):
-                The data for prediction, both a list of instances and filename are allowed.
+            data (str or Iterable):
+                The data for prediction. Both a filename and a list of instances are allowed.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -360,7 +370,9 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 ``None`` if tokenization is not required.
                 Default: ``None``.
             buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
+                The number of buckets that sentences are assigned to. Default: 8.
+            workers (int):
+                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
@@ -410,7 +422,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         bar, metric = progress_bar(loader), ChartMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, labels = batch
+            words, *feats, labels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
@@ -437,7 +449,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         total_loss, metric = 0, ChartMetric()
 
         for batch in loader:
-            words, *feats, labels = batch
+            words, *feats, labels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
@@ -457,7 +469,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         self.model.eval()
 
         for batch in progress_bar(loader):
-            words, *feats = batch
+            words, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
