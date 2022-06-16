@@ -2,7 +2,8 @@
 
 import logging
 import os
-from logging import Logger, Handler
+import sys
+from logging import Handler, Logger
 from typing import Iterable, Optional
 
 from supar.utils.parallel import is_master
@@ -43,10 +44,17 @@ def init_logger(
         if path:
             os.makedirs(os.path.dirname(path) or './', exist_ok=True)
             handlers.append(logging.FileHandler(path, mode))
-    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S',
-                        level=level,
-                        handlers=handlers)
+    if sys.version >= '3.8':
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S',
+                            level=level,
+                            handlers=handlers,
+                            force=True)
+    else:
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S',
+                            level=level,
+                            handlers=handlers)
     logger.setLevel(logging.INFO if is_master() and verbose else logging.WARNING)
 
 
