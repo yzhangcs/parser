@@ -2,15 +2,17 @@
 
 import os
 from datetime import datetime, timedelta
+import shutil
 
 import dill
 import supar
 import torch
 import torch.distributed as dist
 from supar.utils import Config, Dataset
+import tempfile
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
-from supar.utils.logging import init_logger, logger
+from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import is_master
@@ -128,7 +130,7 @@ class Parser(object):
 
         return loss, metric
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
 
@@ -143,15 +145,30 @@ class Parser(object):
 
         logger.info("Making predictions on the dataset")
         start = datetime.now()
-        self._predict(dataset.loader)
-        elapsed = datetime.now() - start
+        with tempfile.TemporaryDirectory() as t:
+            # we have clustered the sentences by length here to speed up prediction,
+            # so the order of the yielded sentences can't be guaranteed
+            for s in self._predict(dataset.loader):
+                if args.cache:
+                    with open(os.path.join(t, f"{s.index}"), 'w') as f:
+                        f.write(str(s) + '\n')
+            elapsed = datetime.now() - start
 
-        if pred is not None and is_master():
-            logger.info(f"Saving predicted results to {pred}")
-            self.transform.save(pred, dataset)
+            if pred is not None and is_master():
+                logger.info(f"Saving predicted results to {pred}")
+                with open(pred, 'w') as f:
+                    # merge all predictions into one single file
+                    if args.cache:
+                        for s in progress_bar(sorted(os.listdir(t), key=lambda x: int(x))):
+                            with open(os.path.join(t, s)) as s:
+                                shutil.copyfileobj(s, f)
+                    else:
+                        for s in progress_bar(dataset):
+                            f.write(str(s) + '\n')
         logger.info(f"{elapsed}s elapsed, {len(dataset) / elapsed.total_seconds():.2f} Sents/s")
 
-        return dataset
+        if not cache:
+            return dataset
 
     def _train(self, loader):
         raise NotImplementedError

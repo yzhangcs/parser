@@ -94,7 +94,7 @@ class BiaffineDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
                 tree=True, proj=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -116,6 +116,8 @@ class BiaffineDependencyParser(Parser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             tree (bool):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
@@ -126,7 +128,7 @@ class BiaffineDependencyParser(Parser):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -233,6 +235,7 @@ class BiaffineDependencyParser(Parser):
             batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
             if self.args.prob:
                 batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.softmax(-1).unbind())]
+            yield from batch.sentences
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -408,7 +411,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -430,6 +433,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             tree (bool):
@@ -442,7 +447,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -553,6 +558,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             if self.args.prob:
                 arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
                 batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
+            yield from batch.sentences
 
 
 class CRF2oDependencyParser(BiaffineDependencyParser):
@@ -631,7 +637,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -653,6 +659,8 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             tree (bool):
@@ -665,7 +673,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -775,6 +783,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             if self.args.prob:
                 arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
                 batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
+            yield from batch.sentences
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -945,7 +954,7 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
                 tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -967,6 +976,8 @@ class VIDependencyParser(BiaffineDependencyParser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             tree (bool):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
@@ -977,7 +988,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -1085,3 +1096,4 @@ class VIDependencyParser(BiaffineDependencyParser):
             batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
             if self.args.prob:
                 batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, s_arc.unbind())]
+            yield from batch.sentences

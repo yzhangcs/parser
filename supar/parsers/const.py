@@ -99,7 +99,7 @@ class CRFConstituencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, mbr=True,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False, mbr=True,
                 verbose=True, **kwargs):
         r"""
         Args:
@@ -121,6 +121,8 @@ class CRFConstituencyParser(Parser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             verbose (bool):
@@ -129,7 +131,7 @@ class CRFConstituencyParser(Parser):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -227,6 +229,7 @@ class CRFConstituencyParser(Parser):
                            for tree, chart in zip(trees, chart_preds)]
             if self.args.prob:
                 batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
+            yield from batch.sentences
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -398,7 +401,8 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False,  verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+                verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -419,6 +423,8 @@ class VIConstituencyParser(CRFConstituencyParser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             verbose (bool):
@@ -427,7 +433,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -525,3 +531,4 @@ class VIConstituencyParser(CRFConstituencyParser):
                            for tree, chart in zip(trees, chart_preds)]
             if self.args.prob:
                 batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
+            yield from batch.sentences

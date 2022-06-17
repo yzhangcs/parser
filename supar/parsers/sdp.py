@@ -75,7 +75,8 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+                verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -96,13 +97,15 @@ class BiaffineSemanticDependencyParser(Parser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -201,6 +204,7 @@ class BiaffineSemanticDependencyParser(Parser):
                             for i, chart in zip(lens, label_preds)]
             if self.args.prob:
                 batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.softmax(-1).unbind())]
+            yield from batch.sentences
 
     @classmethod
     def build(cls, path, min_freq=7, fix_len=20, **kwargs):
@@ -360,7 +364,8 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+                verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -381,13 +386,15 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 The number of tokens in each batch. Default: 5000.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
-            A :class:`~supar.utils.Dataset` object that stores the predicted results.
+            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
         """
 
         return super().predict(**Config().update(locals()))
@@ -487,3 +494,4 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                             for i, chart in zip(lens, label_preds)]
             if self.args.prob:
                 batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())]
+            yield from batch.sentences

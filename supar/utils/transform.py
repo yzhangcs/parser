@@ -22,7 +22,7 @@ from supar.utils.tokenizer import Tokenizer
 from torch.distributions.utils import lazy_property
 
 if TYPE_CHECKING:
-    from supar.utils import Dataset, Field
+    from supar.utils import Field
 
 
 class Transform(object):
@@ -128,11 +128,6 @@ class Transform(object):
     @property
     def tgt(self):
         raise AttributeError
-
-    def save(self, path: str, data: Dataset) -> None:
-        with open(path, 'w') as f:
-            for i in data:
-                f.write(str(i) + '\n')
 
 
 class CoNLL(Transform):
