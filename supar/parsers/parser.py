@@ -115,7 +115,7 @@ class Parser(object):
 
         self.transform.train()
         logger.info("Loading the data")
-        dataset = Dataset(self.transform, data)
+        dataset = Dataset(self.transform, **args)
         dataset.build(batch_size, buckets, False, False, workers)
         logger.info(f"\n{dataset}")
 
@@ -137,7 +137,7 @@ class Parser(object):
             self.transform.append(Field('probs'))
 
         logger.info("Loading the data")
-        dataset = Dataset(self.transform, data, lang=lang)
+        dataset = Dataset(self.transform, **args)
         dataset.build(batch_size, buckets, False, False, workers)
         logger.info(f"\n{dataset}")
 

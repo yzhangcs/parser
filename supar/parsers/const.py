@@ -104,7 +104,9 @@ class CRFConstituencyParser(Parser):
         r"""
         Args:
             data (str or Iterable):
-                The data for prediction. Both a filename and a list of instances are allowed.
+                The data for prediction.
+                - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
+                - a list of instances.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):
@@ -400,7 +402,9 @@ class VIConstituencyParser(CRFConstituencyParser):
         r"""
         Args:
             data (str or Iterable):
-                The data for prediction. Both a filename and a list of instances are allowed.
+                The data for prediction.
+                - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
+                - a list of instances.
             pred (str):
                 If specified, the predicted results will be saved to the file. Default: ``None``.
             lang (str):

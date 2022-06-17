@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 from collections.abc import Iterable
 from contextlib import contextmanager
+from io import StringIO
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 import nltk
@@ -393,23 +395,31 @@ class CoNLL(Transform):
             A list of :class:`CoNLLSentence` instances.
         """
 
+        isconll = False
+        if lang is not None:
+            tokenizer = Tokenizer(lang)
         if isinstance(data, str) and os.path.exists(data):
-            with open(data, 'r') as f:
-                lines = [line.strip() for line in f]
+            f = open(data)
+            if data.endswith('.txt'):
+                lines = (i
+                         for s in f
+                         if len(s) > 1
+                         for i in StringIO(self.toconll(s.split() if lang is None else tokenizer(s)) + '\n'))
+            else:
+                lines, isconll = f, True
         else:
             if lang is not None:
-                tokenizer = Tokenizer(lang)
-                data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
+                data = [tokenizer(s) for s in ([data] if isinstance(data, str) else data)]
             else:
                 data = [data] if isinstance(data[0], str) else data
-            lines = '\n'.join([self.toconll(i) for i in data]).split('\n')
+            lines = (i for s in data for i in StringIO(self.toconll(s) + '\n'))
 
         index, sentence = 0, []
-        for line in lines:
+        for line in progress_bar(lines):
             line = line.strip()
             if len(line) == 0:
                 sentence = CoNLLSentence(self, sentence, index)
-                if proj and not self.isprojective(list(map(int, sentence.arcs))):
+                if isconll and proj and not self.isprojective(list(map(int, sentence.arcs))):
                     logger.warning(f"Sentence {index} is not projective. Discarding it!")
                 elif max_len is not None and len(sentence) >= max_len:
                     logger.warning(f"Sentence {index} has {len(sentence)} tokens, exceeding {max_len}. Discarding it!")
@@ -492,10 +502,11 @@ class Tree(Transform):
 
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
-        mapped = []
+        mapped, pattern = [], re.compile(f'[{"".join(special_tokens)}]')
         for i, (word, pos) in enumerate(tokens):
-            if word in special_tokens:
-                tokens[i] = (special_tokens[word], pos)
+            match = re.search(pattern, word)
+            if match:
+                tokens[i] = (pattern.sub(lambda m: special_tokens[m[0]], word), pos)
                 mapped.append((i, word))
         tree = nltk.Tree.fromstring(f"({root} {' '.join([f'( ({pos} {word}))' for word, pos in tokens])})")
         for i, word in mapped:
@@ -690,19 +701,27 @@ class Tree(Transform):
             A list of :class:`TreeSentence` instances.
         """
 
+        if lang is not None:
+            tokenizer = Tokenizer(lang)
         if isinstance(data, str) and os.path.exists(data):
-            data = open(data, 'r')
+            if data.endswith('.txt'):
+                data = (s.split() if lang is None else tokenizer(s) for s in open(data) if len(s) > 1)
+            else:
+                data = open(data)
         else:
             if lang is not None:
-                tokenizer = Tokenizer(lang)
                 data = [tokenizer(i) for i in ([data] if isinstance(data, str) else data)]
             else:
                 data = [data] if isinstance(data[0], str) else data
 
         index = 0
-        for s in data:
-            tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
-            sentence = TreeSentence(self, tree, index)
+        for s in progress_bar(data):
+            try:
+                tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
+                sentence = TreeSentence(self, tree, index)
+            except ValueError:
+                logger.warning(f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!")
+                continue
             if max_len is not None and len(sentence) >= max_len:
                 logger.warning(f"Sentence {index} has {len(sentence)} tokens, exceeding {max_len}. Discarding it!")
             else:
