@@ -290,22 +290,34 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
     return extracted
 
 
-def binarize(data: Iterable, fbin: str = None, byte: bool = False) -> None:
+def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> str:
     start, meta = 0, []
     with open(fbin, 'wb') as f:
-        for s in data:
-            bytes = pickle.dumps(s) if not byte else s
-            f.write(bytes)
-            meta.append((start, len(bytes)))
-            start = start + len(bytes)
-        meta = pickle.dumps(torch.tensor(meta))
+        # in this case, data should be a list of binarized files
+        if merge:
+            for i in data:
+                meta.append(debinarize(i, meta=True))
+                meta[-1][:, 0] += start
+                with open(i, 'rb') as fi:
+                    length = int(meta[-1][:, 1].sum())
+                    f.write(fi.read(length))
+                start = start + length
+            meta = pickle.dumps(torch.cat(meta))
+        else:
+            for i in data:
+                bytes = pickle.dumps(i)
+                f.write(bytes)
+                meta.append((start, len(bytes)))
+                start = start + len(bytes)
+            meta = pickle.dumps(torch.tensor(meta))
         # append the meta data to the end of the bin file
         f.write(meta)
         # record the positions of the meta data
-        f.write(pickle.dumps(torch.tensor((start, start + len(meta)))))
+        f.write(pickle.dumps(torch.tensor((start, len(meta)))))
+    return fbin
 
 
-def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bool = False, byte: bool = False) -> Any:
+def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bool = False) -> Any:
     offset, length = position
     with open(fbin, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
         if meta:
@@ -314,7 +326,7 @@ def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bo
             offset, length = pickle.loads(mm.read(length)).tolist()
         mm.seek(offset)
         bytes = mm.read(length)
-        return bytes if byte else pickle.loads(bytes)
+        return pickle.loads(bytes)
 
 
 def resolve_config(args: Union[Dict, DictConfig]) -> DictConfig:

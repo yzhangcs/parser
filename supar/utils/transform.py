@@ -82,13 +82,13 @@ class Transform(object):
                     sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
                 chunk.append(sentence)
             binarize(chunk, fb)
-            return [(fb, i) for i in debinarize(fb, meta=True)]
+            return fb
 
         # numericalize the fields of each sentence
         if is_master():
             with cache(self, sentences) as chunks, mp.Pool(workers) as pool:
                 results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
-                binarize((debinarize(fb, i, byte=True) for r in results for fb, i in r.get()), fbin, True)
+                binarize((r.get() for r in results), fbin, merge=True)
         if dist.is_initialized():
             dist.barrier()
         return debinarize(fbin, meta=True)
