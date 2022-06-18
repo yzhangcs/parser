@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 
 import os
-from datetime import datetime, timedelta
 import shutil
+import tempfile
+from datetime import datetime, timedelta
+from functools import reduce
 
 import dill
 import supar
 import torch
 import torch.distributed as dist
 from supar.utils import Config, Dataset
-import tempfile
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
-from supar.utils.parallel import is_master
+from supar.utils.parallel import gather, is_master
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
@@ -118,12 +119,15 @@ class Parser(object):
         self.transform.train()
         logger.info("Loading the data")
         dataset = Dataset(self.transform, **args)
-        dataset.build(batch_size, buckets, False, False, workers)
+        dataset.build(batch_size, buckets, False, dist.is_initialized(), workers)
         logger.info(f"\n{dataset}")
 
         logger.info("Evaluating the dataset")
         start = datetime.now()
         loss, metric = self._evaluate(dataset.loader)
+        if dist.is_initialized():
+            loss, metric = reduce(lambda x, y: (x[0] + y[0], x[1] + y[1]), gather((loss, metric)))
+            loss = loss / dist.get_world_size()
         elapsed = datetime.now() - start
         logger.info(f"loss: {loss:.4f} - {metric}")
         logger.info(f"{elapsed}s elapsed, {len(dataset)/elapsed.total_seconds():.2f} Sents/s")
@@ -140,7 +144,7 @@ class Parser(object):
 
         logger.info("Loading the data")
         dataset = Dataset(self.transform, **args)
-        dataset.build(batch_size, buckets, False, False, workers)
+        dataset.build(batch_size, buckets, False, dist.is_initialized(), workers)
         logger.info(f"\n{dataset}")
 
         logger.info("Making predictions on the dataset")
@@ -154,17 +158,25 @@ class Parser(object):
                         f.write(str(s) + '\n')
             elapsed = datetime.now() - start
 
+            if dist.is_initialized():
+                dist.barrier()
+            if args.cache:
+                tdirs = gather(t) if dist.is_initialized() else (t,)
             if pred is not None and is_master():
                 logger.info(f"Saving predicted results to {pred}")
                 with open(pred, 'w') as f:
                     # merge all predictions into one single file
                     if args.cache:
-                        for s in progress_bar(sorted(os.listdir(t), key=lambda x: int(x))):
-                            with open(os.path.join(t, s)) as s:
+                        sentences = (os.path.join(i, s) for i in tdirs for s in os.listdir(i))
+                        for i in progress_bar(sorted(sentences, key=lambda x: int(os.path.basename(x)))):
+                            with open(i) as s:
                                 shutil.copyfileobj(s, f)
                     else:
                         for s in progress_bar(dataset):
                             f.write(str(s) + '\n')
+            # exit util all files have been merged
+            if dist.is_initialized():
+                dist.barrier()
         logger.info(f"{elapsed}s elapsed, {len(dataset) / elapsed.total_seconds():.2f} Sents/s")
 
         if not cache:

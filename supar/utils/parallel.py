@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from typing import Any, Iterable
+
 import torch.distributed as dist
 import torch.nn as nn
 
@@ -27,3 +29,9 @@ def get_free_port():
     port = str(s.getsockname()[1])
     s.close()
     return port
+
+
+def gather(obj: Any) -> Iterable[Any]:
+    objs = [None] * dist.get_world_size()
+    dist.all_gather_object(objs, obj)
+    return objs
