@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import tempfile
 from collections.abc import Iterable
@@ -472,7 +471,6 @@ class Tree(Transform):
         cls,
         tokens: List[Union[str, Tuple]],
         root: str = '',
-        special_tokens: Dict = {'(': '-LRB-', ')': '-RRB-'}
     ) -> nltk.Tree:
         r"""
         Converts a list of tokens to a :class:`nltk.tree.Tree`.
@@ -483,9 +481,6 @@ class Tree(Transform):
                 This can be either a list of words or word/pos pairs.
             root (str):
                 The root label of the tree. Default: ''.
-            special_tokens (dict):
-                A dict for normalizing some special tokens to avoid tree construction crash.
-                Default: {'(': '-LRB-', ')': '-RRB-'}.
 
         Returns:
             A :class:`nltk.tree.Tree` object.
@@ -497,16 +492,7 @@ class Tree(Transform):
 
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
-        mapped, pattern = [], re.compile(f'[{"".join(special_tokens)}]')
-        for i, (word, pos) in enumerate(tokens):
-            match = re.search(pattern, word)
-            if match:
-                tokens[i] = (pattern.sub(lambda m: special_tokens[m[0]], word), pos)
-                mapped.append((i, word))
-        tree = nltk.Tree.fromstring(f"({root} {' '.join([f'( ({pos} {word}))' for word, pos in tokens])})")
-        for i, word in mapped:
-            tree[i][0][0] = word
-        return tree
+        return nltk.Tree(root, [nltk.Tree('', [nltk.Tree(pos, [word])]) for word, pos in tokens])
 
     @classmethod
     def binarize(cls, tree: nltk.Tree) -> nltk.Tree:
