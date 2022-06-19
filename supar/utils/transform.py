@@ -63,7 +63,7 @@ class Transform(object):
             fb = os.path.join(ftemp, os.path.basename(fbin))
             global flattened_fields
             flattened_fields = self.flattened_fields
-            binarize(sentences, fs)
+            binarize(progress_bar(sentences), fs)
             sentences = debinarize(fs, meta=True)
             try:
                 yield ((sentences[s:s+chunksize], ft, fs, f"{fb}.{i}")
@@ -409,7 +409,7 @@ class CoNLL(Transform):
             lines = (i for s in data for i in StringIO(self.toconll(s) + '\n'))
 
         index, sentence = 0, []
-        for line in progress_bar(lines):
+        for line in lines:
             line = line.strip()
             if len(line) == 0:
                 sentence = CoNLLSentence(self, sentence, index)
@@ -696,7 +696,7 @@ class Tree(Transform):
                 data = [data] if isinstance(data[0], str) else data
 
         index = 0
-        for s in progress_bar(data):
+        for s in data:
             try:
                 tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
                 sentence = TreeSentence(self, tree, index)
@@ -878,10 +878,11 @@ class TreeSentence(Sentence):
     def __init__(self, transform: Tree, tree: nltk.Tree, index: Optional[int] = None) -> TreeSentence:
         super().__init__(transform, index)
 
-        words, tags = zip(*tree.pos())
-        chart = [[None]*(len(words)+1) for _ in range(len(words)+1)]
-        for i, j, label in Tree.factorize(Tree.binarize(tree)[0]):
-            chart[i][j] = label
+        words, tags, chart = *zip(*tree.pos()), None
+        if transform.training:
+            chart = [[None]*(len(words)+1) for _ in range(len(words)+1)]
+            for i, j, label in Tree.factorize(Tree.binarize(tree)[0]):
+                chart[i][j] = label
         self.values = [words, tags, tree, chart]
 
     def __repr__(self):
