@@ -17,6 +17,7 @@ from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import gather, is_master
+from torch.cuda.amp import GradScaler
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
@@ -31,7 +32,7 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               clip=5.0, epochs=5000, patience=100, **kwargs):
         args = self.args.update(locals())
         init_logger(logger, verbose=args.verbose)
@@ -57,6 +58,7 @@ class Parser(object):
                  for n, p in self.model.named_parameters()],
                 args.lr)
             self.scheduler = get_linear_schedule_with_warmup(self.optimizer, int(steps*args.warmup), steps)
+        self.scaler = GradScaler(enabled=args.amp)
 
         if dist.is_initialized():
             self.model = DDP(self.model, device_ids=[args.local_rank], find_unused_parameters=True)
@@ -65,6 +67,7 @@ class Parser(object):
         if self.args.checkpoint:
             self.optimizer.load_state_dict(self.checkpoint_state_dict.pop('optimizer_state_dict'))
             self.scheduler.load_state_dict(self.checkpoint_state_dict.pop('scheduler_state_dict'))
+            self.scaler.load_state_dict(self.checkpoint_state_dict.pop('scaler_state_dict'))
             set_rng_state(self.checkpoint_state_dict.pop('rng_state'))
             for k, v in self.checkpoint_state_dict.items():
                 setattr(self, k, v)
@@ -263,6 +266,7 @@ class Parser(object):
         checkpoint_state_dict = {k: getattr(self, k) for k in ['epoch', 'best_e', 'patience', 'best_metric', 'elapsed']}
         checkpoint_state_dict.update({'optimizer_state_dict': self.optimizer.state_dict(),
                                       'scheduler_state_dict': self.scheduler.state_dict(),
+                                      'scaler_state_dict': self.scaler.state_dict(),
                                       'rng_state': get_rng_state()})
         state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)

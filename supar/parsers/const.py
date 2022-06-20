@@ -13,6 +13,7 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import SpanMetric
 from supar.utils.transform import Tree
+from torch.cuda.amp import autocast
 
 logger = get_logger(__name__)
 
@@ -31,7 +32,7 @@ class CRFConstituencyParser(Parser):
         self.TREE = self.transform.TREE
         self.CHART = self.transform.CHART
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               mbr=True,
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
@@ -47,6 +48,10 @@ class CRFConstituencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
             mbr (bool):
@@ -65,7 +70,8 @@ class CRFConstituencyParser(Parser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, mbr=True,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
+                 mbr=True,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
                  verbose=True,
@@ -80,6 +86,10 @@ class CRFConstituencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             delete (set[str]):
@@ -99,8 +109,8 @@ class CRFConstituencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False, mbr=True,
-                verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
+                mbr=True, verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -119,10 +129,12 @@ class CRFConstituencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             verbose (bool):
@@ -174,13 +186,16 @@ class CRFConstituencyParser(Parser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            s_span, s_label = self.model(words, feats)
-            loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_span, s_label = self.model(words, feats)
+                loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -198,8 +213,9 @@ class CRFConstituencyParser(Parser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            s_span, s_label = self.model(words, feats)
-            loss, s_span = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
+            with autocast(self.args.amp):
+                s_span, s_label = self.model(words, feats)
+                loss, s_span = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
             chart_preds = self.model.decode(s_span, s_label, mask)
             # since the evaluation relies on terminals,
             # the tree should be first built and then factorized
@@ -222,8 +238,9 @@ class CRFConstituencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             lens = mask[:, 0].sum(-1)
-            s_span, s_label = self.model(words, feats)
-            s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
+            with autocast(self.args.amp):
+                s_span, s_label = self.model(words, feats)
+                s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
             chart_preds = self.model.decode(s_span, s_label, mask)
             batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                            for tree, chart in zip(trees, chart_preds)]
@@ -338,7 +355,7 @@ class VIConstituencyParser(CRFConstituencyParser):
     NAME = 'vi-constituency'
     MODEL = VIConstituencyModel
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
               verbose=True,
@@ -353,6 +370,10 @@ class VIConstituencyParser(CRFConstituencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
             delete (set[str]):
@@ -369,7 +390,7 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
                  verbose=True,
@@ -384,6 +405,10 @@ class VIConstituencyParser(CRFConstituencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             delete (set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
@@ -401,7 +426,7 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 verbose=True, **kwargs):
         r"""
         Args:
@@ -421,10 +446,12 @@ class VIConstituencyParser(CRFConstituencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             verbose (bool):
@@ -476,13 +503,16 @@ class VIConstituencyParser(CRFConstituencyParser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            s_span, s_pair, s_label = self.model(words, feats)
-            loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_span, s_pair, s_label = self.model(words, feats)
+                loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -500,8 +530,9 @@ class VIConstituencyParser(CRFConstituencyParser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            s_span, s_pair, s_label = self.model(words, feats)
-            loss, s_span = self.model.loss(s_span, s_pair, s_label, charts, mask)
+            with autocast(self.args.amp):
+                s_span, s_pair, s_label = self.model(words, feats)
+                loss, s_span = self.model.loss(s_span, s_pair, s_label, charts, mask)
             chart_preds = self.model.decode(s_span, s_label, mask)
             # since the evaluation relies on terminals,
             # the tree should be first built and then factorized
@@ -524,8 +555,9 @@ class VIConstituencyParser(CRFConstituencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             lens = mask[:, 0].sum(-1)
-            s_span, s_pair, s_label = self.model(words, feats)
-            s_span = self.model.inference((s_span, s_pair), mask)
+            with autocast(self.args.amp):
+                s_span, s_pair, s_label = self.model(words, feats)
+                s_span = self.model.inference((s_span, s_pair), mask)
             chart_preds = self.model.decode(s_span, s_label, mask)
             batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
                            for tree, chart in zip(trees, chart_preds)]

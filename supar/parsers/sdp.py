@@ -13,6 +13,7 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import ChartMetric
 from supar.utils.transform import CoNLL
+from torch.cuda.amp import autocast
 
 logger = get_logger(__name__)
 
@@ -32,7 +33,8 @@ class BiaffineSemanticDependencyParser(Parser):
         self.TAG = self.transform.POS
         self.LABEL = self.transform.PHEAD
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, verbose=True, **kwargs):
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
+              verbose=True, **kwargs):
         r"""
         Args:
             train/dev/test (str or Iterable):
@@ -45,6 +47,10 @@ class BiaffineSemanticDependencyParser(Parser):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -53,7 +59,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -64,6 +70,10 @@ class BiaffineSemanticDependencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -75,7 +85,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 verbose=True, **kwargs):
         r"""
         Args:
@@ -95,10 +105,12 @@ class BiaffineSemanticDependencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -149,13 +161,16 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            s_edge, s_label = self.model(words, feats)
-            loss = self.model.loss(s_edge, s_label, labels, mask)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_edge, s_label = self.model(words, feats)
+                loss = self.model.loss(s_edge, s_label, labels, mask)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -176,11 +191,11 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            s_edge, s_label = self.model(words, feats)
-            loss = self.model.loss(s_edge, s_label, labels, mask)
-            total_loss += loss.item()
-
+            with autocast(self.args.amp):
+                s_edge, s_label = self.model(words, feats)
+                loss = self.model.loss(s_edge, s_label, labels, mask)
             label_preds = self.model.decode(s_edge, s_label)
+            total_loss += loss.item()
             metric(label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
         total_loss /= len(loader)
 
@@ -197,7 +212,8 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
-            s_edge, s_label = self.model(words, feats)
+            with autocast(self.args.amp):
+                s_edge, s_label = self.model(words, feats)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
             batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
                                                    for row in chart[1:i, :i].tolist()])
@@ -321,7 +337,8 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         self.TAG = self.transform.POS
         self.LABEL = self.transform.PHEAD
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, verbose=True, **kwargs):
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
+              verbose=True, **kwargs):
         r"""
         Args:
             train/dev/test (str or Iterable):
@@ -332,6 +349,10 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
             verbose (bool):
@@ -342,7 +363,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -353,6 +374,10 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -364,7 +389,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 verbose=True, **kwargs):
         r"""
         Args:
@@ -384,10 +409,12 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
             kwargs (dict):
@@ -438,13 +465,16 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-            loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+                loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -465,11 +495,11 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-            loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
-            total_loss += loss.item()
-
+            with autocast(self.args.amp):
+                s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+                loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
             label_preds = self.model.decode(s_edge, s_label)
+            total_loss += loss.item()
             metric(label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
         total_loss /= len(loader)
 
@@ -486,8 +516,9 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
-            s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-            s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
+            with autocast(self.args.amp):
+                s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+                s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
             batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
                                                    for row in chart[1:i, :i].tolist()])

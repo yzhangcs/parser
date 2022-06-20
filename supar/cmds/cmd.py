@@ -19,6 +19,7 @@ def init(parser):
     parser.add_argument('--workers', '-w', default=0, type=int, help='num of processes used for data loading')
     parser.add_argument('--cache', action='store_true', help='cache the data for fast loading')
     parser.add_argument('--binarize', action='store_true', help='binarize the data first')
+    parser.add_argument('--amp', action='store_true', help='use automatic mixed precision for parsing')
     args, unknown = parser.parse_known_args()
     args, unknown = parser.parse_known_args(unknown, args)
     args = Config.load(**vars(args), unknown=unknown)

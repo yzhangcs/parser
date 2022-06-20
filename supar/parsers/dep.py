@@ -15,6 +15,7 @@ from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
+from torch.cuda.amp import autocast
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,7 @@ class BiaffineDependencyParser(Parser):
         self.TAG = self.transform.CPOS
         self.ARC, self.REL = self.transform.HEAD, self.transform.DEPREL
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -47,6 +48,10 @@ class BiaffineDependencyParser(Parser):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             tree (bool):
@@ -63,7 +68,7 @@ class BiaffineDependencyParser(Parser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000,
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
                  punct=False, tree=True, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -75,6 +80,10 @@ class BiaffineDependencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             tree (bool):
@@ -94,7 +103,7 @@ class BiaffineDependencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 tree=True, proj=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -114,10 +123,12 @@ class BiaffineDependencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             tree (bool):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
@@ -172,13 +183,16 @@ class BiaffineDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_rel = self.model(words, feats)
-            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_arc, s_rel = self.model(words, feats)
+                loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -204,8 +218,9 @@ class BiaffineDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_rel = self.model(words, feats)
-            loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
+            with autocast(self.args.amp):
+                s_arc, s_rel = self.model(words, feats)
+                loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
@@ -229,7 +244,8 @@ class BiaffineDependencyParser(Parser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            s_arc, s_rel = self.model(words, feats)
+            with autocast(self.args.amp):
+                s_arc, s_rel = self.model(words, feats)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
             batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
@@ -346,7 +362,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -360,6 +376,10 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             mbr (bool):
@@ -378,8 +398,8 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, punct=False,
-                 mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
+                 punct=False, mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -390,6 +410,10 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             mbr (bool):
@@ -411,7 +435,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -431,10 +455,12 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             tree (bool):
@@ -491,13 +517,16 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_arc, s_rel = self.model(words, feats)
+                loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -523,8 +552,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
+            with autocast(self.args.amp):
+                s_arc, s_rel = self.model(words, feats)
+                loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
@@ -549,8 +579,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1)
-            s_arc, s_rel = self.model(words, feats)
-            s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
+            with autocast(self.args.amp):
+                s_arc, s_rel = self.model(words, feats)
+                s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             lens = lens.tolist()
             batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
@@ -572,7 +603,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -586,6 +617,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 The number of tokens in each batch. Default: 5000.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             mbr (bool):
@@ -604,8 +639,8 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, punct=False,
-                 mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
+                 punct=False, mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -616,6 +651,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             mbr (bool):
@@ -637,7 +676,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -657,10 +696,12 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
             tree (bool):
@@ -717,13 +758,17 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_arc, s_sib, s_rel = self.model(words, feats)
+                loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                                     self.args.mbr, self.args.partial)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -749,8 +794,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
+            with autocast(self.args.amp):
+                s_arc, s_sib, s_rel = self.model(words, feats)
+                loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                                     self.args.mbr, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
@@ -774,8 +821,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1)
-            s_arc, s_sib, s_rel = self.model(words, feats)
-            s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
+            with autocast(self.args.amp):
+                s_arc, s_sib, s_rel = self.model(words, feats)
+                s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
             lens = lens.tolist()
             batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
@@ -893,7 +941,7 @@ class VIDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1,
+    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
@@ -905,6 +953,10 @@ class VIDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
             punct (bool):
@@ -923,8 +975,8 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, punct=False,
-                 tree=True, proj=True, partial=False, verbose=True, **kwargs):
+    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
+                 punct=False, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
             data (str or Iterable):
@@ -935,6 +987,10 @@ class VIDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             punct (bool):
                 If ``False``, ignores the punctuation during evaluation. Default: ``False``.
             tree (bool):
@@ -954,7 +1010,7 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False,
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
                 tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
@@ -974,10 +1030,12 @@ class VIDependencyParser(BiaffineDependencyParser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            amp (bool):
+                Specifies whether to use automatic mixed precision. Default: ``False``.
+            cache (bool):
+                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested if parsing huge files (e.g., > 1M sentences). Default: ``False``.
             tree (bool):
                 If ``True``, ensures to output well-formed trees. Default: ``False``.
             proj (bool):
@@ -1032,13 +1090,16 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
-            loss = loss / self.args.update_steps
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+            with autocast(self.args.amp):
+                s_arc, s_sib, s_rel = self.model(words, feats)
+                loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
+                loss = loss / self.args.update_steps
+            self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
-                self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
 
@@ -1064,8 +1125,9 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            s_arc, s_sib, s_rel = self.model(words, feats)
-            loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
+            with autocast(self.args.amp):
+                s_arc, s_sib, s_rel = self.model(words, feats)
+                loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             if self.args.partial:
                 mask &= arcs.ge(0)
@@ -1089,8 +1151,9 @@ class VIDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            s_arc, s_sib, s_rel = self.model(words, feats)
-            s_arc = self.model.inference((s_arc, s_sib), mask)
+            with autocast(self.args.amp):
+                s_arc, s_sib, s_rel = self.model(words, feats)
+                s_arc = self.model.inference((s_arc, s_sib), mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
             batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
