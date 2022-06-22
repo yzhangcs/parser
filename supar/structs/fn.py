@@ -215,26 +215,73 @@ def mst(scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False) -
     return pad(preds, total_length=seq_len).to(mask.device)
 
 
+class Logsumexp(Function):
+
+    r"""
+    Safer ``logsumexp`` to cure unnecessary NaN values that arise from inf arguments.
+    See discussions at http://github.com/pytorch/pytorch/issues/49724.
+    To be optimized with C++/Cuda extensions.
+    """
+
+    @staticmethod
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
+    def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        output = x.logsumexp(dim)
+        ctx.dim = dim
+        ctx.save_for_backward(x, output)
+        return output.clone()
+
+    @staticmethod
+    @torch.cuda.amp.custom_bwd
+    def backward(ctx, g: torch.Tensor) -> Union[torch.Tensor, None]:
+        x, output, dim = *ctx.saved_tensors, ctx.dim
+        g, output = g.unsqueeze(dim), output.unsqueeze(dim)
+        mask = g.eq(0).expand_as(x)
+        grad = g * (x - output).exp()
+        return torch.where(mask, x.new_tensor(0.), grad), None
+
+
+class Logaddexp(Function):
+
+    @staticmethod
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
+    def forward(ctx, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        output = torch.logaddexp(x, y)
+        ctx.save_for_backward(x, y, output)
+        return output.clone()
+
+    @staticmethod
+    @torch.cuda.amp.custom_bwd
+    def backward(ctx, g: torch.Tensor) -> Union[torch.Tensor, torch.Tensor]:
+        x, y, output = ctx.saved_tensors
+        mask = g.eq(0)
+        grad_x, grad_y = (x - output).exp(), (y - output).exp()
+        grad_x = torch.where(mask, x.new_tensor(0.), grad_x)
+        grad_y = torch.where(mask, y.new_tensor(0.), grad_y)
+        return grad_x, grad_y
+
+
 class SampledLogsumexp(Function):
 
     @staticmethod
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
     def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         ctx.dim = dim
         ctx.save_for_backward(x)
         return x.logsumexp(dim=dim)
 
     @staticmethod
-    def backward(ctx, grad_output: torch.Tensor) -> Tuple[Union[torch.Tensor, None], None]:
+    @torch.cuda.amp.custom_bwd
+    def backward(ctx, g: torch.Tensor) -> Union[torch.Tensor, None]:
         from torch.distributions import OneHotCategorical
         x, dim = ctx.saved_tensors, ctx.dim
-        if ctx.needs_input_grad[0]:
-            return grad_output.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
-        return None, None
+        return g.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
 
 
 class Sparsemax(Function):
 
     @staticmethod
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float)
     def forward(ctx, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         ctx.dim = dim
         sorted_x, _ = x.sort(dim, True)
@@ -247,12 +294,17 @@ class Sparsemax(Function):
         return p
 
     @staticmethod
-    def backward(ctx, grad_output: torch.Tensor) -> Tuple[torch.Tensor, None]:
+    @torch.cuda.amp.custom_bwd
+    def backward(ctx, g: torch.Tensor) -> Tuple[torch.Tensor, None]:
         k, p, dim = *ctx.saved_tensors, ctx.dim
-        grad = grad_output.masked_fill(p.eq(0), 0)
+        grad = g.masked_fill(p.eq(0), 0)
         grad = torch.where(p.ne(0), grad - grad.sum(dim, True) / k, grad)
         return grad, None
 
+
+logsumexp = Logsumexp.apply
+
+logaddexp = Logaddexp.apply
 
 sampled_logsumexp = SampledLogsumexp.apply
 
