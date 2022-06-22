@@ -90,10 +90,10 @@ class MatrixTree(StructuredDistribution):
     def entropy(self):
         return self.log_partition - (self.marginals * self.scores).sum((-1, -2))
 
-    def cross_entropy(self, other: 'MatrixTree') -> torch.Tensor:
+    def cross_entropy(self, other: MatrixTree) -> torch.Tensor:
         return other.log_partition - (self.marginals * other.scores).sum((-1, -2))
 
-    def kl(self, other: 'MatrixTree') -> torch.Tensor:
+    def kl(self, other: MatrixTree) -> torch.Tensor:
         return other.log_partition - self.log_partition + (self.marginals * (self.scores - other.scores)).sum((-1, -2))
 
     def score(self, value: torch.LongTensor, partial: bool = False) -> torch.Tensor:
@@ -171,11 +171,12 @@ class DependencyCRF(StructuredDistribution):
         tensor([1.6631, 2.6558], grad_fn=<IndexBackward>)
     """
 
-    def __init__(self,
-                 scores: torch.Tensor,
-                 lens: Optional[torch.LongTensor] = None,
-                 multiroot: bool = False
-                 ) -> DependencyCRF:
+    def __init__(
+        self,
+        scores: torch.Tensor,
+        lens: Optional[torch.LongTensor] = None,
+        multiroot: bool = False
+    ) -> DependencyCRF:
         super().__init__(scores)
 
         batch_size, seq_len, *_ = scores.shape
