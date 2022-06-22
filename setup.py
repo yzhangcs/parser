@@ -24,7 +24,7 @@ setup(
         'setuptools>=56.0',
     ],
     install_requires=[
-        'numpy<1.21.5; python_version<"3.8"',
+        'numpy>1.21.6',
         'torch>=1.8',
         'transformers>=4.0.0',
         'hydra-core>=1.2',

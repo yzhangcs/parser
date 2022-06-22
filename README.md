@@ -40,7 +40,7 @@ $ pip install -U git+https://github.com/yzhangcs/parser
 ```
 
 As a prerequisite, the following requirements should be satisfied:
-* `python`: >= 3.7
+* `python`: >= 3.8
 * [`pytorch`](https://github.com/pytorch/pytorch): >= 1.8
 * [`transformers`](https://github.com/huggingface/transformers): >= 4.0
 
