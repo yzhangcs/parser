@@ -13,7 +13,6 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import SpanMetric
 from supar.utils.transform import Tree
-from torch.cuda.amp import autocast
 
 logger = get_logger(__name__)
 
@@ -186,7 +185,7 @@ class CRFConstituencyParser(Parser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_span, s_label = self.model(words, feats)
                 loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
                 loss = loss / self.args.update_steps
@@ -213,7 +212,7 @@ class CRFConstituencyParser(Parser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_span, s_label = self.model(words, feats)
                 loss, s_span = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
             chart_preds = self.model.decode(s_span, s_label, mask)
@@ -238,7 +237,7 @@ class CRFConstituencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             lens = mask[:, 0].sum(-1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_span, s_label = self.model(words, feats)
                 s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
             chart_preds = self.model.decode(s_span, s_label, mask)
@@ -503,7 +502,7 @@ class VIConstituencyParser(CRFConstituencyParser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_span, s_pair, s_label = self.model(words, feats)
                 loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
                 loss = loss / self.args.update_steps
@@ -530,7 +529,7 @@ class VIConstituencyParser(CRFConstituencyParser):
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_span, s_pair, s_label = self.model(words, feats)
                 loss, s_span = self.model.loss(s_span, s_pair, s_label, charts, mask)
             chart_preds = self.model.decode(s_span, s_label, mask)
@@ -555,7 +554,7 @@ class VIConstituencyParser(CRFConstituencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             lens = mask[:, 0].sum(-1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_span, s_pair, s_label = self.model(words, feats)
                 s_span = self.model.inference((s_span, s_pair), mask)
             chart_preds = self.model.decode(s_span, s_label, mask)

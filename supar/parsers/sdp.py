@@ -13,7 +13,6 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import ChartMetric
 from supar.utils.transform import CoNLL
-from torch.cuda.amp import autocast
 
 logger = get_logger(__name__)
 
@@ -161,7 +160,7 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_edge, s_label = self.model(words, feats)
                 loss = self.model.loss(s_edge, s_label, labels, mask)
                 loss = loss / self.args.update_steps
@@ -191,7 +190,7 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_edge, s_label = self.model(words, feats)
                 loss = self.model.loss(s_edge, s_label, labels, mask)
             label_preds = self.model.decode(s_edge, s_label)
@@ -212,7 +211,7 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_edge, s_label = self.model(words, feats)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
             batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
@@ -465,7 +464,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
                 loss = loss / self.args.update_steps
@@ -495,7 +494,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
             label_preds = self.model.decode(s_edge, s_label)
@@ -516,7 +515,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)

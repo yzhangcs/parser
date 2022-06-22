@@ -15,7 +15,6 @@ from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.transform import CoNLL
-from torch.cuda.amp import autocast
 
 logger = get_logger(__name__)
 
@@ -183,7 +182,7 @@ class BiaffineDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
                 loss = loss / self.args.update_steps
@@ -218,7 +217,7 @@ class BiaffineDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -244,7 +243,7 @@ class BiaffineDependencyParser(Parser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
@@ -517,7 +516,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
                 loss = loss / self.args.update_steps
@@ -552,7 +551,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -579,7 +578,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -758,7 +757,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
                                                      self.args.mbr, self.args.partial)
@@ -794,7 +793,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
                                                      self.args.mbr, self.args.partial)
@@ -821,7 +820,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1)
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
@@ -1090,7 +1089,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
                 loss = loss / self.args.update_steps
@@ -1125,7 +1124,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -1151,7 +1150,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            with autocast(self.args.amp):
+            with torch.cuda.amp.autocast(self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 s_arc = self.model.inference((s_arc, s_sib), mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
