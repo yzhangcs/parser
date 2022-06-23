@@ -47,8 +47,13 @@ class Parser(object):
         logger.info("Loading the data")
         train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized(), workers)
         dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
-        test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
-        logger.info(f"\n{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
+        logger.info(f"{'train:':6} {train}")
+        if not args.test:
+            logger.info(f"{'dev:':6} {dev}\n")
+        else:
+            test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
+            logger.info(f"{'dev:':6} {dev}")
+            logger.info(f"{'test:':6} {test}\n")
 
         if args.encoder == 'lstm':
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
@@ -81,18 +86,18 @@ class Parser(object):
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
             self._train(train.loader)
-            dev_metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':5} {dev_metric}")
-            test_metric = self._evaluate(test.loader)
-            logger.info(f"{'test:':5} {test_metric}")
+            metric = self._evaluate(dev.loader)
+            logger.info(f"{'dev:':5} {metric}")
+            if args.test:
+                logger.info(f"{'test:':5} {self._evaluate(test.loader)}")
 
             t = datetime.now() - start
             self.epoch += 1
             self.patience -= 1
             self.elapsed += t
 
-            if dev_metric > self.best_metric:
-                self.best_e, self.patience, self.best_metric = epoch, patience, dev_metric
+            if metric > self.best_metric:
+                self.best_e, self.patience, self.best_metric = epoch, patience, metric
                 if is_master():
                     self.save_checkpoint(args.path)
                 logger.info(f"{t}s elapsed (saved)\n")
@@ -104,14 +109,14 @@ class Parser(object):
             dist.barrier()
 
         parser = self.load(**args)
-        metric = parser._evaluate(test.loader)
         # only allow the master device to save models
         if is_master():
             parser.save(args.path)
 
         logger.info(f"Epoch {self.best_e} saved")
         logger.info(f"{'dev:':5} {self.best_metric}")
-        logger.info(f"{'test:':5} {metric}")
+        if args.test:
+            logger.info(f"{'test:':5} {parser._evaluate(test.loader)}")
         logger.info(f"{self.elapsed}s elapsed, {self.elapsed / epoch}s/epoch")
 
     def evaluate(self, data, buckets=8, workers=0, batch_size=5000, **kwargs):
