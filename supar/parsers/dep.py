@@ -182,7 +182,7 @@ class BiaffineDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
                 loss = loss / self.args.update_steps
@@ -201,13 +201,13 @@ class BiaffineDependencyParser(Parser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
         logger.info(f"{bar.postfix}")
 
     @parallel(training=False)
     def _evaluate(self, loader):
-        total_loss, metric = 0, AttachmentMetric()
+        metric = AttachmentMetric()
 
         for batch in loader:
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
@@ -215,7 +215,7 @@ class BiaffineDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -224,11 +224,9 @@ class BiaffineDependencyParser(Parser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            total_loss += loss.item()
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-        total_loss /= len(loader)
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
-        return total_loss, metric
+        return metric
 
     @parallel(training=False, op=None)
     def _predict(self, loader):
@@ -239,7 +237,7 @@ class BiaffineDependencyParser(Parser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
             batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
@@ -269,12 +267,11 @@ class BiaffineDependencyParser(Parser):
         """
 
         args = Config(**locals())
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(args.device)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
             return parser
 
         logger.info("Building the fields")
@@ -340,10 +337,12 @@ class BiaffineDependencyParser(Parser):
         logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None).to(args.device)
+        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None)
         logger.info(f"{model}\n")
 
-        return cls(args, model, transform)
+        parser = cls(args, model, transform)
+        parser.model.to(parser.device)
+        return parser
 
 
 class CRFDependencyParser(BiaffineDependencyParser):
@@ -511,7 +510,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
                 loss = loss / self.args.update_steps
@@ -530,13 +529,13 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
         logger.info(f"{bar.postfix}")
 
     @parallel(training=False)
     def _evaluate(self, loader):
-        total_loss, metric = 0, AttachmentMetric()
+        metric = AttachmentMetric()
 
         for batch in loader:
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
@@ -544,7 +543,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -553,11 +552,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            total_loss += loss.item()
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-        total_loss /= len(loader)
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
-        return total_loss, metric
+        return metric
 
     @parallel(training=False, op=None)
     def _predict(self, loader):
@@ -569,7 +566,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1)
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -747,7 +744,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
                                                      self.args.mbr, self.args.partial)
@@ -767,13 +764,13 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
         logger.info(f"{bar.postfix}")
 
     @parallel(training=False)
     def _evaluate(self, loader):
-        total_loss, metric = 0, AttachmentMetric()
+        metric = AttachmentMetric()
 
         for batch in loader:
             words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
@@ -781,7 +778,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
                                                      self.args.mbr, self.args.partial)
@@ -791,11 +788,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            total_loss += loss.item()
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-        total_loss /= len(loader)
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
-        return total_loss, metric
+        return metric
 
     @parallel(training=False, op=None)
     def _predict(self, loader):
@@ -806,7 +801,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1)
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
@@ -837,12 +832,11 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         """
 
         args = Config(**locals())
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(args.device)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
             return parser
 
         logger.info("Building the fields")
@@ -909,10 +903,12 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None).to(args.device)
+        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None)
         logger.info(f"{model}\n")
 
-        return cls(args, model, transform)
+        parser = cls(args, model, transform)
+        parser.model.to(parser.device)
+        return parser
 
 
 class VIDependencyParser(BiaffineDependencyParser):
@@ -1074,7 +1070,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
                 loss = loss / self.args.update_steps
@@ -1093,13 +1089,13 @@ class VIDependencyParser(BiaffineDependencyParser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
         logger.info(f"{bar.postfix}")
 
     @parallel(training=False)
     def _evaluate(self, loader):
-        total_loss, metric = 0, AttachmentMetric()
+        metric = AttachmentMetric()
 
         for batch in loader:
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
@@ -1107,7 +1103,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -1116,11 +1112,9 @@ class VIDependencyParser(BiaffineDependencyParser):
             # ignore all punctuation if not specified
             if not self.args.punct:
                 mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            total_loss += loss.item()
-            metric(arc_preds, rel_preds, arcs, rels, mask)
-        total_loss /= len(loader)
+            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
-        return total_loss, metric
+        return metric
 
     @parallel(training=False, op=None)
     def _predict(self, loader):
@@ -1131,7 +1125,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             # ignore the first token of each sentence
             mask[:, 0] = 0
             lens = mask.sum(1).tolist()
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 s_arc = self.model.inference((s_arc, s_sib), mask)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)

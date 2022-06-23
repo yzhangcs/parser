@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 
 
 class Metric(object):
+
+    def __init__(self, eps: float = 1e-12) -> Metric:
+        super().__init__()
+
+        self.n = 0.0
+        self.count = 0.0
+        self.total_loss = 0.0
+        self.eps = eps
 
     def __lt__(self, other: Metric) -> bool:
         return self.score < other
@@ -29,40 +37,53 @@ class Metric(object):
     def score(self):
         return 0.
 
+    @property
+    def loss(self):
+        return self.total_loss / (self.count + self.eps)
+
 
 class AttachmentMetric(Metric):
 
-    def __init__(self, eps: float = 1e-12) -> AttachmentMetric:
-        super().__init__()
+    def __init__(
+        self,
+        loss: Optional[float] = None,
+        preds: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        golds: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        mask: Optional[torch.BoolTensor] = None,
+        eps: float = 1e-12,
+    ) -> AttachmentMetric:
+        super().__init__(eps)
 
-        self.eps = eps
-
-        self.n = 0.0
         self.n_ucm = 0.0
         self.n_lcm = 0.0
         self.total = 0.0
         self.correct_arcs = 0.0
         self.correct_rels = 0.0
 
+        if loss is not None:
+            self(loss, preds, golds, mask)
+
     def __repr__(self):
-        s = f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
-        s += f"UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
+        s = f"loss: {self.loss:.4f} - "
+        s += f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
         return s
 
     def __call__(
         self,
-        arc_preds: torch.Tensor,
-        rel_preds: torch.Tensor,
-        arc_golds: torch.Tensor,
-        rel_golds: torch.Tensor,
+        loss: float,
+        preds: Tuple[torch.Tensor, torch.Tensor],
+        golds: Tuple[torch.Tensor, torch.Tensor],
         mask: torch.BoolTensor
     ) -> AttachmentMetric:
         lens = mask.sum(1)
+        arc_preds, rel_preds, arc_golds, rel_golds = *preds, *golds
         arc_mask = arc_preds.eq(arc_golds) & mask
         rel_mask = rel_preds.eq(rel_golds) & arc_mask
         arc_mask_seq, rel_mask_seq = arc_mask[mask], rel_mask[mask]
 
         self.n += len(mask)
+        self.count += 1
+        self.total_loss += float(loss)
         self.n_ucm += arc_mask.sum(1).eq(lens).sum().item()
         self.n_lcm += rel_mask.sum(1).eq(lens).sum().item()
 
@@ -72,8 +93,10 @@ class AttachmentMetric(Metric):
         return self
 
     def __add__(self, other: AttachmentMetric) -> AttachmentMetric:
-        metric = AttachmentMetric(self.eps)
+        metric = AttachmentMetric(eps=self.eps)
         metric.n = self.n + other.n
+        metric.count = self.count + other.count
+        metric.total_loss = self.total_loss + other.total_loss
         metric.n_ucm = self.n_ucm + other.n_ucm
         metric.n_lcm = self.n_lcm + other.n_lcm
         metric.total = self.total + other.total
@@ -104,31 +127,45 @@ class AttachmentMetric(Metric):
 
 class SpanMetric(Metric):
 
-    def __init__(self, eps: float = 1e-12) -> SpanMetric:
-        super().__init__()
+    def __init__(
+        self,
+        loss: Optional[float] = None,
+        preds: Optional[List[List[Tuple]]] = None,
+        golds: Optional[List[List[Tuple]]] = None,
+        eps: float = 1e-12
+    ) -> SpanMetric:
+        super().__init__(eps)
 
-        self.n = 0.0
         self.n_ucm = 0.0
         self.n_lcm = 0.0
         self.utp = 0.0
         self.ltp = 0.0
         self.pred = 0.0
         self.gold = 0.0
-        self.eps = eps
+
+        if loss is not None:
+            self(loss, preds, golds)
 
     def __repr__(self):
-        s = f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
+        s = f"loss: {self.loss:.4f} - "
+        s += f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
         s += f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} "
         s += f"LP: {self.lp:6.2%} LR: {self.lr:6.2%} LF: {self.lf:6.2%}"
-
         return s
 
-    def __call__(self, preds: List[List[Tuple]], golds: List[List[Tuple]]) -> SpanMetric:
+    def __call__(
+        self,
+        loss: float,
+        preds: List[List[Tuple]],
+        golds: List[List[Tuple]]
+    ) -> SpanMetric:
+        self.n += len(preds)
+        self.count += 1
+        self.total_loss += float(loss)
         for pred, gold in zip(preds, golds):
             upred, ugold = Counter([tuple(span[:-1]) for span in pred]), Counter([tuple(span[:-1]) for span in gold])
             lpred, lgold = Counter([tuple(span) for span in pred]), Counter([tuple(span) for span in gold])
             utp, ltp = list((upred & ugold).elements()), list((lpred & lgold).elements())
-            self.n += 1
             self.n_ucm += len(utp) == len(pred) == len(gold)
             self.n_lcm += len(ltp) == len(pred) == len(gold)
             self.utp += len(utp)
@@ -138,8 +175,10 @@ class SpanMetric(Metric):
         return self
 
     def __add__(self, other: SpanMetric) -> SpanMetric:
-        metric = SpanMetric(self.eps)
+        metric = SpanMetric(eps=self.eps)
         metric.n = self.n + other.n
+        metric.count = self.count + other.count
+        metric.total_loss = self.total_loss + other.total_loss
         metric.n_ucm = self.n_ucm + other.n_ucm
         metric.n_lcm = self.n_lcm + other.n_lcm
         metric.utp = self.utp + other.utp
@@ -187,19 +226,37 @@ class SpanMetric(Metric):
 
 class ChartMetric(Metric):
 
-    def __init__(self, eps: float = 1e-12) -> ChartMetric:
-        super(ChartMetric, self).__init__()
+    def __init__(
+        self,
+        loss: Optional[float] = None,
+        preds: Optional[torch.Tensor] = None,
+        golds: Optional[torch.Tensor] = None,
+        eps: float = 1e-12
+    ) -> ChartMetric:
+        super().__init__(eps)
 
         self.tp = 0.0
         self.utp = 0.0
         self.pred = 0.0
         self.gold = 0.0
-        self.eps = eps
+
+        if loss is not None:
+            self(loss, preds, golds)
 
     def __repr__(self):
-        return f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} P: {self.p:6.2%} R: {self.r:6.2%} F: {self.f:6.2%}"
+        s = f"loss: {self.loss:.4f} - "
+        s += f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} P: {self.p:6.2%} R: {self.r:6.2%} F: {self.f:6.2%}"
+        return s
 
-    def __call__(self, preds: torch.Tensor, golds: torch.Tensor) -> ChartMetric:
+    def __call__(
+        self,
+        loss: float,
+        preds: torch.Tensor,
+        golds: torch.Tensor
+    ) -> ChartMetric:
+        self.n += len(preds)
+        self.count += 1
+        self.total_loss += float(loss)
         pred_mask = preds.ge(0)
         gold_mask = golds.ge(0)
         span_mask = pred_mask & gold_mask
@@ -210,7 +267,10 @@ class ChartMetric(Metric):
         return self
 
     def __add__(self, other: ChartMetric) -> ChartMetric:
-        metric = ChartMetric(self.eps)
+        metric = ChartMetric(eps=self.eps)
+        metric.n = self.n + other.n
+        metric.count = self.count + other.count
+        metric.total_loss = self.total_loss + other.total_loss
         metric.tp = self.tp + other.tp
         metric.utp = self.utp + other.utp
         metric.pred = self.pred + other.pred

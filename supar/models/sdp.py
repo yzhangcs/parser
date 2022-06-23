@@ -148,9 +148,9 @@ class BiaffineSemanticDependencyModel(Model):
 
     def load_pretrained(self, embed=None):
         if embed is not None:
-            self.pretrained = nn.Embedding.from_pretrained(embed.to(self.args.device))
+            self.pretrained = nn.Embedding.from_pretrained(embed)
             if embed.shape[1] != self.args.n_pretrained:
-                self.embed_proj = nn.Linear(embed.shape[1], self.args.n_pretrained).to(self.args.device)
+                self.embed_proj = nn.Linear(embed.shape[1], self.args.n_pretrained)
         return self
 
     def forward(self, words, feats=None):

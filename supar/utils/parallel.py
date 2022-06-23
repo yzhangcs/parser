@@ -57,11 +57,10 @@ class parallel(object):
                     dist.barrier()
             if results is None:
                 return results
-            results = gather(results)
             if self.op is None:
                 return results
             elif self.op == 'sum':
-                return functools.reduce(lambda x, y: tuple(i+j for i, j in zip(x, y)), results)
+                return functools.reduce(lambda x, y: x + y, gather(results))
             else:
                 raise NotImplementedError(f"Op {self.op} not supported yet")
         return wrapper

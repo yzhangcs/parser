@@ -31,6 +31,10 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
+    @property
+    def device(self):
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
+
     def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
               clip=5.0, epochs=5000, patience=100, **kwargs):
         args = self.args.update(locals())
@@ -77,10 +81,10 @@ class Parser(object):
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
             self._train(train.loader)
-            dev_loss, dev_metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':5} loss: {dev_loss:.4f} - {dev_metric}")
-            test_loss, test_metric = self._evaluate(test.loader)
-            logger.info(f"{'test:':5} loss: {test_loss:.4f} - {test_metric}")
+            dev_metric = self._evaluate(dev.loader)
+            logger.info(f"{'dev:':5} {dev_metric}")
+            test_metric = self._evaluate(test.loader)
+            logger.info(f"{'test:':5} {test_metric}")
 
             t = datetime.now() - start
             self.epoch += 1
@@ -98,9 +102,9 @@ class Parser(object):
                 break
         if dist.is_initialized():
             dist.barrier()
-        args.device = args.local_rank
+
         parser = self.load(**args)
-        loss, metric = parser._evaluate(test.loader)
+        metric = parser._evaluate(test.loader)
         # only allow the master device to save models
         if is_master():
             parser.save(args.path)
@@ -122,14 +126,12 @@ class Parser(object):
 
         logger.info("Evaluating the dataset")
         start = datetime.now()
-        loss, metric = self._evaluate(dataset.loader)
-        if dist.is_initialized():
-            loss = loss / dist.get_world_size()
+        metric = self._evaluate(dataset.loader)
         elapsed = datetime.now() - start
-        logger.info(f"loss: {loss:.4f} - {metric}")
+        logger.info(f"{metric}")
         logger.info(f"{elapsed}s elapsed, {len(dataset)/elapsed.total_seconds():.2f} Sents/s")
 
-        return loss, metric
+        return metric
 
     def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, prob=False, cache=False, **kwargs):
         args = self.args.update(locals())
@@ -224,7 +226,6 @@ class Parser(object):
         """
 
         args = Config(**locals())
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if not os.path.exists(path):
             path = download(supar.MODEL[src].get(path, path), reload=reload)
         state = torch.load(path, map_location='cpu')
@@ -233,10 +234,10 @@ class Parser(object):
         model = cls.MODEL(**args)
         model.load_pretrained(state['pretrained'])
         model.load_state_dict(state['state_dict'], False)
-        model.to(args.device)
         transform = state['transform']
         parser = cls(args, model, transform)
         parser.checkpoint_state_dict = state['checkpoint_state_dict'] if checkpoint else None
+        parser.model.to(parser.device)
         return parser
 
     def save(self, path):

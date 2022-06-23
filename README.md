@@ -49,6 +49,8 @@ As a prerequisite, the following requirements should be satisfied:
 You can download the pretrained model and parse sentences with just a few lines of code:
 ```py
 >>> from supar import Parser
+# if the gpu device is available
+# >>> torch.cuda.set_device('cuda:0')  
 >>> parser = Parser.load('biaffine-dep-en')
 >>> dataset = parser.predict('I saw Sarah with a telescope.', lang='en', prob=True, verbose=False)
 ```
@@ -82,6 +84,8 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 ```py
 >>> import os
 >>> import tempfile
+# if the gpu device is available
+# >>> torch.cuda.set_device('cuda:0')  
 >>> dep = Parser.load('biaffine-dep-en')
 >>> dep.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0]
 1       I       _       _       _       _       2       nsubj   _       _
@@ -181,9 +185,10 @@ You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/note
 
 The evaluation process resembles prediction:
 ```py
->>> loss, metric = Parser.load('biaffine-dep-en').evaluate('ptb/test.conllx', verbose=False)
->>> print(loss, metric)
-0.24214034126355097 UCM: 60.51% LCM: 50.37% UAS: 96.01% LAS: 94.41%
+# if the gpu device is available
+# >>> torch.cuda.set_device('cuda:0')  
+>>> Parser.load('biaffine-dep-en').evaluate('ptb/test.conllx', verbose=False)
+loss: 0.2393 - UCM: 60.51% LCM: 50.37% UAS: 96.01% LAS: 94.41%
 ```
 
 See [EXAMPLES](EXAMPLES.md) for more instructions on training and evaluation.

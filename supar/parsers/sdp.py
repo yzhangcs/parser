@@ -160,7 +160,7 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_label = self.model(words, feats)
                 loss = self.model.loss(s_edge, s_label, labels, mask)
                 loss = loss / self.args.update_steps
@@ -174,13 +174,13 @@ class BiaffineSemanticDependencyParser(Parser):
                 self.optimizer.zero_grad()
 
             label_preds = self.model.decode(s_edge, s_label)
-            metric(label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
+            metric += ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
         logger.info(f"{bar.postfix}")
 
     @parallel(training=False)
     def _evaluate(self, loader):
-        total_loss, metric = 0, ChartMetric()
+        metric = ChartMetric()
 
         for batch in loader:
             words, *feats, labels = batch.compose(self.transform)
@@ -188,15 +188,13 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_label = self.model(words, feats)
                 loss = self.model.loss(s_edge, s_label, labels, mask)
             label_preds = self.model.decode(s_edge, s_label)
-            total_loss += loss.item()
-            metric(label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
-        total_loss /= len(loader)
+            metric += ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
 
-        return total_loss, metric
+        return metric
 
     @parallel(training=False, op=None)
     def _predict(self, loader):
@@ -207,7 +205,7 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_label = self.model(words, feats)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
             batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
@@ -236,12 +234,11 @@ class BiaffineSemanticDependencyParser(Parser):
         """
 
         args = Config(**locals())
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(args.device)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
             return parser
 
         logger.info("Building the fields")
@@ -311,10 +308,12 @@ class BiaffineSemanticDependencyParser(Parser):
         logger.info(f"{transform}")
 
         logger.info("Building the model")
-        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None).to(args.device)
+        model = cls.MODEL(**args).load_pretrained(WORD.embed if hasattr(WORD, 'embed') else None)
         logger.info(f"{model}\n")
 
-        return cls(args, model, transform)
+        parser = cls(args, model, transform)
+        parser.model.to(parser.device)
+        return parser
 
 
 class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
@@ -459,7 +458,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
                 loss = loss / self.args.update_steps
@@ -473,13 +472,13 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 self.optimizer.zero_grad()
 
             label_preds = self.model.decode(s_edge, s_label)
-            metric(label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
+            metric + ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
+            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
         logger.info(f"{bar.postfix}")
 
     @parallel(training=False)
     def _evaluate(self, loader):
-        total_loss, metric = 0, ChartMetric()
+        metric = ChartMetric()
 
         for batch in loader:
             words, *feats, labels = batch.compose(self.transform)
@@ -487,15 +486,13 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
             label_preds = self.model.decode(s_edge, s_label)
-            total_loss += loss.item()
-            metric(label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
-        total_loss /= len(loader)
+            metric += ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
 
-        return total_loss, metric
+        return metric
 
     @parallel(training=False, op=None)
     def _predict(self, loader):
@@ -506,7 +503,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             lens = mask[:, 1].sum(-1).tolist()
-            with torch.cuda.amp.autocast(self.args.amp):
+            with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
