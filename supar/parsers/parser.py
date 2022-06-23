@@ -4,7 +4,6 @@ import os
 import shutil
 import tempfile
 from datetime import datetime, timedelta
-from functools import reduce
 
 import dill
 import supar
@@ -16,7 +15,7 @@ from supar.utils.fn import download, get_rng_state, set_rng_state
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
-from supar.utils.parallel import gather, is_master
+from supar.utils.parallel import gather, is_master, parallel
 from torch.cuda.amp import GradScaler
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
@@ -43,8 +42,8 @@ class Parser(object):
             batch_size = batch_size // dist.get_world_size()
         logger.info("Loading the data")
         train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized(), workers)
-        dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, False, workers)
-        test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, False, workers)
+        dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
+        test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
         logger.info(f"\n{'train:':6} {train}\n{'dev:':6} {dev}\n{'test:':6} {test}\n")
 
         if args.encoder == 'lstm':
@@ -77,15 +76,11 @@ class Parser(object):
             start = datetime.now()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
-            if dist.is_initialized():
-                with self.model.join():
-                    self._train(train.loader)
-            else:
-                self._train(train.loader)
-            loss, dev_metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':5} loss: {loss:.4f} - {dev_metric}")
-            loss, test_metric = self._evaluate(test.loader)
-            logger.info(f"{'test:':5} loss: {loss:.4f} - {test_metric}")
+            self._train(train.loader)
+            dev_loss, dev_metric = self._evaluate(dev.loader)
+            logger.info(f"{'dev:':5} loss: {dev_loss:.4f} - {dev_metric}")
+            test_loss, test_metric = self._evaluate(test.loader)
+            logger.info(f"{'test:':5} loss: {test_loss:.4f} - {test_metric}")
 
             t = datetime.now() - start
             self.epoch += 1
@@ -129,7 +124,6 @@ class Parser(object):
         start = datetime.now()
         loss, metric = self._evaluate(dataset.loader)
         if dist.is_initialized():
-            loss, metric = reduce(lambda x, y: (x[0] + y[0], x[1] + y[1]), gather((loss, metric)))
             loss = loss / dist.get_world_size()
         elapsed = datetime.now() - start
         logger.info(f"loss: {loss:.4f} - {metric}")
@@ -185,14 +179,15 @@ class Parser(object):
         if not cache:
             return dataset
 
+    @parallel()
     def _train(self, loader):
         raise NotImplementedError
 
-    @torch.no_grad()
+    @parallel(training=False)
     def _evaluate(self, loader):
         raise NotImplementedError
 
-    @torch.no_grad()
+    @parallel(training=False, op=None)
     def _predict(self, loader):
         raise NotImplementedError
 

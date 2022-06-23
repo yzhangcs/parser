@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 
-from typing import Any, Iterable
+from __future__ import annotations
 
+import functools
+from typing import TYPE_CHECKING, Any, Iterable
+
+import torch
 import torch.distributed as dist
 import torch.nn as nn
+
+if TYPE_CHECKING:
+    from supar.parsers import Parser
 
 
 class DistributedDataParallel(nn.parallel.DistributedDataParallel):
@@ -16,6 +23,48 @@ class DistributedDataParallel(nn.parallel.DistributedDataParallel):
         if hasattr(wrapped, name):
             return getattr(wrapped, name)
         return super().__getattr__(name)
+
+
+class parallel(object):
+
+    def __init__(self, training=True, op='sum'):
+        self.training = training
+        self.op = op
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        ...
+
+    def __call__(self, fn):
+        @functools.wraps(fn)
+        def wrapper(parser: Parser, *args, **kwargs):
+            parser.model.train(self.training)
+            if not dist.is_initialized():
+                return fn(parser, *args, **kwargs)
+            if self.training:
+                with parser.model.join():
+                    results = fn(parser, *args, **kwargs)
+            else:
+                with torch.no_grad():
+                    dist_model = parser.model
+                    # https://github.com/pytorch/pytorch/issues/54059
+                    if hasattr(parser.model, 'module'):
+                        parser.model = parser.model.module
+                    results = fn(parser, *args, **kwargs)
+                    parser.model = dist_model
+                    dist.barrier()
+            if results is None:
+                return results
+            results = gather(results)
+            if self.op is None:
+                return results
+            elif self.op == 'sum':
+                return functools.reduce(lambda x, y: tuple(i+j for i, j in zip(x, y)), results)
+            else:
+                raise NotImplementedError(f"Op {self.op} not supported yet")
+        return wrapper
 
 
 def is_master():

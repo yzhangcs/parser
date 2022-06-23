@@ -12,6 +12,7 @@ from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import ChartMetric
+from supar.utils.parallel import parallel
 from supar.utils.transform import CoNLL
 
 logger = get_logger(__name__)
@@ -149,9 +150,8 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return super().load(path, reload, src, **kwargs)
 
+    @parallel()
     def _train(self, loader):
-        self.model.train()
-
         bar, metric = progress_bar(loader), ChartMetric()
 
         for i, batch in enumerate(bar, 1):
@@ -178,10 +178,8 @@ class BiaffineSemanticDependencyParser(Parser):
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
         logger.info(f"{bar.postfix}")
 
-    @torch.no_grad()
+    @parallel(training=False)
     def _evaluate(self, loader):
-        self.model.eval()
-
         total_loss, metric = 0, ChartMetric()
 
         for batch in loader:
@@ -200,10 +198,8 @@ class BiaffineSemanticDependencyParser(Parser):
 
         return total_loss, metric
 
-    @torch.no_grad()
+    @parallel(training=False, op=None)
     def _predict(self, loader):
-        self.model.eval()
-
         for batch in progress_bar(loader):
             words, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
@@ -453,9 +449,8 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return super().load(path, reload, src, **kwargs)
 
+    @parallel()
     def _train(self, loader):
-        self.model.train()
-
         bar, metric = progress_bar(loader), ChartMetric()
 
         for i, batch in enumerate(bar, 1):
@@ -482,10 +477,8 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f} - {metric}")
         logger.info(f"{bar.postfix}")
 
-    @torch.no_grad()
+    @parallel(training=False)
     def _evaluate(self, loader):
-        self.model.eval()
-
         total_loss, metric = 0, ChartMetric()
 
         for batch in loader:
@@ -504,10 +497,8 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         return total_loss, metric
 
-    @torch.no_grad()
+    @parallel(training=False, op=None)
     def _predict(self, loader):
-        self.model.eval()
-
         for batch in progress_bar(loader):
             words, *feats = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
