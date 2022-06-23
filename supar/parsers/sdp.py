@@ -182,7 +182,7 @@ class BiaffineSemanticDependencyParser(Parser):
     def _evaluate(self, loader):
         metric = ChartMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, *feats, labels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
@@ -480,7 +480,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     def _evaluate(self, loader):
         metric = ChartMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, *feats, labels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)

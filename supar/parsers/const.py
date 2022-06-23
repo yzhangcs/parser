@@ -205,7 +205,7 @@ class CRFConstituencyParser(Parser):
     def _evaluate(self, loader):
         metric = SpanMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, *feats, trees, charts = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
@@ -517,7 +517,7 @@ class VIConstituencyParser(CRFConstituencyParser):
     def _evaluate(self, loader):
         metric = SpanMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, *feats, trees, charts = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)[:, 1:]
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)

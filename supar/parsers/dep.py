@@ -209,7 +209,7 @@ class BiaffineDependencyParser(Parser):
     def _evaluate(self, loader):
         metric = AttachmentMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
@@ -537,7 +537,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def _evaluate(self, loader):
         metric = AttachmentMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
@@ -772,7 +772,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def _evaluate(self, loader):
         metric = AttachmentMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
@@ -1097,7 +1097,7 @@ class VIDependencyParser(BiaffineDependencyParser):
     def _evaluate(self, loader):
         metric = AttachmentMetric()
 
-        for batch in loader:
+        for batch in progress_bar(loader):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
             word_mask = words.ne(self.args.pad_index)
             mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
