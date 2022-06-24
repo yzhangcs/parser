@@ -32,8 +32,7 @@ class Vocab(object):
         self.itos = list(specials)
         self.stoi = defaultdict(lambda: unk_index)
         self.stoi.update({token: i for i, token in enumerate(self.itos)})
-        self.extend([token for token, freq in counter.items()
-                     if freq >= min_freq])
+        self.update([token for token, freq in counter.items() if freq >= min_freq])
         self.unk_index = unk_index
         self.n_init = len(self)
 
@@ -69,6 +68,11 @@ class Vocab(object):
     def items(self):
         return self.stoi.items()
 
-    def extend(self, tokens: Iterable[str]) -> None:
-        self.itos.extend(sorted(set(tokens).difference(self.stoi)))
-        self.stoi.update({token: i for i, token in enumerate(self.itos)})
+    def update(self, vocab: Union[Iterable[str], Vocab, Counter]) -> None:
+        if isinstance(vocab, Vocab):
+            vocab = vocab.itos
+        vocab = list(set(vocab).difference(self.stoi))
+        if vocab:
+            length = len(self)
+            self.itos.extend(vocab)
+            self.stoi.update({token: i + length for i, token in enumerate(vocab)})

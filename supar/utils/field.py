@@ -224,7 +224,7 @@ class Field(RawField):
             if embed.unk:
                 tokens[embed.unk_index] = self.unk
 
-            self.vocab.extend(tokens)
+            self.vocab.update(tokens)
             self.embed = torch.zeros(len(self.vocab), embed.dim)
             self.embed[self.vocab[tokens]] = embed.vectors
             if norm is not None:
@@ -325,7 +325,7 @@ class SubwordField(Field):
             if embed.unk:
                 tokens[embed.unk_index] = self.unk
 
-            self.vocab.extend(tokens)
+            self.vocab.update(tokens)
             self.embed = torch.zeros(len(self.vocab), embed.dim)
             self.embed[self.vocab[tokens]] = embed.vectors
             if norm is not None:
