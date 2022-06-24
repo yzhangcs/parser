@@ -5,6 +5,7 @@ import mmap
 import os
 import pickle
 import shutil
+import struct
 import sys
 import tarfile
 import unicodedata
@@ -313,7 +314,7 @@ def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> str:
         # append the meta data to the end of the bin file
         f.write(meta)
         # record the positions of the meta data
-        f.write(pickle.dumps(torch.tensor((start, len(meta)))))
+        f.write(struct.pack('LL', start, len(meta)))
     return fbin
 
 
@@ -321,9 +322,9 @@ def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bo
     offset, length = position
     with open(fbin, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
         if meta:
-            length = len(pickle.dumps(torch.tensor(position)))
+            length = len(struct.pack('LL', *position))
             mm.seek(-length, os.SEEK_END)
-            offset, length = pickle.loads(mm.read(length)).tolist()
+            offset, length = struct.unpack('LL', mm.read(length))
         mm.seek(offset)
         bytes = mm.read(length)
         return pickle.loads(bytes)
