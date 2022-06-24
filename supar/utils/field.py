@@ -34,7 +34,7 @@ class RawField(object):
     def __repr__(self):
         return f"({self.name}): {self.__class__.__name__}()"
 
-    def preprocess(self, sequence: List) -> List:
+    def preprocess(self, sequence: Iterable) -> Iterable:
         return self.fn(sequence) if self.fn is not None else sequence
 
     def transform(self, sequences: Iterable[List]) -> Iterable[List]:
@@ -119,22 +119,6 @@ class Field(RawField):
             params.append(f"use_vocab={self.use_vocab}")
         return s + ', '.join(params) + ')'
 
-    def __getstate__(self):
-        state = dict(self.__dict__)
-        if self.tokenize is None:
-            state['tokenize_args'] = None
-        elif self.tokenize.__module__.startswith('transformers'):
-            state['tokenize_args'] = (self.tokenize.__module__, self.tokenize.__self__.name_or_path)
-            state['tokenize'] = None
-        return state
-
-    def __setstate__(self, state):
-        tokenize_args = state.pop('tokenize_args', None)
-        if tokenize_args is not None and tokenize_args[0].startswith('transformers'):
-            from transformers import AutoTokenizer
-            state['tokenize'] = AutoTokenizer.from_pretrained(tokenize_args[1]).tokenize
-        self.__dict__.update(state)
-
     @property
     def pad_index(self):
         if self.pad is None:
@@ -167,7 +151,7 @@ class Field(RawField):
     def device(self):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    def preprocess(self, sequence: List) -> List:
+    def preprocess(self, sequence: Iterable) -> Iterable:
         r"""
         Loads a single example using this field, tokenizing if necessary.
         The sequence will be first passed to ``fn`` if available.
@@ -175,7 +159,7 @@ class Field(RawField):
         Then the input will be lowercased optionally.
 
         Args:
-            sequence (list):
+            sequence (Iterable):
                 The sequence to be preprocessed.
 
         Returns:
@@ -188,10 +172,15 @@ class Field(RawField):
             sequence = self.tokenize(sequence)
         if self.lower:
             sequence = [str.lower(token) for token in sequence]
-
         return sequence
 
-    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None, norm: Callable = None) -> None:
+    def build(
+        self,
+        dataset: Dataset,
+        min_freq: int = 1,
+        embed: Optional[Embedding] = None,
+        norm: Callable = None
+    ) -> Field:
         r"""
         Constructs a :class:`~supar.utils.vocab.Vocab` object for this field from the dataset.
         If the vocabulary has already existed, this function will have no effect.
@@ -229,6 +218,7 @@ class Field(RawField):
             self.embed[self.vocab[tokens]] = embed.vectors
             if norm is not None:
                 self.embed = norm(self.embed)
+        return self
 
     def transform(self, sequences: Iterable[List[str]]) -> Iterable[torch.Tensor]:
         r"""
@@ -254,12 +244,12 @@ class Field(RawField):
                 seq = seq + [self.eos_index]
             yield torch.tensor(seq)
 
-    def compose(self, batch: List[torch.Tensor]) -> torch.Tensor:
+    def compose(self, batch: Iterable[torch.Tensor]) -> torch.Tensor:
         r"""
         Composes a batch of sequences into a padded tensor.
 
         Args:
-            batch (list[~torch.Tensor]):
+            batch (Iterable[~torch.Tensor]):
                 A list of tensors.
 
         Returns:
@@ -307,7 +297,13 @@ class SubwordField(Field):
         self.fix_len = kwargs.pop('fix_len') if 'fix_len' in kwargs else 0
         super().__init__(*args, **kwargs)
 
-    def build(self, dataset: Dataset, min_freq: int = 1, embed: Optional[Embedding] = None, norm: Callable = None) -> None:
+    def build(
+        self,
+        dataset: Dataset,
+        min_freq: int = 1,
+        embed: Optional[Embedding] = None,
+        norm: Callable = None
+    ) -> SubwordField:
         if hasattr(self, 'vocab'):
             return
         counter = Counter(piece
@@ -330,6 +326,7 @@ class SubwordField(Field):
             self.embed[self.vocab[tokens]] = embed.vectors
             if norm is not None:
                 self.embed = norm(self.embed)
+        return self
 
     def transform(self, sequences: Iterable[List[str]]) -> Iterable[torch.Tensor]:
         for seq in sequences:
@@ -366,13 +363,17 @@ class ChartField(Field):
                 [ -1,  -1,  -1,  -1,  -1,  -1]])
     """
 
-    def build(self, dataset: Dataset, min_freq: int = 1) -> None:
+    def build(
+        self,
+        dataset: Dataset,
+        min_freq: int = 1
+    ) -> ChartField:
         counter = Counter(i
                           for chart in progress_bar(getattr(dataset, self.name))
                           for row in self.preprocess(chart)
                           for i in row if i is not None)
-
         self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
+        return self
 
     def transform(self, charts: Iterable[List[List]]) -> Iterable[torch.Tensor]:
         for chart in charts:

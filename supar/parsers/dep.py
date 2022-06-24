@@ -15,6 +15,7 @@ from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
 from supar.utils.parallel import parallel
+from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import CoNLL
 
 logger = get_logger(__name__)
@@ -277,17 +278,9 @@ class BiaffineDependencyParser(Parser):
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
         if args.encoder == 'bert':
-            from transformers import (AutoTokenizer, GPT2Tokenizer,
-                                      GPT2TokenizerFast)
-            t = AutoTokenizer.from_pretrained(args.bert)
-            WORD = SubwordField('words',
-                                pad=t.pad_token,
-                                unk=t.unk_token,
-                                bos=t.bos_token or t.cls_token,
-                                fix_len=args.fix_len,
-                                tokenize=t.tokenize,
-                                fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
-            WORD.vocab = t.get_vocab()
+            t = TransformerTokenizer(args.bert)
+            WORD = SubwordField('words', pad=t.pad, unk=t.unk, bos=t.bos, fix_len=args.fix_len, tokenize=t)
+            WORD.vocab = t.vocab
         else:
             WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
             if 'tag' in args.feat:
@@ -299,17 +292,9 @@ class BiaffineDependencyParser(Parser):
                 ELMO = RawField('elmo')
                 ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
             if 'bert' in args.feat:
-                from transformers import (AutoTokenizer, GPT2Tokenizer,
-                                          GPT2TokenizerFast)
-                t = AutoTokenizer.from_pretrained(args.bert)
-                BERT = SubwordField('bert',
-                                    pad=t.pad_token,
-                                    unk=t.unk_token,
-                                    bos=t.bos_token or t.cls_token,
-                                    fix_len=args.fix_len,
-                                    tokenize=t.tokenize,
-                                    fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
-                BERT.vocab = t.get_vocab()
+                t = TransformerTokenizer(args.bert)
+                BERT = SubwordField('bert', pad=t.pad, unk=t.unk, bos=t.bos, fix_len=args.fix_len, tokenize=t)
+                BERT.vocab = t.vocab
         TEXT = RawField('texts')
         ARC = Field('arcs', bos=BOS, use_vocab=False, fn=CoNLL.get_arcs)
         REL = Field('rels', bos=BOS)
@@ -842,17 +827,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
         if args.encoder == 'bert':
-            from transformers import (AutoTokenizer, GPT2Tokenizer,
-                                      GPT2TokenizerFast)
-            t = AutoTokenizer.from_pretrained(args.bert)
-            WORD = SubwordField('words',
-                                pad=t.pad_token,
-                                unk=t.unk_token,
-                                bos=t.bos_token or t.cls_token,
-                                fix_len=args.fix_len,
-                                tokenize=t.tokenize,
-                                fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
-            WORD.vocab = t.get_vocab()
+            t = TransformerTokenizer(args.bert)
+            WORD = SubwordField('words', pad=t.pad, unk=t.unk, bos=t.bos, fix_len=args.fix_len, tokenize=t)
+            WORD.vocab = t.vocab
         else:
             WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
             if 'tag' in args.feat:
@@ -864,17 +841,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 ELMO = RawField('elmo')
                 ELMO.compose = lambda x: batch_to_ids(x).to(WORD.device)
             if 'bert' in args.feat:
-                from transformers import (AutoTokenizer, GPT2Tokenizer,
-                                          GPT2TokenizerFast)
-                t = AutoTokenizer.from_pretrained(args.bert)
-                BERT = SubwordField('bert',
-                                    pad=t.pad_token,
-                                    unk=t.unk_token,
-                                    bos=t.bos_token or t.cls_token,
-                                    fix_len=args.fix_len,
-                                    tokenize=t.tokenize,
-                                    fn=None if not isinstance(t, (GPT2Tokenizer, GPT2TokenizerFast)) else lambda x: ' '+x)
-                BERT.vocab = t.get_vocab()
+                t = TransformerTokenizer(args.bert)
+                BERT = SubwordField('bert', pad=t.pad, unk=t.unk, bos=t.bos, fix_len=args.fix_len, tokenize=t)
+                BERT.vocab = t.vocab
         TEXT = RawField('texts')
         ARC = Field('arcs', bos=BOS, use_vocab=False, fn=CoNLL.get_arcs)
         SIB = ChartField('sibs', bos=BOS, use_vocab=False, fn=CoNLL.get_sibs)
