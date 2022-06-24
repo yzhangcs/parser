@@ -68,11 +68,10 @@ class Vocab(object):
     def items(self):
         return self.stoi.items()
 
-    def update(self, vocab: Union[Iterable[str], Vocab, Counter]) -> None:
+    def update(self, vocab: Union[Iterable[str], Vocab, Counter]) -> Vocab:
         if isinstance(vocab, Vocab):
             vocab = vocab.itos
         vocab = list(set(vocab).difference(self.stoi))
-        if vocab:
-            length = len(self)
-            self.itos.extend(vocab)
-            self.stoi.update({token: i + length for i, token in enumerate(vocab)})
+        self.itos.extend(vocab)
+        self.stoi.update({token: i for i, token in enumerate(vocab, len(self.stoi))})
+        return self
