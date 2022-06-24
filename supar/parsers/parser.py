@@ -17,7 +17,7 @@ from supar.utils.metric import Metric
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import gather, is_master, parallel
 from torch.cuda.amp import GradScaler
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import ExponentialLR
 
 
@@ -59,7 +59,7 @@ class Parser(object):
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
             self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
         else:
-            from transformers import AdamW, get_linear_schedule_with_warmup
+            from transformers import get_linear_schedule_with_warmup
             steps = len(train.loader) * epochs // args.update_steps
             self.optimizer = AdamW(
                 [{'params': p, 'lr': args.lr * (1 if n.startswith('encoder') else args.lr_rate)}
