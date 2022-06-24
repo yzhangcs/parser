@@ -71,7 +71,8 @@ class Vocab(object):
     def update(self, vocab: Union[Iterable[str], Vocab, Counter]) -> Vocab:
         if isinstance(vocab, Vocab):
             vocab = vocab.itos
-        vocab = list(set(vocab).difference(self.stoi))
+        # NOTE: PAY CAREFUL ATTENTION TO DICT ORDER UNDER DISTRIBUTED TRAINING!
+        vocab = sorted(set(vocab).difference(self.stoi))
         self.itos.extend(vocab)
         self.stoi.update({token: i for i, token in enumerate(vocab, len(self.stoi))})
         return self
