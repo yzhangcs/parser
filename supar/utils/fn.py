@@ -43,22 +43,22 @@ def kmeans(x: List[int], k: int, max_it: int = 32) -> Tuple[List[float], List[Li
     KMeans algorithm for clustering the sentences by length.
 
     Args:
-        x (list[int]):
+        x (List[int]):
             The list of sentence lengths.
         k (int):
-            The number of clusters.
-            This is an approximate value. The final number of clusters can be less or equal to `k`.
+            The number of clusters, which is an approximate value.
+            The final number of clusters can be less or equal to `k`.
         max_it (int):
             Maximum number of iterations.
             If centroids does not converge after several iterations, the algorithm will be early stopped.
 
     Returns:
-        list[float], list[list[int]]:
+        List[float], List[List[int]]:
             The first list contains average lengths of sentences in each cluster.
             The second is the list of clusters holding indices of data points.
 
     Examples:
-        >>> x = torch.randint(10,20,(10,)).tolist()
+        >>> x = torch.randint(10, 20, (10,)).tolist()
         >>> x
         [15, 10, 17, 11, 18, 13, 17, 19, 18, 14]
         >>> centroids, clusters = kmeans(x, 3)
@@ -68,45 +68,44 @@ def kmeans(x: List[int], k: int, max_it: int = 32) -> Tuple[List[float], List[Li
         [[1, 3], [0, 5, 9], [2, 4, 6, 7, 8]]
     """
 
-    # the number of clusters must not be greater than the number of datapoints
-    x, k = torch.tensor(x, dtype=torch.float), min(len(x), k)
+    x = torch.tensor(x, dtype=torch.float)
     # collect unique datapoints
-    d = x.unique()
+    datapoints, indices, freqs = x.unique(return_inverse=True, return_counts=True)
+    # the number of clusters must not be greater than the number of datapoints
+    k = min(len(datapoints), k)
     # initialize k centroids randomly
-    c = d[torch.randperm(len(d))[:k]]
+    centroids = datapoints[torch.randperm(len(datapoints))[:k]]
     # assign each datapoint to the cluster with the closest centroid
-    dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
+    dists, y = torch.abs_(datapoints.unsqueeze(-1) - centroids).min(-1)
 
     for _ in range(max_it):
         # if an empty cluster is encountered,
         # choose the farthest datapoint from the biggest cluster and move that the empty one
         mask = torch.arange(k).unsqueeze(-1).eq(y)
         none = torch.where(~mask.any(-1))[0].tolist()
-        while len(none) > 0:
-            for i in none:
-                # the biggest cluster
-                b = torch.where(mask[mask.sum(-1).argmax()])[0]
-                # the datapoint farthest from the centroid of cluster b
-                f = dists[b].argmax()
-                # update the assigned cluster of f
-                y[b[f]] = i
-                # re-calculate the mask
-                mask = torch.arange(k).unsqueeze(-1).eq(y)
-            none = torch.where(~mask.any(-1))[0].tolist()
+        for i in none:
+            # the biggest cluster
+            biggest = torch.where(mask[mask.sum(-1).argmax()])[0]
+            # the datapoint farthest from the centroid of the biggest cluster
+            farthest = dists[biggest].argmax()
+            # update the assigned cluster of the farthest datapoint
+            y[biggest[farthest]] = i
+            # re-calculate the mask
+            mask = torch.arange(k).unsqueeze(-1).eq(y)
         # update the centroids
-        c, old = (x * mask).sum(-1) / mask.sum(-1), c
+        centroids, old = (datapoints * freqs * mask).sum(-1) / (freqs * mask).sum(-1), centroids
         # re-assign all datapoints to clusters
-        dists, y = torch.abs_(x.unsqueeze(-1) - c).min(-1)
+        dists, y = torch.abs_(datapoints.unsqueeze(-1) - centroids).min(-1)
         # stop iteration early if the centroids converge
-        if c.equal(old):
+        if centroids.equal(old):
             break
     # assign all datapoints to the new-generated clusters
     # the empty ones are discarded
     assigned = y.unique().tolist()
     # get the centroids of the assigned clusters
-    centroids = c[assigned].tolist()
+    centroids = centroids[assigned].tolist()
     # map all values of datapoints to buckets
-    clusters = [torch.where(y.eq(i))[0].tolist() for i in assigned]
+    clusters = [torch.where(indices.unsqueeze(-1).eq(torch.where(y.eq(i))[0]).any(-1))[0].tolist() for i in assigned]
 
     return centroids, clusters
 
