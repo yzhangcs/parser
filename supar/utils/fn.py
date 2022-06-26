@@ -290,7 +290,7 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
     return extracted
 
 
-def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> str:
+def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> Union[str, torch.Tensor]:
     start, meta = 0, []
     with open(fbin, 'wb') as f:
         # in this case, data should be a list of binarized files
@@ -302,19 +302,20 @@ def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> str:
                     length = int(meta[-1][:, 1].sum())
                     f.write(fi.read(length))
                 start = start + length
-            meta = pickle.dumps(torch.cat(meta))
+            meta = torch.cat(meta)
         else:
             for i in data:
                 bytes = pickle.dumps(i)
                 f.write(bytes)
                 meta.append((start, len(bytes)))
                 start = start + len(bytes)
-            meta = pickle.dumps(torch.tensor(meta))
+            meta = torch.tensor(meta)
+        pickled = pickle.dumps(meta)
         # append the meta data to the end of the bin file
-        f.write(meta)
+        f.write(pickled)
         # record the positions of the meta data
-        f.write(struct.pack('LL', start, len(meta)))
-    return fbin
+        f.write(struct.pack('LL', start, len(pickled)))
+    return fbin, meta
 
 
 def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bool = False) -> Any:
@@ -325,8 +326,7 @@ def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bo
             mm.seek(-length, os.SEEK_END)
             offset, length = struct.unpack('LL', mm.read(length))
         mm.seek(offset)
-        bytes = mm.read(length)
-        return pickle.loads(bytes)
+        return pickle.loads(mm.read(length))
 
 
 def resolve_config(args: Union[Dict, DictConfig]) -> DictConfig:

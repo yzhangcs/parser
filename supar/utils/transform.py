@@ -63,8 +63,7 @@ class Transform(object):
             fb = os.path.join(ftemp, os.path.basename(fbin))
             global flattened_fields
             flattened_fields = self.flattened_fields
-            binarize(progress_bar(sentences), fs)
-            sentences = debinarize(fs, meta=True)
+            _, sentences = binarize(progress_bar(sentences), fs)
             try:
                 yield ((sentences[s:s+chunksize], ft, fs, f"{fb}.{i}")
                        for i, s in enumerate(range(0, len(sentences), chunksize)))
@@ -80,17 +79,18 @@ class Transform(object):
                 for f in fields:
                     sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
                 chunk.append(sentence)
-            binarize(chunk, fb)
-            return fb
+            return binarize(chunk, fb)[0]
 
         # numericalize the fields of each sentence
         if is_master():
             with cache(self, sentences) as chunks, mp.Pool(workers) as pool:
                 results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
-                binarize((r.get() for r in results), fbin, merge=True)
+                _, sentences = binarize((r.get() for r in results), fbin, merge=True)
         if dist.is_initialized():
             dist.barrier()
-        return debinarize(fbin, meta=True)
+        if not is_master():
+            sentences = debinarize(fbin, meta=True)
+        return sentences
 
     def __getitem__(self, index):
         return getattr(self, self.fields[index])
