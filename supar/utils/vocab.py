@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Iterable
-from typing import Tuple, Union
+from typing import Iterable, Tuple, Union
 
 
 class Vocab(object):

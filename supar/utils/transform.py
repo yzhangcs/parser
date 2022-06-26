@@ -5,10 +5,10 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from collections.abc import Iterable
 from contextlib import contextmanager
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
+                    Tuple, Union)
 
 import nltk
 import pathos.multiprocessing as mp
