@@ -790,6 +790,13 @@ class Sentence(object):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
+    @lazy_property
+    def size(self):
+        try:
+            return len(next(iter(self.fields.values())))
+        except Exception:
+            raise ValueError("Cannot get size of a sentence with no fields")
+
 
 class CoNLLSentence(Sentence):
     r"""

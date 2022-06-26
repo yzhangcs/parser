@@ -115,7 +115,6 @@ class Dataset(torch.utils.data.Dataset):
         n_workers: int = 0,
         pin_memory: bool = True
     ) -> Dataset:
-        fields = self.transform.flattened_fields
         # numericalize all fields
         if self.cache:
             # if not forced to do binarization and the binarized file already exists, directly load the meta file
@@ -126,7 +125,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             self.sentences = self.transform(self.sentences)
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.buckets = dict(zip(*kmeans([len(s.fields[fields[0].name]) for s in self], n_buckets)))
+        self.buckets = dict(zip(*kmeans([s.size for s in self], n_buckets)))
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
                                  num_workers=n_workers,
