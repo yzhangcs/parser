@@ -68,7 +68,7 @@ class Dataset(torch.utils.data.Dataset):
 
         if cache:
             if not isinstance(data, str) or not os.path.exists(data):
-                raise RuntimeError("Only files are allowed in order to load/save the binarized data")
+                raise FileNotFoundError("Only files are allowed for binarization, but not found")
             self.fbin = data + '.pt'
             if self.binarize or not os.path.exists(self.fbin):
                 logger.info(f"Seeking to cache the data to {self.fbin} first")
@@ -89,7 +89,6 @@ class Dataset(torch.utils.data.Dataset):
         if hasattr(self, 'buckets'):
             s += f", n_buckets={len(self.buckets)}"
         s += ")"
-
         return s
 
     def __len__(self):
@@ -152,7 +151,7 @@ class Dataset(torch.utils.data.Dataset):
                         shutil.rmtree(ftemp)
 
                 def numericalize(sentences, fs, fb):
-                    sentences = global_transform((debinarize(fs, sentence) for sentence in progress_bar(sentences)))
+                    sentences = global_transform((debinarize(fs, sentence) for sentence in sentences))
                     lens = [sentence.size for sentence in sentences]
                     return binarize({'sentences': sentences, 'lens': lens}, fb)[0]
 
