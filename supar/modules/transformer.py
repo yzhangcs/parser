@@ -9,7 +9,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 
-class NoamLR(_LRScheduler):
+class InverseSquareRootLR(_LRScheduler):
 
     def __init__(
         self,
@@ -18,10 +18,10 @@ class NoamLR(_LRScheduler):
         warmup_steps: int,
         factor: float = 1,
         last_epoch: int = -1
-    ) -> NoamLR:
+    ) -> InverseSquareRootLR:
         self.warmup_steps = warmup_steps
         self.factor = factor * d_model ** -0.5
-        super(NoamLR, self).__init__(optimizer, last_epoch)
+        super(InverseSquareRootLR, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
         epoch = max(self.last_epoch, 1)
