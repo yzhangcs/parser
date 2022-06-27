@@ -42,7 +42,8 @@ class PositionalEmbedding(nn.Module):
     def reset_parameters(self):
         w = self.embed.weight
         max_len, n_model = w.shape
-        w = w.new_tensor(range(max_len)).unsqueeze(-1) / 10000 ** (w.new_tensor(range(n_model)) // 2 * 2 / n_model)
+        w = w.new_tensor(range(max_len)).unsqueeze(-1)
+        w = w / 10000 ** (w.new_tensor(range(n_model)).div(2, rounding_mode='floor') * 2 / n_model)
         w[:, 0::2], w[:, 1::2] = w[:, 0::2].sin(), w[:, 1::2].cos()
         self.embed.weight.copy_(w)
 
@@ -64,7 +65,7 @@ class RelativePositionalEmbedding(nn.Module):
         w = self.embed.weight
         max_len, n_model = w.shape
         pos = torch.cat((w.new_tensor(range(-max_len//2, 0)), w.new_tensor(range(max_len//2))))
-        w = pos.unsqueeze(-1) / 10000 ** (w.new_tensor(range(n_model)) // 2 * 2 / n_model)
+        w = pos.unsqueeze(-1) / 10000 ** (w.new_tensor(range(n_model)).div(2, rounding_mode='floor') * 2 / n_model)
         w[:, 0::2], w[:, 1::2] = w[:, 0::2].sin(), w[:, 1::2].cos()
         self.embed.weight.copy_(w)
 
@@ -78,7 +79,8 @@ class SinusoidPositionalEmbedding(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq_len, n_model = x[0].shape
-        pos = x.new_tensor(range(seq_len)).unsqueeze(-1) / 10000 ** (x.new_tensor(range(n_model)) // 2 * 2 / n_model)
+        pos = x.new_tensor(range(seq_len)).unsqueeze(-1)
+        pos = pos / 10000 ** (x.new_tensor(range(n_model)).div(2, rounding_mode='floor') * 2 / n_model)
         pos[:, 0::2], pos[:, 1::2] = pos[:, 0::2].sin(), pos[:, 1::2].cos()
         return pos
 
@@ -88,7 +90,8 @@ class SinusoidRelativePositionalEmbedding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq_len, n_model = x[0].shape
         pos = x.new_tensor(range(seq_len))
-        pos = (pos - pos.unsqueeze(-1)).unsqueeze(-1) / 10000 ** (x.new_tensor(range(n_model)) // 2 * 2 / n_model)
+        pos = (pos - pos.unsqueeze(-1)).unsqueeze(-1)
+        pos = pos / 10000 ** (x.new_tensor(range(n_model)).div(2, rounding_mode='floor') * 2 / n_model)
         pos[..., 0::2], pos[..., 1::2] = pos[..., 0::2].sin(), pos[..., 1::2].cos()
         return pos
 
