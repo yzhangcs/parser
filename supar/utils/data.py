@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
+from contextlib import contextmanager
 from typing import Dict, Iterable, List, Union
 
+import pathos.multiprocessing as mp
 import torch
 import torch.distributed as dist
-from supar.utils.fn import debinarize, kmeans
-from supar.utils.logging import logger
+from supar.utils.fn import binarize, debinarize, kmeans
+from supar.utils.logging import logger, progress_bar
+from supar.utils.parallel import is_master
 from supar.utils.transform import Batch, Transform
+from torch.distributions.utils import lazy_property
 from torch.utils.data import DataLoader
 
 
@@ -106,6 +112,12 @@ class Dataset(torch.utils.data.Dataset):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
+    @lazy_property
+    def sizes(self):
+        if not self.cache:
+            return [s.size for s in self.sentences]
+        return debinarize(self.fbin, 'lens')
+
     def build(
         self,
         batch_size: int,
@@ -113,19 +125,53 @@ class Dataset(torch.utils.data.Dataset):
         shuffle: bool = False,
         distributed: bool = False,
         n_workers: int = 0,
-        pin_memory: bool = True
+        pin_memory: bool = True,
+        chunk_size: int = 1000,
     ) -> Dataset:
         # numericalize all fields
-        if self.cache:
+        if not self.cache:
+            self.sentences = list(self.transform(self.sentences))
+        else:
             # if not forced to do binarization and the binarized file already exists, directly load the meta file
             if os.path.exists(self.fbin) and not self.binarize:
-                self.sentences = debinarize(self.fbin, meta=True)
+                self.sentences = debinarize(self.fbin, meta=True)['sentences']
             else:
-                self.sentences = self.transform(self.transform.load(self.data, **self.kwargs), self.fbin)
-        else:
-            self.sentences = self.transform(self.sentences)
+                @contextmanager
+                def cache(sentences):
+                    ftemp = tempfile.mkdtemp()
+                    fs = os.path.join(ftemp, 'sentences')
+                    fb = os.path.join(ftemp, os.path.basename(self.fbin))
+                    global global_fields
+                    global_fields = self.transform.flattened_fields
+                    sentences = binarize({'sentences': progress_bar(sentences)}, fs)[1]['sentences']
+                    try:
+                        yield ((sentences[s:s+chunk_size], fs, f"{fb}.{i}")
+                               for i, s in enumerate(range(0, len(sentences), chunk_size)))
+                    finally:
+                        del global_fields
+                        shutil.rmtree(ftemp)
+
+                def numericalize(sentences, fs, fb):
+                    chunk, lens = [], []
+                    for s in progress_bar(sentences):
+                        sentence = debinarize(fs, s)
+                        for f in global_fields:
+                            sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
+                        chunk.append(sentence)
+                        lens.append(sentence.size)
+                    return binarize({'sentences': chunk, 'lens': lens}, fb)[0]
+
+                # numericalize the fields of each sentence
+                if is_master():
+                    with cache(self.transform.load(self.data, **self.kwargs)) as chunks, mp.Pool(32) as pool:
+                        results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
+                        self.sentences = binarize((r.get() for r in results), self.fbin, merge=True)[1]['sentences']
+                if dist.is_initialized():
+                    dist.barrier()
+                if not is_master():
+                    self.sentences = debinarize(self.fbin, meta=True)['sentences']
         # NOTE: the final bucket count is roughly equal to n_buckets
-        self.buckets = dict(zip(*kmeans([s.size for s in self], n_buckets)))
+        self.buckets = dict(zip(*kmeans(self.sizes, n_buckets)))
         self.loader = DataLoader(dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
                                  num_workers=n_workers,

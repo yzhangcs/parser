@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from collections import defaultdict
 import gzip
 import mmap
 import os
@@ -290,26 +291,39 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
     return extracted
 
 
-def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> Union[str, torch.Tensor]:
-    start, meta = 0, []
+def binarize(
+    data: Union[List[str], Dict[str, Iterable]],
+    fbin: str = None,
+    merge: bool = False
+) -> Tuple[str, torch.Tensor]:
+    start, meta = 0, defaultdict(list)
+    # the binarized file is organized as:
+    # `data`: pickled objects
+    # `meta`: a dict containing the pointers of each kind of data
+    # `index`: fixed size integers representing the storage positions of the meta data
     with open(fbin, 'wb') as f:
         # in this case, data should be a list of binarized files
         if merge:
-            for i in data:
-                meta.append(debinarize(i, meta=True))
-                meta[-1][:, 0] += start
-                with open(i, 'rb') as fi:
-                    length = int(meta[-1][:, 1].sum())
+            for file in data:
+                if not os.path.exists(file):
+                    raise RuntimeError("Some files are missing. Please check the paths")
+                mi = debinarize(file, meta=True)
+                for key, val in mi.items():
+                    val[:, 0] += start
+                    meta[key].append(val)
+                with open(file, 'rb') as fi:
+                    length = int(sum(val[:, 1].sum() for val in mi.values()))
                     f.write(fi.read(length))
                 start = start + length
-            meta = torch.cat(meta)
+            meta = {key: torch.cat(val) for key, val in meta.items()}
         else:
-            for i in data:
-                bytes = pickle.dumps(i)
-                f.write(bytes)
-                meta.append((start, len(bytes)))
-                start = start + len(bytes)
-            meta = torch.tensor(meta)
+            for key, val in data.items():
+                for i in val:
+                    bytes = pickle.dumps(i)
+                    f.write(bytes)
+                    meta[key].append((start, len(bytes)))
+                    start = start + len(bytes)
+            meta = {key: torch.tensor(val) for key, val in meta.items()}
         pickled = pickle.dumps(meta)
         # append the meta data to the end of the bin file
         f.write(pickled)
@@ -318,13 +332,27 @@ def binarize(data: Iterable, fbin: str = None, merge: bool = False) -> Union[str
     return fbin, meta
 
 
-def debinarize(fbin: str, position: Optional[Tuple[int, int]] = (0, 0), meta: bool = False) -> Any:
-    offset, length = position
+def debinarize(
+    fbin: str,
+    pos_or_key: Optional[Union[Tuple[int, int], str]] = (0, 0),
+    meta: bool = False
+) -> Union[Any, Iterable[Any]]:
     with open(fbin, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-        if meta:
-            length = len(struct.pack('LL', *position))
+        if meta or isinstance(pos_or_key, str):
+            length = len(struct.pack('LL', 0, 0))
             mm.seek(-length, os.SEEK_END)
             offset, length = struct.unpack('LL', mm.read(length))
+            mm.seek(offset)
+            if meta:
+                return pickle.loads(mm.read(length))
+            # fetch by key
+            objs, meta = [], pickle.loads(mm.read(length))[pos_or_key]
+            for offset, length in meta.tolist():
+                mm.seek(offset)
+                objs.append(pickle.loads(mm.read(length)))
+            return objs
+        # fetch by positions
+        offset, length = pos_or_key
         mm.seek(offset)
         return pickle.loads(mm.read(length))
 

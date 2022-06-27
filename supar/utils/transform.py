@@ -3,20 +3,13 @@
 from __future__ import annotations
 
 import os
-import shutil
-import tempfile
-from contextlib import contextmanager
 from io import StringIO
 from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
                     Tuple, Union)
 
 import nltk
-import pathos.multiprocessing as mp
 import torch
-import torch.distributed as dist
-from supar.utils.fn import binarize, debinarize
 from supar.utils.logging import logger, progress_bar
-from supar.utils.parallel import is_master
 from supar.utils.tokenizer import Tokenizer
 from torch.distributions.utils import lazy_property
 
@@ -48,49 +41,11 @@ class Transform(object):
         s = '\n' + '\n'.join([f" {f}" for f in self.flattened_fields]) + '\n'
         return f"{self.__class__.__name__}({s})"
 
-    def __call__(self, sentences: Union[str, Iterable[Sentence]], fbin=None, workers=32, chunksize=1000):
-        if fbin is None:
-            sentences = list(sentences)
-            for sentence in progress_bar(sentences):
-                for f in self.flattened_fields:
-                    sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
-            return sentences
-
-        @contextmanager
-        def cache(transform, sentences):
-            ftemp = tempfile.mkdtemp()
-            ft, fs = os.path.join(ftemp, 'transform'), os.path.join(ftemp, 'sentences')
-            fb = os.path.join(ftemp, os.path.basename(fbin))
-            global flattened_fields
-            flattened_fields = self.flattened_fields
-            _, sentences = binarize(progress_bar(sentences), fs)
-            try:
-                yield ((sentences[s:s+chunksize], ft, fs, f"{fb}.{i}")
-                       for i, s in enumerate(range(0, len(sentences), chunksize)))
-            finally:
-                del flattened_fields
-                shutil.rmtree(ftemp)
-
-        def numericalize(sentences, ft, fs, fb):
-            chunk = []
-            fields = flattened_fields
-            for s in progress_bar(sentences):
-                sentence = debinarize(fs, s)
-                for f in fields:
-                    sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
-                chunk.append(sentence)
-            return binarize(chunk, fb)[0]
-
-        # numericalize the fields of each sentence
-        if is_master():
-            with cache(self, sentences) as chunks, mp.Pool(workers) as pool:
-                results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
-                _, sentences = binarize((r.get() for r in results), fbin, merge=True)
-        if dist.is_initialized():
-            dist.barrier()
-        if not is_master():
-            sentences = debinarize(fbin, meta=True)
-        return sentences
+    def __call__(self, sentences: Iterable[Sentence]) -> Iterable[Sentence]:
+        for sentence in progress_bar(sentences):
+            for f in self.flattened_fields:
+                sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
+            yield sentence
 
     def __getitem__(self, index):
         return getattr(self, self.fields[index])
