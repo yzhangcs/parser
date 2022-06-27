@@ -8,9 +8,52 @@ import torch
 import torch.nn as nn
 
 
+class TokenDropout(nn.Module):
+    r"""
+    :class:`TokenDropout` seeks to randomly zero the vectors of some tokens with the probability of `p`.
+
+    Args:
+        p (float):
+            The probability of an element to be zeroed. Default: 0.5.
+
+    Examples:
+        >>> batch_size, seq_len, hidden_size = 1, 3, 5
+        >>> x = torch.ones(batch_size, seq_len, hidden_size)
+        >>> nn.Dropout()(x)
+        tensor([[[0., 2., 2., 0., 0.],
+                 [2., 2., 0., 2., 2.],
+                 [2., 2., 2., 2., 0.]]])
+        >>> TokenDropout()(x)
+        tensor([[[2., 2., 2., 2., 2.],
+                 [0., 0., 0., 0., 0.],
+                 [2., 2., 2., 2., 2.]]])
+    """
+
+    def __init__(self, p: float = 0.5) -> TokenDropout:
+        super().__init__()
+
+        self.p = p
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(p={self.p})"
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        r"""
+        Args:
+            x (~torch.Tensor):
+                A tensor of any shape.
+        Returns:
+            A tensor with the same shape as `x`.
+        """
+
+        if not self.training:
+            return x
+        return x * (x.new_empty(x.shape[:2]).bernoulli_(1 - self.p) / (1 - self.p)).unsqueeze(-1)
+
+
 class SharedDropout(nn.Module):
     r"""
-    SharedDropout differs from the vanilla dropout strategy in that the dropout mask is shared across one dimension.
+    :class:`SharedDropout` differs from the vanilla dropout strategy in that the dropout mask is shared across one dimension.
 
     Args:
         p (float):
@@ -20,7 +63,8 @@ class SharedDropout(nn.Module):
             Default: ``True``.
 
     Examples:
-        >>> x = torch.ones(1, 3, 5)
+        >>> batch_size, seq_len, hidden_size = 1, 3, 5
+        >>> x = torch.ones(batch_size, seq_len, hidden_size)
         >>> nn.Dropout()(x)
         tensor([[[0., 2., 2., 0., 0.],
                  [2., 2., 0., 2., 2.],
@@ -41,7 +85,6 @@ class SharedDropout(nn.Module):
         s = f"p={self.p}"
         if self.batch_first:
             s += f", batch_first={self.batch_first}"
-
         return f"{self.__class__.__name__}({s})"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -50,17 +93,12 @@ class SharedDropout(nn.Module):
             x (~torch.Tensor):
                 A tensor of any shape.
         Returns:
-            The returned tensor is of the same shape as `x`.
+            A tensor with the same shape as `x`.
         """
 
-        if self.training:
-            if self.batch_first:
-                mask = self.get_mask(x[:, 0], self.p).unsqueeze(1)
-            else:
-                mask = self.get_mask(x[0], self.p)
-            x = x * mask
-
-        return x
+        if not self.training:
+            return x
+        return x * self.get_mask(x[:, 0], self.p).unsqueeze(1) if self.batch_first else self.get_mask(x[0], self.p)
 
     @staticmethod
     def get_mask(x: torch.Tensor, p: float) -> torch.FloatTensor:
@@ -78,7 +116,8 @@ class IndependentDropout(nn.Module):
             The probability of an element to be zeroed. Default: 0.5.
 
     Examples:
-        >>> x, y = torch.ones(1, 3, 5), torch.ones(1, 3, 5)
+        >>> batch_size, seq_len, hidden_size = 1, 3, 5
+        >>> x, y = torch.ones(batch_size, seq_len, hidden_size), torch.ones(batch_size, seq_len, hidden_size)
         >>> x, y = IndependentDropout()(x, y)
         >>> x
         tensor([[[1., 1., 1., 1., 1.],
@@ -104,14 +143,13 @@ class IndependentDropout(nn.Module):
             items (list[~torch.Tensor]):
                 A list of tensors that have the same shape except the last dimension.
         Returns:
-            The returned tensors are of the same shape as `items`.
+            A tensors are of the same shape as `items`.
         """
 
-        if self.training:
-            masks = [x.new_empty(x.shape[:2]).bernoulli_(1 - self.p) for x in items]
-            total = sum(masks)
-            scale = len(items) / total.max(torch.ones_like(total))
-            masks = [mask * scale for mask in masks]
-            items = [item * mask.unsqueeze(-1) for item, mask in zip(items, masks)]
-
-        return items
+        if not self.training:
+            return items
+        masks = [x.new_empty(x.shape[:2]).bernoulli_(1 - self.p) for x in items]
+        total = sum(masks)
+        scale = len(items) / total.max(torch.ones_like(total))
+        masks = [mask * scale for mask in masks]
+        return [item * mask.unsqueeze(-1) for item, mask in zip(items, masks)]
