@@ -9,6 +9,7 @@ import dill
 import supar
 import torch
 import torch.distributed as dist
+from supar.modules.transformer import InverseSquareRootLR
 from supar.utils import Config, Dataset
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
@@ -58,6 +59,9 @@ class Parser(object):
         if args.encoder == 'lstm':
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
             self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
+        elif args.encoder == 'transformer':
+            self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
+            self.scheduler = InverseSquareRootLR(self.optimizer, args.n_model, args.warmup_steps, args.lr_factor)
         else:
             from transformers import get_linear_schedule_with_warmup
             steps = len(train.loader) * epochs // args.update_steps

@@ -3,8 +3,9 @@
 import torch
 import torch.nn as nn
 from supar.modules import (CharLSTM, ELMoEmbedding, IndependentDropout,
-                           SharedDropout, TransformerEmbedding,
+                           SharedDropout, TokenDropout, TransformerEmbedding,
                            VariationalLSTM)
+from supar.modules.transformer import TransformerEncoder
 from supar.utils import Config
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -35,8 +36,6 @@ class Model(nn.Module):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.33,
-                 n_lstm_hidden=400,
-                 n_lstm_layers=3,
                  encoder_dropout=.33,
                  pad_index=0,
                  **kwargs):
@@ -45,60 +44,69 @@ class Model(nn.Module):
         self.args = Config().update(locals())
 
         if encoder != 'bert':
-            self.word_embed = nn.Embedding(num_embeddings=n_words,
-                                           embedding_dim=n_embed)
+            self.word_embed = nn.Embedding(num_embeddings=self.args.n_words,
+                                           embedding_dim=self.args.n_embed)
 
-            n_input = n_embed
-            if n_pretrained != n_embed:
-                n_input += n_pretrained
-            if 'tag' in feat:
-                self.tag_embed = nn.Embedding(num_embeddings=n_tags,
-                                              embedding_dim=n_feat_embed)
-                n_input += n_feat_embed
-            if 'char' in feat:
-                self.char_embed = CharLSTM(n_chars=n_chars,
-                                           n_embed=n_char_embed,
-                                           n_hidden=n_char_hidden,
-                                           n_out=n_feat_embed,
-                                           pad_index=char_pad_index,
-                                           dropout=char_dropout)
-                n_input += n_feat_embed
-            if 'lemma' in feat:
-                self.lemma_embed = nn.Embedding(num_embeddings=n_lemmas,
-                                                embedding_dim=n_feat_embed)
-                n_input += n_feat_embed
-            if 'elmo' in feat:
-                self.elmo_embed = ELMoEmbedding(n_out=n_plm_embed,
-                                                bos_eos=elmo_bos_eos,
-                                                dropout=elmo_dropout,
-                                                finetune=finetune)
+            n_input = self.args.n_embed
+            if self.args.n_pretrained != self.args.n_embed:
+                n_input += self.args.n_pretrained
+            if 'tag' in self.args.feat:
+                self.tag_embed = nn.Embedding(num_embeddings=self.args.n_tags,
+                                              embedding_dim=self.args.n_feat_embed)
+                n_input += self.args.n_feat_embed
+            if 'char' in self.args.feat:
+                self.char_embed = CharLSTM(n_chars=self.args.n_chars,
+                                           n_embed=self.args.n_char_embed,
+                                           n_hidden=self.args.n_char_hidden,
+                                           n_out=self.args.n_feat_embed,
+                                           pad_index=self.args.char_pad_index,
+                                           dropout=self.args.char_dropout)
+                n_input += self.args.n_feat_embed
+            if 'lemma' in self.args.feat:
+                self.lemma_embed = nn.Embedding(num_embeddings=self.args.n_lemmas,
+                                                embedding_dim=self.args.n_feat_embed)
+                n_input += self.args.n_feat_embed
+            if 'elmo' in self.args.feat:
+                self.elmo_embed = ELMoEmbedding(n_out=self.args.n_plm_embed,
+                                                bos_eos=self.args.elmo_bos_eos,
+                                                dropout=self.args.elmo_dropout,
+                                                finetune=self.args.finetune)
                 n_input += self.elmo_embed.n_out
-            if 'bert' in feat:
-                self.bert_embed = TransformerEmbedding(model=bert,
-                                                       n_layers=n_bert_layers,
-                                                       n_out=n_plm_embed,
-                                                       pooling=bert_pooling,
-                                                       pad_index=bert_pad_index,
-                                                       mix_dropout=mix_dropout,
-                                                       finetune=finetune)
+            if 'bert' in self.args.feat:
+                self.bert_embed = TransformerEmbedding(model=self.args.bert,
+                                                       n_layers=self.args.n_bert_layers,
+                                                       n_out=self.args.n_plm_embed,
+                                                       pooling=self.args.bert_pooling,
+                                                       pad_index=self.args.bert_pad_index,
+                                                       mix_dropout=self.args.mix_dropout,
+                                                       finetune=self.args.finetune)
                 n_input += self.bert_embed.n_out
-            self.embed_dropout = IndependentDropout(p=embed_dropout)
         if encoder == 'lstm':
+            self.embed_dropout = IndependentDropout(p=self.args.embed_dropout)
             self.encoder = VariationalLSTM(input_size=n_input,
-                                           hidden_size=n_lstm_hidden,
-                                           num_layers=n_lstm_layers,
+                                           hidden_size=self.args.n_lstm_hidden,
+                                           num_layers=self.args.n_lstm_layers,
                                            bidirectional=True,
-                                           dropout=encoder_dropout)
-            self.encoder_dropout = SharedDropout(p=encoder_dropout)
-            self.args.n_hidden = n_lstm_hidden * 2
+                                           dropout=self.args.encoder_dropout)
+            self.encoder_dropout = SharedDropout(p=self.args.encoder_dropout)
+            self.args.n_hidden = self.args.n_lstm_hidden * 2
+        elif encoder == 'transformer':
+            self.embed_dropout = TokenDropout(p=self.args.embed_dropout)
+            self.encoder = TransformerEncoder(n_layers=self.args.n_layers,
+                                              n_heads=self.args.n_heads,
+                                              n_model=self.args.n_model,
+                                              n_inner=self.args.n_inner,
+                                              dropout=self.args.encoder_dropout)
+            self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
+            self.args.n_hidden = self.args.n_model
         else:
-            self.encoder = TransformerEmbedding(model=bert,
-                                                n_layers=n_bert_layers,
-                                                pooling=bert_pooling,
-                                                pad_index=pad_index,
-                                                mix_dropout=mix_dropout,
+            self.encoder = TransformerEmbedding(model=self.args.bert,
+                                                n_layers=self.args.n_bert_layers,
+                                                pooling=self.args.bert_pooling,
+                                                pad_index=self.args.pad_index,
+                                                mix_dropout=self.args.mix_dropout,
                                                 finetune=True)
-            self.encoder_dropout = nn.Dropout(p=encoder_dropout)
+            self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
             self.args.n_hidden = self.encoder.n_out
 
     def load_pretrained(self, embed=None):
@@ -131,21 +139,26 @@ class Model(nn.Module):
             else:
                 word_embed = torch.cat((word_embed, self.embed_proj(pretrained)), -1)
 
-        feat_embeds = []
+        feat_embed = []
         if 'tag' in self.args.feat:
-            feat_embeds.append(self.tag_embed(feats.pop()))
+            feat_embed.append(self.tag_embed(feats.pop()))
         if 'char' in self.args.feat:
-            feat_embeds.append(self.char_embed(feats.pop(0)))
+            feat_embed.append(self.char_embed(feats.pop(0)))
         if 'elmo' in self.args.feat:
-            feat_embeds.append(self.elmo_embed(feats.pop(0)))
+            feat_embed.append(self.elmo_embed(feats.pop(0)))
         if 'bert' in self.args.feat:
-            feat_embeds.append(self.bert_embed(feats.pop(0)))
+            feat_embed.append(self.bert_embed(feats.pop(0)))
         if 'lemma' in self.args.feat:
-            feat_embeds.append(self.lemma_embed(feats.pop(0)))
-        word_embed, feat_embed = self.embed_dropout(word_embed, torch.cat(feat_embeds, -1))
-        # concatenate the word and feat representations
-        embed = torch.cat((word_embed, feat_embed), -1)
-
+            feat_embed.append(self.lemma_embed(feats.pop(0)))
+        if isinstance(self.embed_dropout, IndependentDropout):
+            if len(feat_embed) == 0:
+                raise RuntimeError(f"`feat` is not allowed to be empty, which is {self.args.feat} now")
+            embed = torch.cat(self.embed_dropout(word_embed, torch.cat(feat_embed, -1)), -1)
+        else:
+            embed = word_embed
+            if len(feat_embed) > 0:
+                embed = torch.cat((embed, torch.cat(feat_embed, -1)), -1)
+            embed = self.embed_dropout(embed)
         return embed
 
     def encode(self, words, feats=None):
@@ -153,6 +166,8 @@ class Model(nn.Module):
             x = pack_padded_sequence(self.embed(words, feats), words.ne(self.args.pad_index).sum(1).tolist(), True, False)
             x, _ = self.encoder(x)
             x, _ = pad_packed_sequence(x, True, total_length=words.shape[1])
+        elif self.args.encoder == 'transformer':
+            x = self.encoder(self.embed(words, feats), words.ne(self.args.pad_index))
         else:
             x = self.encoder(words)
         return self.encoder_dropout(x)
