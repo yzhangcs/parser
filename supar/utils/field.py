@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional, Union
 
 import torch
 from supar.utils.data import Dataset
@@ -151,28 +151,28 @@ class Field(RawField):
     def device(self):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    def preprocess(self, sequence: Iterable) -> Iterable:
+    def preprocess(self, data: Union[str, Iterable]) -> Iterable:
         r"""
-        Loads a single example using this field, tokenizing if necessary.
+        Loads a single example and tokenize it if necessary.
         The sequence will be first passed to ``fn`` if available.
         If ``tokenize`` is not None, the input will be tokenized.
         Then the input will be lowercased optionally.
 
         Args:
-            sequence (Iterable):
-                The sequence to be preprocessed.
+            data (Union[str, Iterable]):
+                The data to be preprocessed.
 
         Returns:
             A list of preprocessed sequence.
         """
 
         if self.fn is not None:
-            sequence = self.fn(sequence)
+            data = self.fn(data)
         if self.tokenize is not None:
-            sequence = self.tokenize(sequence)
+            data = self.tokenize(data)
         if self.lower:
-            sequence = [str.lower(token) for token in sequence]
-        return sequence
+            data = [str.lower(token) for token in data]
+        return data
 
     def build(
         self,
@@ -227,7 +227,7 @@ class Field(RawField):
         Each sequence is first preprocessed and then numericalized if needed.
 
         Args:
-            sequences (Iterable[list[str]]):
+            sequences (Iterable[List[str]]):
                 A list of sequences.
 
         Returns:
@@ -268,21 +268,21 @@ class SubwordField(Field):
     Args:
         fix_len (int):
             A fixed length that all subword pieces will be padded to.
-            This is used for truncating the subword pieces that exceed the length.
+            This is used for truncating the subword pieces exceeding the length.
             To save the memory, the final length will be the smaller value
             between the max length of subword pieces in a batch and `fix_len`.
 
     Examples:
-        >>> from transformers import AutoTokenizer
-        >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
+        >>> from supar.utils.tokenizer import TransformerTokenizer
+        >>> tokenizer = TransformerTokenizer('bert-base-cased')
         >>> field = SubwordField('bert',
-                                 pad=tokenizer.pad_token,
-                                 unk=tokenizer.unk_token,
-                                 bos=tokenizer.cls_token,
-                                 eos=tokenizer.sep_token,
+                                 pad=tokenizer.pad,
+                                 unk=tokenizer.unk,
+                                 bos=tokenizer.bos,
+                                 eos=tokenizer.eos,
                                  fix_len=20,
-                                 tokenize=tokenizer.tokenize)
-        >>> field.vocab = tokenizer.get_vocab()  # no need to re-build the vocab
+                                 tokenize=tokenizer)
+        >>> field.vocab = tokenizer.vocab  # no need to re-build the vocab
         >>> next(field.transform([['This', 'field', 'performs', 'token-level', 'tokenization']]))
         tensor([[  101,     0,     0],
                 [ 1188,     0,     0],
