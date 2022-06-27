@@ -237,7 +237,7 @@ class Field(RawField):
         for seq in sequences:
             seq = self.preprocess(seq)
             if self.use_vocab:
-                seq = self.vocab[seq]
+                seq = [self.vocab[token] for token in seq]
             if self.bos:
                 seq = [self.bos_index] + seq
             if self.eos:
