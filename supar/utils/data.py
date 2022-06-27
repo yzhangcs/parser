@@ -130,7 +130,7 @@ class Dataset(torch.utils.data.Dataset):
     ) -> Dataset:
         # numericalize all fields
         if not self.cache:
-            self.sentences = list(self.transform(self.sentences))
+            self.sentences = self.transform(self.sentences)
         else:
             # if not forced to do binarization and the binarized file already exists, directly load the meta file
             if os.path.exists(self.fbin) and not self.binarize:
@@ -141,25 +141,20 @@ class Dataset(torch.utils.data.Dataset):
                     ftemp = tempfile.mkdtemp()
                     fs = os.path.join(ftemp, 'sentences')
                     fb = os.path.join(ftemp, os.path.basename(self.fbin))
-                    global global_fields
-                    global_fields = self.transform.flattened_fields
+                    global global_transform
+                    global_transform = self.transform
                     sentences = binarize({'sentences': progress_bar(sentences)}, fs)[1]['sentences']
                     try:
                         yield ((sentences[s:s+chunk_size], fs, f"{fb}.{i}")
                                for i, s in enumerate(range(0, len(sentences), chunk_size)))
                     finally:
-                        del global_fields
+                        del global_transform
                         shutil.rmtree(ftemp)
 
                 def numericalize(sentences, fs, fb):
-                    chunk, lens = [], []
-                    for s in progress_bar(sentences):
-                        sentence = debinarize(fs, s)
-                        for f in global_fields:
-                            sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
-                        chunk.append(sentence)
-                        lens.append(sentence.size)
-                    return binarize({'sentences': chunk, 'lens': lens}, fb)[0]
+                    sentences = global_transform((debinarize(fs, sentence) for sentence in progress_bar(sentences)))
+                    lens = [sentence.size for sentence in sentences]
+                    return binarize({'sentences': sentences, 'lens': lens}, fb)[0]
 
                 # numericalize the fields of each sentence
                 if is_master():

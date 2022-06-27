@@ -42,10 +42,7 @@ class Transform(object):
         return f"{self.__class__.__name__}({s})"
 
     def __call__(self, sentences: Iterable[Sentence]) -> Iterable[Sentence]:
-        for sentence in progress_bar(sentences):
-            for f in self.flattened_fields:
-                sentence.fields[f.name] = next(f.transform([getattr(sentence, f.name)]))
-            yield sentence
+        return [sentence.numericalize(self.flattened_fields) for sentence in progress_bar(sentences)]
 
     def __getitem__(self, index):
         return getattr(self, self.fields[index])
@@ -748,9 +745,15 @@ class Sentence(object):
     @lazy_property
     def size(self):
         try:
-            return len(next(iter(self.fields.values())))
+            return next(iter(self.fields.values())).ne(self.pad_index).sum().item()
         except Exception:
             raise ValueError("Cannot get size of a sentence with no fields")
+
+    def numericalize(self, fields):
+        for f in fields:
+            self.fields[f.name] = next(f.transform([getattr(self, f.name)]))
+        self.pad_index = fields[0].pad_index
+        return self
 
 
 class CoNLLSentence(Sentence):
