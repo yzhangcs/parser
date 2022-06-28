@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
-from torch.nn import TransformerEncoderLayer
+from torch.nn import TransformerDecoderLayer, TransformerEncoderLayer
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -100,10 +102,11 @@ class TransformerEncoder(nn.Module):
 
     def __init__(
         self,
-        n_layers: int,
+        n_layers: int = 6,
         n_heads: int = 8,
         n_model: int = 1024,
         n_inner: int = 2048,
+        pre_norm: bool = False,
         dropout: float = 0.1
     ) -> TransformerEncoder:
         super(TransformerEncoder, self).__init__()
@@ -112,11 +115,13 @@ class TransformerEncoder(nn.Module):
         self.n_heads = n_heads
         self.n_model = n_model
         self.n_inner = n_inner
+        self.pre_norm = pre_norm
 
         self.pos_embed = SinusoidPositionalEmbedding()
         self.layers = nn.ModuleList([TransformerEncoderLayer(d_model=n_model,
                                                              nhead=n_heads,
                                                              dim_feedforward=n_inner,
+                                                             norm_first=pre_norm,
                                                              dropout=dropout)
                                      for _ in range(n_layers)])
         self.dropout = nn.Dropout(dropout)
@@ -126,6 +131,8 @@ class TransformerEncoder(nn.Module):
     def __repr__(self):
         s = self.__class__.__name__ + '('
         s += f"{self.n_layers}, {self.n_heads}, n_model={self.n_model}, n_inner={self.n_inner}"
+        if self.pre_norm:
+            s += f", pre_norm={self.pre_norm}"
         if self.dropout.p > 0:
             s += f", dropout={self.dropout.p}"
         s += ')'
@@ -196,6 +203,71 @@ class RelativePositionTransformerEncoder(nn.Module):
         if self.pre_norm:
             x = self.norm(x)
         return x
+
+
+class TransformerDecoder(nn.Module):
+
+    def __init__(
+        self,
+        n_layers: int = 6,
+        n_heads: int = 8,
+        n_model: int = 1024,
+        n_inner: int = 2048,
+        pre_norm: bool = False,
+        dropout: float = 0.1
+    ) -> TransformerDecoder:
+        super(TransformerDecoder, self).__init__()
+
+        self.n_layers = n_layers
+        self.n_heads = n_heads
+        self.n_model = n_model
+        self.n_inner = n_inner
+        self.pre_norm = pre_norm
+
+        self.pos_embed = SinusoidPositionalEmbedding()
+        self.layers = nn.ModuleList([TransformerDecoderLayer(d_model=n_model,
+                                                             nhead=n_heads,
+                                                             dim_feedforward=n_inner,
+                                                             norm_first=pre_norm,
+                                                             dropout=dropout)
+                                     for _ in range(n_layers)])
+        self.dropout = nn.Dropout(dropout)
+
+        self.reset_parameters()
+
+    def __repr__(self):
+        s = self.__class__.__name__ + '('
+        s += f"{self.n_layers}, {self.n_heads}, n_model={self.n_model}, n_inner={self.n_inner}"
+        if self.pre_norm:
+            s += f", pre_norm={self.pre_norm}"
+        if self.dropout.p > 0:
+            s += f", dropout={self.dropout.p}"
+        s += ')'
+        return s
+
+    def reset_parameters(self):
+        for param in self.parameters():
+            if param.dim() > 1:
+                nn.init.xavier_uniform_(param)
+
+    def forward(
+        self,
+        x_tgt: torch.Tensor,
+        x_src: torch.Tensor,
+        tgt_mask: torch.BoolTensor,
+        src_mask: torch.BoolTensor,
+        attn_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
+        x_tgt = self.dropout(x_tgt + self.pos_embed(x_tgt))
+        x_tgt, x_src = x_tgt.transpose(0, 1), x_src.transpose(0, 1)
+        tgt_mask, tgt_key_padding_mask, memory_key_padding_mask = ~attn_mask, ~tgt_mask, ~src_mask
+        for layer in self.layers:
+            x_tgt = layer(tgt=x_tgt,
+                          memory=x_src,
+                          tgt_mask=tgt_mask,
+                          tgt_key_padding_mask=tgt_key_padding_mask,
+                          memory_key_padding_mask=memory_key_padding_mask)
+        return x_tgt.transpose(0, 1)
 
 
 class RelativePositionMultiHeadAttention(nn.Module):

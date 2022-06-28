@@ -6,7 +6,8 @@ from .lstm import CharLSTM, VariationalLSTM
 from .mlp import MLP
 from .pretrained import ELMoEmbedding, TransformerEmbedding
 from .scalar_mix import ScalarMix
-from .transformer import RelativePositionTransformerEncoder, TransformerEncoder
+from .transformer import (RelativePositionTransformerEncoder,
+                          TransformerDecoder, TransformerEncoder)
 
 __all__ = ['Biaffine', 'Triaffine',
            'IndependentDropout', 'SharedDropout', 'TokenDropout',
@@ -14,4 +15,4 @@ __all__ = ['Biaffine', 'Triaffine',
            'MLP',
            'ELMoEmbedding', 'TransformerEmbedding',
            'ScalarMix',
-           'RelativePositionTransformerEncoder', 'TransformerEncoder']
+           'RelativePositionTransformerEncoder', 'TransformerDecoder', 'TransformerEncoder']
