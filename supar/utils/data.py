@@ -215,21 +215,19 @@ class Sampler(torch.utils.data.Sampler):
     def __iter__(self):
         g = torch.Generator()
         g.manual_seed(self.epoch)
-        total, count = 0, 0
+        total, batches = 0, []
         # if `shuffle=True`, shuffle both the buckets and samples in each bucket
         # for distributed training, make sure each process generates the same random sequence at each epoch
         range_fn = torch.arange if not self.shuffle else lambda x: torch.randperm(x, generator=g)
-        for i in range_fn(len(self.buckets)).tolist():
-            split_sizes = [(len(self.buckets[i]) - j - 1) // self.n_batches[i] + 1 for j in range(self.n_batches[i])]
+        for i, bucket in enumerate(self.buckets):
+            split_sizes = [(len(bucket) - j - 1) // self.n_batches[i] + 1 for j in range(self.n_batches[i])]
             # DON'T use `torch.chunk` which may return wrong number of batches
-            for batch in range_fn(len(self.buckets[i])).split(split_sizes):
-                if count == self.n_samples:
-                    break
+            for batch in range_fn(len(bucket)).split(split_sizes):
                 if total % self.n_replicas == self.rank:
-                    count += 1
-                    yield [self.buckets[i][j] for j in batch.tolist()]
+                    batches.append([bucket[j] for j in batch.tolist()])
                 total += 1
         self.epoch += 1
+        return iter(batches[i] for i in range_fn(len(batches)).tolist())
 
     def __len__(self):
         return self.n_samples
