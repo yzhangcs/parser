@@ -179,8 +179,7 @@ class BiaffineDependencyParser(Parser):
 
         for i, batch in enumerate(bar, 1):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -212,8 +211,7 @@ class BiaffineDependencyParser(Parser):
 
         for batch in progress_bar(loader):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -233,11 +231,9 @@ class BiaffineDependencyParser(Parser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, texts, *feats = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask, (batch.lens - 1).tolist()
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            lens = mask.sum(1).tolist()
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask, self.args.tree, self.args.proj)
@@ -491,8 +487,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         for i, batch in enumerate(bar, 1):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -524,8 +519,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
 
         for batch in progress_bar(loader):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -546,11 +540,9 @@ class CRFDependencyParser(BiaffineDependencyParser):
         CRF = DependencyCRF if self.args.proj else MatrixTree
         for batch in progress_bar(loader):
             words, _, *feats = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask, batch.lens - 1
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            lens = mask.sum(1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_rel = self.model(words, feats)
                 s_arc = CRF(s_arc, lens).marginals if self.args.mbr else s_arc
@@ -725,8 +717,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         for i, batch in enumerate(bar, 1):
             words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -759,8 +750,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
 
         for batch in progress_bar(loader):
             words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -781,11 +771,9 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, texts, *feats = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask, batch.lens - 1
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            lens = mask.sum(1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
@@ -1035,8 +1023,7 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         for i, batch in enumerate(bar, 1):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -1068,8 +1055,7 @@ class VIDependencyParser(BiaffineDependencyParser):
 
         for batch in progress_bar(loader):
             words, texts, *feats, arcs, rels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -1089,11 +1075,9 @@ class VIDependencyParser(BiaffineDependencyParser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, texts, *feats = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask, (batch.lens - 1).tolist()
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            lens = mask.sum(1).tolist()
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_arc, s_sib, s_rel = self.model(words, feats)
                 s_arc = self.model.inference((s_arc, s_sib), mask)

@@ -157,8 +157,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         for i, batch in enumerate(bar, 1):
             words, *feats, labels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -185,8 +184,7 @@ class BiaffineSemanticDependencyParser(Parser):
 
         for batch in progress_bar(loader):
             words, *feats, labels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -201,11 +199,9 @@ class BiaffineSemanticDependencyParser(Parser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, *feats = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask, (batch.lens - 1).tolist()
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            lens = mask[:, 1].sum(-1).tolist()
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_label = self.model(words, feats)
             label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
@@ -439,8 +435,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         for i, batch in enumerate(bar, 1):
             words, *feats, labels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -467,8 +462,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
 
         for batch in progress_bar(loader):
             words, *feats, labels = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -483,11 +477,9 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, *feats = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask, (batch.lens - 1).tolist()
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            lens = mask[:, 1].sum(-1).tolist()
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                 s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)

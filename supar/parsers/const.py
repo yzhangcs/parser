@@ -183,8 +183,7 @@ class CRFConstituencyParser(Parser):
 
         for i, batch in enumerate(bar, 1):
             words, *feats, trees, charts = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)[:, 1:]
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_span, s_label = self.model(words, feats)
@@ -208,8 +207,7 @@ class CRFConstituencyParser(Parser):
 
         for batch in progress_bar(loader):
             words, *feats, trees, charts = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)[:, 1:]
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_span, s_label = self.model(words, feats)
@@ -229,10 +227,8 @@ class CRFConstituencyParser(Parser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, *feats, trees = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)[:, 1:]
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask[:, 1:], batch.lens - 2
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            lens = mask[:, 0].sum(-1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_span, s_label = self.model(words, feats)
                 s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
@@ -477,8 +473,7 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         for i, batch in enumerate(bar, 1):
             words, *feats, trees, charts = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)[:, 1:]
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_span, s_pair, s_label = self.model(words, feats)
@@ -502,8 +497,7 @@ class VIConstituencyParser(CRFConstituencyParser):
 
         for batch in progress_bar(loader):
             words, *feats, trees, charts = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)[:, 1:]
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_span, s_pair, s_label = self.model(words, feats)
@@ -523,10 +517,8 @@ class VIConstituencyParser(CRFConstituencyParser):
     def _predict(self, loader):
         for batch in progress_bar(loader):
             words, *feats, trees = batch.compose(self.transform)
-            word_mask = words.ne(self.args.pad_index)[:, 1:]
-            mask = word_mask if len(words.shape) < 3 else word_mask.any(-1)
+            mask, lens = batch.mask[:, 1:], batch.lens - 2
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            lens = mask[:, 0].sum(-1)
             with torch.autocast(self.device, enabled=self.args.amp):
                 s_span, s_pair, s_label = self.model(words, feats)
                 s_span = self.model.inference((s_span, s_pair), mask)

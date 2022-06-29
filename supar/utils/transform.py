@@ -9,6 +9,7 @@ from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
 
 import nltk
 import torch
+from supar.utils.fn import pad
 from supar.utils.logging import logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
 from torch.distributions.utils import lazy_property
@@ -687,9 +688,21 @@ class Batch(object):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
+    @property
+    def device(self):
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
+
     @lazy_property
     def names(self):
         return [name for name in self.sentences[0].fields]
+
+    @lazy_property
+    def lens(self):
+        return torch.tensor([len(sentence) for sentence in self.sentences]).to(self.device)
+
+    @lazy_property
+    def mask(self):
+        return pad([torch.ones(i, dtype=torch.bool) for i in self.lens]).to(self.device)
 
     def compose(self, transform: Transform):
         return [f.compose([s.fields[f.name] for s in self.sentences]) for f in transform.flattened_fields]
@@ -724,7 +737,7 @@ class Sentence(object):
     def __getattr__(self, name):
         if name in self.fields:
             return self.values[self.maps[name]]
-        raise AttributeError
+        raise AttributeError(f"`{name}` not found")
 
     def __setattr__(self, name, value):
         if 'fields' in self.__dict__ and name in self:
@@ -742,12 +755,20 @@ class Sentence(object):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
+    def __len__(self):
+        try:
+            return len(next(iter(self.fields.values())))
+        except Exception:
+            raise AttributeError("Cannot get size of a sentence with no fields")
+
     @lazy_property
     def size(self):
+        # number of subwords in the sentence, mainly used for clustering
+        # this is equivalent to __len__ for normal tokens without further subword tokenization
         try:
             return next(iter(self.fields.values())).ne(self.pad_index).sum().item()
         except Exception:
-            raise ValueError("Cannot get size of a sentence with no fields")
+            raise AttributeError("Cannot get size of a sentence with no fields")
 
     def numericalize(self, fields):
         for f in fields:
