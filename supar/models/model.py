@@ -159,6 +159,8 @@ class Model(nn.Module):
             if len(feat_embed) > 0:
                 embed = torch.cat((embed, torch.cat(feat_embed, -1)), -1)
             embed = self.embed_dropout(embed)
+        if 'embed_factor' in self.args:
+            embed = embed * self.args.embed_factor
         return embed
 
     def encode(self, words, feats=None):
