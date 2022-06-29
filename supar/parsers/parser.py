@@ -61,7 +61,7 @@ class Parser(object):
             self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
         elif args.encoder == 'transformer':
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
-            self.scheduler = InverseSquareRootLR(self.optimizer, args.n_model, args.warmup_steps, args.lr_factor)
+            self.scheduler = InverseSquareRootLR(self.optimizer, args.warmup_steps)
         else:
             from transformers import get_linear_schedule_with_warmup
             steps = len(train.loader) * epochs // args.update_steps

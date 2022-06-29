@@ -16,19 +16,17 @@ class InverseSquareRootLR(_LRScheduler):
     def __init__(
         self,
         optimizer: Optimizer,
-        d_model: int,
         warmup_steps: int,
-        factor: float = 1,
         last_epoch: int = -1
     ) -> InverseSquareRootLR:
         self.warmup_steps = warmup_steps
-        self.factor = factor * d_model ** -0.5
+        self.factor = warmup_steps ** 0.5
         super(InverseSquareRootLR, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
         epoch = max(self.last_epoch, 1)
         scale = min(epoch ** -0.5, epoch * self.warmup_steps ** -1.5) * self.factor
-        return [scale for _ in self.base_lrs]
+        return [scale * lr for lr in self.base_lrs]
 
 
 class PositionalEmbedding(nn.Module):
