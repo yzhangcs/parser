@@ -116,12 +116,12 @@ class TransformerEncoder(nn.Module):
         self.pre_norm = pre_norm
 
         self.pos_embed = SinusoidPositionalEmbedding()
-        self.layers = nn.ModuleList([TransformerEncoderLayer(d_model=n_model,
-                                                             nhead=n_heads,
-                                                             dim_feedforward=n_inner,
-                                                             norm_first=pre_norm,
-                                                             dropout=dropout)
-                                     for _ in range(n_layers)])
+        self.encoder = nn.TransformerEncoder(encoder_layer=TransformerEncoderLayer(d_model=n_model,
+                                                                                   nhead=n_heads,
+                                                                                   dim_feedforward=n_inner,
+                                                                                   norm_first=pre_norm,
+                                                                                   dropout=dropout),
+                                             num_layers=n_layers)
         self.dropout = nn.Dropout(dropout)
 
         self.reset_parameters()
@@ -142,10 +142,8 @@ class TransformerEncoder(nn.Module):
                 nn.init.xavier_uniform_(param)
 
     def forward(self, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
-        x += self.pos_embed(x)
-        x, src_key_padding_mask = self.dropout(x).transpose(0, 1), ~mask
-        for layer in self.layers:
-            x = layer(x, src_key_padding_mask=src_key_padding_mask)
+        x = self.dropout(x + self.pos_embed(x))
+        x = self.encoder(x.transpose(0, 1), src_key_padding_mask=~mask)
         return x.transpose(0, 1)
 
 
@@ -223,12 +221,12 @@ class TransformerDecoder(nn.Module):
         self.pre_norm = pre_norm
 
         self.pos_embed = SinusoidPositionalEmbedding()
-        self.layers = nn.ModuleList([TransformerDecoderLayer(d_model=n_model,
-                                                             nhead=n_heads,
-                                                             dim_feedforward=n_inner,
-                                                             norm_first=pre_norm,
-                                                             dropout=dropout)
-                                     for _ in range(n_layers)])
+        self.decoder = nn.TransformerDecoder(decoder_layer=TransformerDecoderLayer(d_model=n_model,
+                                                                                   nhead=n_heads,
+                                                                                   dim_feedforward=n_inner,
+                                                                                   norm_first=pre_norm,
+                                                                                   dropout=dropout),
+                                             num_layers=n_layers)
         self.dropout = nn.Dropout(dropout)
 
         self.reset_parameters()
@@ -257,14 +255,11 @@ class TransformerDecoder(nn.Module):
         attn_mask: Optional[torch.BoolTensor] = None
     ) -> torch.Tensor:
         x_tgt = self.dropout(x_tgt + self.pos_embed(x_tgt))
-        x_tgt, x_src = x_tgt.transpose(0, 1), x_src.transpose(0, 1)
-        tgt_mask, tgt_key_padding_mask, memory_key_padding_mask = ~attn_mask, ~tgt_mask, ~src_mask
-        for layer in self.layers:
-            x_tgt = layer(tgt=x_tgt,
-                          memory=x_src,
-                          tgt_mask=tgt_mask,
-                          tgt_key_padding_mask=tgt_key_padding_mask,
-                          memory_key_padding_mask=memory_key_padding_mask)
+        x_tgt = self.decoder(tgt=x_tgt.transpose(0, 1),
+                             memory=x_src.transpose(0, 1),
+                             tgt_mask=~attn_mask if attn_mask is not None else None,
+                             tgt_key_padding_mask=~tgt_mask,
+                             memory_key_padding_mask=~src_mask)
         return x_tgt.transpose(0, 1)
 
 
