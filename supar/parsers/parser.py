@@ -157,7 +157,7 @@ class Parser(object):
 
         logger.info("Making predictions on the dataset")
         start = datetime.now()
-        with tempfile.TemporaryDirectory() as t:
+        with tempfile.TemporaryDirectory() as t, parallel(False, None):
             # we have clustered the sentences by length here to speed up prediction,
             # so the order of the yielded sentences can't be guaranteed
             for s in self._predict(dataset.loader):

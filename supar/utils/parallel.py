@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Generator, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 
 import torch
 import torch.distributed as dist
@@ -32,34 +32,33 @@ class parallel(object):
         self.op = op
 
     def __enter__(self):
+        self.prev = torch.is_grad_enabled()
+        torch.set_grad_enabled(self.training)
         return self
 
     def __exit__(self, *exc):
-        ...
+        torch.set_grad_enabled(self.prev)
 
     def __call__(self, fn):
         @functools.wraps(fn)
         def wrapper(parser: Parser, *args, **kwargs):
-            parser.model.train(self.training)
-            with (torch.enable_grad if self.training else torch.no_grad)():
+            with self:
+                parser.model.train(self.training)
                 if not dist.is_initialized():
-                    results = fn(parser, *args, **kwargs)
-                else:
-                    if self.training:
-                        with parser.model.join():
-                            results = fn(parser, *args, **kwargs)
-                    else:
-                        dist_model = parser.model
-                        # https://github.com/pytorch/pytorch/issues/54059
-                        if hasattr(parser.model, 'module'):
-                            parser.model = parser.model.module
+                    return fn(parser, *args, **kwargs)
+                if self.training:
+                    with parser.model.join():
                         results = fn(parser, *args, **kwargs)
-                        parser.model = dist_model
-                        dist.barrier()
+                else:
+                    dist_model = parser.model
+                    # https://github.com/pytorch/pytorch/issues/54059
+                    if hasattr(parser.model, 'module'):
+                        parser.model = parser.model.module
+                    results = fn(parser, *args, **kwargs)
+                    parser.model = dist_model
+                    dist.barrier()
                 if results is None:
                     return results
-                if isinstance(results, Generator):
-                    yield from results
                 if self.op is None:
                     return results
                 elif self.op == 'sum':
