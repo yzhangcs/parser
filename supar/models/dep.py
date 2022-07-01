@@ -75,10 +75,10 @@ class BiaffineDependencyModel(Model):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 400.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 800.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_arc_mlp (int):
@@ -121,8 +121,8 @@ class BiaffineDependencyModel(Model):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.33,
-                 n_lstm_hidden=400,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=800,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_arc_mlp=500,
                  n_rel_mlp=100,
@@ -133,10 +133,10 @@ class BiaffineDependencyModel(Model):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.arc_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.arc_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.rel_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
-        self.rel_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.arc_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
+        self.arc_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
+        self.rel_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.rel_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
 
         self.arc_attn = Biaffine(n_in=n_arc_mlp, scale=scale, bias_x=True, bias_y=False)
         self.rel_attn = Biaffine(n_in=n_rel_mlp, n_out=n_rels, bias_x=True, bias_y=True)
@@ -300,10 +300,10 @@ class CRFDependencyModel(BiaffineDependencyModel):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 400.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 800.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_arc_mlp (int):
@@ -425,10 +425,10 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 400.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 800.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_arc_mlp (int):
@@ -470,8 +470,8 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.33,
-                 n_lstm_hidden=400,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=800,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_arc_mlp=500,
                  n_sib_mlp=100,
@@ -483,13 +483,13 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.arc_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.arc_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.sib_mlp_s = MLP(n_in=self.args.n_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.sib_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.sib_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.rel_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
-        self.rel_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.arc_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
+        self.arc_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
+        self.sib_mlp_s = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
+        self.sib_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
+        self.sib_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
+        self.rel_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.rel_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
 
         self.arc_attn = Biaffine(n_in=n_arc_mlp, scale=scale, bias_x=True, bias_y=False)
         self.sib_attn = Triaffine(n_in=n_sib_mlp, scale=scale, bias_x=True, bias_y=True)
@@ -675,10 +675,10 @@ class VIDependencyModel(BiaffineDependencyModel):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 400.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 800.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_arc_mlp (int):
@@ -729,8 +729,8 @@ class VIDependencyModel(BiaffineDependencyModel):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.33,
-                 n_lstm_hidden=400,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=800,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_arc_mlp=500,
                  n_sib_mlp=100,
@@ -744,13 +744,13 @@ class VIDependencyModel(BiaffineDependencyModel):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.arc_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.arc_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
-        self.sib_mlp_s = MLP(n_in=self.args.n_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.sib_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.sib_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
-        self.rel_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
-        self.rel_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.arc_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
+        self.arc_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_arc_mlp, dropout=mlp_dropout)
+        self.sib_mlp_s = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
+        self.sib_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
+        self.sib_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_sib_mlp, dropout=mlp_dropout)
+        self.rel_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
+        self.rel_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_rel_mlp, dropout=mlp_dropout)
 
         self.arc_attn = Biaffine(n_in=n_arc_mlp, scale=scale, bias_x=True, bias_y=False)
         self.sib_attn = Triaffine(n_in=n_sib_mlp, scale=scale, bias_x=True, bias_y=True)

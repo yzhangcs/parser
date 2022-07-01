@@ -84,21 +84,19 @@ class Model(nn.Module):
         if encoder == 'lstm':
             self.embed_dropout = IndependentDropout(p=self.args.embed_dropout)
             self.encoder = VariationalLSTM(input_size=n_input,
-                                           hidden_size=self.args.n_lstm_hidden,
-                                           num_layers=self.args.n_lstm_layers,
+                                           hidden_size=self.args.n_encoder_hidden//2,
+                                           num_layers=self.args.n_encoder_layers,
                                            bidirectional=True,
                                            dropout=self.args.encoder_dropout)
             self.encoder_dropout = SharedDropout(p=self.args.encoder_dropout)
-            self.args.n_hidden = self.args.n_lstm_hidden * 2
         elif encoder == 'transformer':
             self.embed_dropout = TokenDropout(p=self.args.embed_dropout)
-            self.encoder = TransformerEncoder(n_layers=self.args.n_layers,
-                                              n_heads=self.args.n_heads,
-                                              n_model=self.args.n_model,
-                                              n_inner=self.args.n_inner,
+            self.encoder = TransformerEncoder(n_layers=self.args.n_encoder_layers,
+                                              n_heads=self.args.n_encoder_heads,
+                                              n_model=self.args.n_encoder_hidden,
+                                              n_inner=self.args.n_encoder_inner,
                                               dropout=self.args.encoder_dropout)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
-            self.args.n_hidden = self.args.n_model
         else:
             self.encoder = TransformerEmbedding(model=self.args.bert,
                                                 n_layers=self.args.n_bert_layers,
@@ -107,7 +105,7 @@ class Model(nn.Module):
                                                 mix_dropout=self.args.mix_dropout,
                                                 finetune=True)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
-            self.args.n_hidden = self.encoder.n_out
+            self.args.n_encoder_hidden = self.encoder.n_out
 
     def load_pretrained(self, embed=None):
         if embed is not None:
@@ -123,7 +121,7 @@ class Model(nn.Module):
     def loss(self):
         raise NotImplementedError
 
-    def embed(self, words, feats):
+    def embed(self, words, feats=None):
         ext_words = words
         # set the indices larger than num_embeddings to unk_index
         if hasattr(self, 'pretrained'):

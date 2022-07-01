@@ -73,10 +73,10 @@ class CRFConstituencyModel(Model):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 400.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 800.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_span_mlp (int):
@@ -117,8 +117,8 @@ class CRFConstituencyModel(Model):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.33,
-                 n_lstm_hidden=400,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=800,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_span_mlp=500,
                  n_label_mlp=100,
@@ -128,10 +128,10 @@ class CRFConstituencyModel(Model):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.span_mlp_l = MLP(n_in=self.args.n_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
-        self.span_mlp_r = MLP(n_in=self.args.n_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
-        self.label_mlp_l = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
-        self.label_mlp_r = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
+        self.span_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
+        self.span_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
+        self.label_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
+        self.label_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
 
         self.span_attn = Biaffine(n_in=n_span_mlp, bias_x=True, bias_y=False)
         self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
@@ -285,10 +285,10 @@ class VIConstituencyModel(CRFConstituencyModel):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .33.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 400.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 800.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_span_mlp (int):
@@ -337,8 +337,8 @@ class VIConstituencyModel(CRFConstituencyModel):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.33,
-                 n_lstm_hidden=400,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=800,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_span_mlp=500,
                  n_pair_mlp=100,
@@ -352,13 +352,13 @@ class VIConstituencyModel(CRFConstituencyModel):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.span_mlp_l = MLP(n_in=self.args.n_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
-        self.span_mlp_r = MLP(n_in=self.args.n_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
-        self.pair_mlp_l = MLP(n_in=self.args.n_hidden, n_out=n_pair_mlp, dropout=mlp_dropout)
-        self.pair_mlp_r = MLP(n_in=self.args.n_hidden, n_out=n_pair_mlp, dropout=mlp_dropout)
-        self.pair_mlp_b = MLP(n_in=self.args.n_hidden, n_out=n_pair_mlp, dropout=mlp_dropout)
-        self.label_mlp_l = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
-        self.label_mlp_r = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
+        self.span_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
+        self.span_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_span_mlp, dropout=mlp_dropout)
+        self.pair_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=mlp_dropout)
+        self.pair_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=mlp_dropout)
+        self.pair_mlp_b = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=mlp_dropout)
+        self.label_mlp_l = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
+        self.label_mlp_r = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=mlp_dropout)
 
         self.span_attn = Biaffine(n_in=n_span_mlp, bias_x=True, bias_y=False)
         self.pair_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=False)

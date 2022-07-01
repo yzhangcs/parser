@@ -74,10 +74,10 @@ class BiaffineSemanticDependencyModel(Model):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .2.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 600.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 1200.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_edge_mlp (int):
@@ -124,8 +124,8 @@ class BiaffineSemanticDependencyModel(Model):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.2,
-                 n_lstm_hidden=600,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=1200,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_edge_mlp=600,
                  n_label_mlp=600,
@@ -137,10 +137,10 @@ class BiaffineSemanticDependencyModel(Model):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.edge_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.edge_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.label_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
-        self.label_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
+        self.edge_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
+        self.edge_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
+        self.label_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
+        self.label_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
 
         self.edge_attn = Biaffine(n_in=n_edge_mlp, n_out=2, bias_x=True, bias_y=True)
         self.label_attn = Biaffine(n_in=n_label_mlp, n_out=n_labels, bias_x=True, bias_y=True)
@@ -290,10 +290,10 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
             The size of PLM embeddings. If 0, uses the size of the pretrained embedding model. Default: 0.
         embed_dropout (float):
             The dropout ratio of input embeddings. Default: .2.
-        n_lstm_hidden (int):
-            The size of LSTM hidden states. Default: 600.
-        n_lstm_layers (int):
-            The number of LSTM layers. Default: 3.
+        n_encoder_hidden (int):
+            The size of encoder hidden states. Default: 1200.
+        n_encoder_layers (int):
+            The number of encoder layers. Default: 3.
         encoder_dropout (float):
             The dropout ratio of encoder layer. Default: .33.
         n_edge_mlp (int):
@@ -348,8 +348,8 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
                  finetune=False,
                  n_plm_embed=0,
                  embed_dropout=.2,
-                 n_lstm_hidden=600,
-                 n_lstm_layers=3,
+                 n_encoder_hidden=1200,
+                 n_encoder_layers=3,
                  encoder_dropout=.33,
                  n_edge_mlp=600,
                  n_pair_mlp=150,
@@ -365,13 +365,13 @@ class VISemanticDependencyModel(BiaffineSemanticDependencyModel):
                  **kwargs):
         super().__init__(**Config().update(locals()))
 
-        self.edge_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.edge_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
-        self.pair_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
-        self.pair_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
-        self.pair_mlp_g = MLP(n_in=self.args.n_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
-        self.label_mlp_d = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
-        self.label_mlp_h = MLP(n_in=self.args.n_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
+        self.edge_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
+        self.edge_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_edge_mlp, dropout=edge_mlp_dropout, activation=False)
+        self.pair_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
+        self.pair_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
+        self.pair_mlp_g = MLP(n_in=self.args.n_encoder_hidden, n_out=n_pair_mlp, dropout=pair_mlp_dropout, activation=False)
+        self.label_mlp_d = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
+        self.label_mlp_h = MLP(n_in=self.args.n_encoder_hidden, n_out=n_label_mlp, dropout=label_mlp_dropout, activation=False)
 
         self.edge_attn = Biaffine(n_in=n_edge_mlp, bias_x=True, bias_y=True)
         self.sib_attn = Triaffine(n_in=n_pair_mlp, bias_x=True, bias_y=True)
