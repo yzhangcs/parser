@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Generator, Iterable
 
 import torch
 import torch.distributed as dist
@@ -41,28 +41,31 @@ class parallel(object):
         @functools.wraps(fn)
         def wrapper(parser: Parser, *args, **kwargs):
             parser.model.train(self.training)
-            if not dist.is_initialized():
-                return fn(parser, *args, **kwargs)
-            if self.training:
-                with parser.model.join():
+            with (torch.enable_grad if self.training else torch.no_grad)():
+                if not dist.is_initialized():
                     results = fn(parser, *args, **kwargs)
-            else:
-                with torch.no_grad():
-                    dist_model = parser.model
-                    # https://github.com/pytorch/pytorch/issues/54059
-                    if hasattr(parser.model, 'module'):
-                        parser.model = parser.model.module
-                    results = fn(parser, *args, **kwargs)
-                    parser.model = dist_model
-                    dist.barrier()
-            if results is None:
-                return results
-            if self.op is None:
-                return results
-            elif self.op == 'sum':
-                return functools.reduce(lambda x, y: x + y, gather(results))
-            else:
-                raise NotImplementedError(f"Op {self.op} not supported yet")
+                else:
+                    if self.training:
+                        with parser.model.join():
+                            results = fn(parser, *args, **kwargs)
+                    else:
+                        dist_model = parser.model
+                        # https://github.com/pytorch/pytorch/issues/54059
+                        if hasattr(parser.model, 'module'):
+                            parser.model = parser.model.module
+                        results = fn(parser, *args, **kwargs)
+                        parser.model = dist_model
+                        dist.barrier()
+                if results is None:
+                    return results
+                if isinstance(results, Generator):
+                    yield from results
+                if self.op is None:
+                    return results
+                elif self.op == 'sum':
+                    return functools.reduce(lambda x, y: x + y, gather(results))
+                else:
+                    raise NotImplementedError(f"Op {self.op} not supported yet")
         return wrapper
 
 
