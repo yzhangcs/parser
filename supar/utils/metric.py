@@ -10,32 +10,49 @@ import torch
 
 class Metric(object):
 
-    def __init__(self, eps: float = 1e-12) -> Metric:
+    def __init__(self, reverse=False, eps: float = 1e-12) -> Metric:
         super().__init__()
 
         self.n = 0.0
         self.count = 0.0
         self.total_loss = 0.0
+        self.reverse = reverse
         self.eps = eps
 
     def __lt__(self, other: Metric) -> bool:
-        return self.score < other
+        if not hasattr(self, 'score'):
+            return True
+        if not hasattr(other, 'score'):
+            return False
+        return (self.score < other.score) if not self.reverse else (self.score > other.score)
 
     def __le__(self, other: Metric) -> bool:
-        return self.score <= other
-
-    def __ge__(self, other: Metric) -> bool:
-        return self.score >= other
+        if not hasattr(self, 'score'):
+            return True
+        if not hasattr(other, 'score'):
+            return False
+        return (self.score <= other.score) if not self.reverse else (self.score >= other.score)
 
     def __gt__(self, other: Metric) -> bool:
-        return self.score > other
+        if not hasattr(self, 'score'):
+            return False
+        if not hasattr(other, 'score'):
+            return True
+        return (self.score > other.score) if not self.reverse else (self.score < other.score)
+
+    def __ge__(self, other: Metric) -> bool:
+        if not hasattr(self, 'score'):
+            return False
+        if not hasattr(other, 'score'):
+            return True
+        return (self.score >= other.score) if not self.reverse else (self.score <= other.score)
 
     def __add__(self, other: Metric) -> Metric:
         raise NotImplementedError
 
     @property
     def score(self):
-        return 0.
+        raise AttributeError
 
     @property
     def loss(self):
@@ -52,7 +69,7 @@ class AttachmentMetric(Metric):
         mask: Optional[torch.BoolTensor] = None,
         eps: float = 1e-12,
     ) -> AttachmentMetric:
-        super().__init__(eps)
+        super().__init__(eps=eps)
 
         self.n_ucm = 0.0
         self.n_lcm = 0.0
@@ -134,7 +151,7 @@ class SpanMetric(Metric):
         golds: Optional[List[List[Tuple]]] = None,
         eps: float = 1e-12
     ) -> SpanMetric:
-        super().__init__(eps)
+        super().__init__(eps=eps)
 
         self.n_ucm = 0.0
         self.n_lcm = 0.0
@@ -233,7 +250,7 @@ class ChartMetric(Metric):
         golds: Optional[torch.Tensor] = None,
         eps: float = 1e-12
     ) -> ChartMetric:
-        super().__init__(eps)
+        super().__init__(eps=eps)
 
         self.tp = 0.0
         self.utp = 0.0
