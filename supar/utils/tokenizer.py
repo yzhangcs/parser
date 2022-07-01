@@ -105,10 +105,13 @@ class BPETokenizer:
 
         if not os.path.exists(path) and is_master():
             # start to train a tokenizer from scratch
-            self.tokenizer = Tokenizer(BPE(unk_token=unk, end_of_word_suffix='</w>'))
+            self.tokenizer = Tokenizer(BPE(unk_token=unk))
             self.tokenizer.pre_tokenizer = Whitespace()
             self.tokenizer.decoder = BPEDecoder()
-            self.tokenizer.train(files, trainer=BpeTrainer(vocab_size=vocab_size, special_tokens=self.special_tokens))
+            self.tokenizer.train(files=files,
+                                 trainer=BpeTrainer(vocab_size=vocab_size,
+                                                    special_tokens=self.special_tokens,
+                                                    end_of_word_suffix='</w>'))
             self.tokenizer.save(path)
         if dist.is_initialized():
             dist.barrier()
