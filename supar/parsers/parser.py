@@ -73,7 +73,9 @@ class Parser(object):
         self.scaler = GradScaler(enabled=args.amp)
 
         if dist.is_initialized():
-            self.model = DDP(self.model, device_ids=[args.local_rank], find_unused_parameters=True)
+            self.model = DDP(self.model,
+                             device_ids=[args.local_rank],
+                             find_unused_parameters=args.get('find_unused_parameters', True))
 
         self.epoch, self.best_e, self.patience, self.best_metric, self.elapsed = 1, 1, patience, Metric(), timedelta()
         if self.args.checkpoint:
