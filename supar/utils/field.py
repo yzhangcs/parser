@@ -256,7 +256,7 @@ class Field(RawField):
             A padded tensor converted to proper device.
         """
 
-        return pad(batch, self.pad_index).to(self.device)
+        return pad(batch, self.pad_index).to(self.device, non_blocking=True)
 
 
 class SubwordField(Field):

@@ -668,15 +668,19 @@ class Batch(object):
 
     def __init__(self, sentences: Iterable[Sentence]) -> Batch:
         self.sentences = sentences
+        self.names, self.fields = [], {}
 
     def __repr__(self):
         return f'{self.__class__.__name__}({", ".join([f"{name}" for name in self.names])})'
 
+    def __getitem__(self, index):
+        return self.fields[self.names[index]]
+
     def __getattr__(self, name):
-        return [getattr(s, name) for s in self.sentences]
+        return [s.fields[name] for s in self.sentences]
 
     def __setattr__(self, name: str, value: Iterable[Any]):
-        if name not in ('sentences', 'names'):
+        if name not in ('sentences', 'fields', 'names'):
             for s, v in zip(self.sentences, value):
                 setattr(s, name, v)
         else:
@@ -693,10 +697,6 @@ class Batch(object):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
 
     @lazy_property
-    def names(self):
-        return [name for name in self.sentences[0].fields]
-
-    @lazy_property
     def lens(self):
         return torch.tensor([len(i) for i in self.sentences]).to(self.device, non_blocking=True)
 
@@ -704,8 +704,11 @@ class Batch(object):
     def mask(self):
         return self.lens.unsqueeze(-1).gt(self.lens.new_tensor(range(self.lens.max())))
 
-    def compose(self, transform: Transform):
-        return [f.compose([s.fields[f.name] for s in self.sentences]) for f in transform.flattened_fields]
+    def compose(self, transform: Transform) -> Batch:
+        for f in transform.flattened_fields:
+            self.names.append(f.name)
+            self.fields[f.name] = f.compose([s.fields[f.name] for s in self.sentences])
+        return self
 
     def pin_memory(self):
         for s in self.sentences:

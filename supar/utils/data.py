@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import queue
 import shutil
 import tempfile
+import threading
 from contextlib import contextmanager
 from typing import Dict, Iterable, List, Union
 
@@ -16,7 +18,6 @@ from supar.utils.logging import logger, progress_bar
 from supar.utils.parallel import is_master
 from supar.utils.transform import Batch, Transform
 from torch.distributions.utils import lazy_property
-from torch.utils.data import DataLoader
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -166,10 +167,11 @@ class Dataset(torch.utils.data.Dataset):
                     self.sentences = debinarize(self.fbin, meta=True)['sentences']
         # NOTE: the final bucket count is roughly equal to n_buckets
         self.buckets = dict(zip(*kmeans(self.sizes, n_buckets)))
-        self.loader = DataLoader(dataset=self,
+        self.loader = DataLoader(transform=self.transform,
+                                 dataset=self,
                                  batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
                                  num_workers=n_workers,
-                                 collate_fn=lambda x: Batch(x),
+                                 collate_fn=collate_fn,
                                  pin_memory=pin_memory)
         return self
 
@@ -231,3 +233,65 @@ class Sampler(torch.utils.data.Sampler):
 
     def __len__(self):
         return self.n_samples
+
+
+class DataLoader(torch.utils.data.DataLoader):
+
+    r"""
+    A wrapper for native :class:`torch.utils.data.DataLoader` enhanced with a data prefetcher.
+    See http://stackoverflow.com/questions/7323664/python-generator-pre-fetch and
+    https://github.com/NVIDIA/apex/issues/304.
+    """
+
+    def __init__(self, transform, **kwargs):
+        super().__init__(**kwargs)
+
+        self.transform = transform
+
+    def __iter__(self):
+        return PrefetchGenerator(self.transform, super().__iter__())
+
+
+class PrefetchGenerator(threading.Thread):
+
+    def __init__(self, transform, loader, prefetch=1):
+        threading.Thread.__init__(self)
+
+        self.transform = transform
+
+        self.queue = queue.Queue(prefetch)
+        self.loader = loader
+        self.daemon = True
+        if torch.cuda.is_available():
+            self.stream = torch.cuda.Stream()
+
+        self.start()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if hasattr(self, 'stream'):
+            torch.cuda.current_stream().wait_stream(self.stream)
+        batch = self.queue.get()
+        if batch is None:
+            raise StopIteration
+        return batch
+
+    def run(self):
+        # `torch.cuda.current_device` is thread local
+        # see https://github.com/pytorch/pytorch/issues/56588
+        if dist.is_initialized() and torch.cuda.is_available():
+            torch.cuda.set_device(dist.get_rank())
+        if hasattr(self, 'stream'):
+            with torch.cuda.stream(self.stream):
+                for batch in self.loader:
+                    self.queue.put(batch.compose(self.transform))
+        else:
+            for batch in self.loader:
+                self.queue.put(batch.compose(self.transform))
+        self.queue.put(None)
+
+
+def collate_fn(x):
+    return Batch(x)

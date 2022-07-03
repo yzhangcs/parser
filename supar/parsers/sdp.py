@@ -156,7 +156,7 @@ class BiaffineSemanticDependencyParser(Parser):
         bar, metric = progress_bar(loader), ChartMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, labels = batch.compose(self.transform)
+            words, *feats, labels = batch
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -183,7 +183,7 @@ class BiaffineSemanticDependencyParser(Parser):
         metric = ChartMetric()
 
         for batch in progress_bar(loader):
-            words, *feats, labels = batch.compose(self.transform)
+            words, *feats, labels = batch
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -198,7 +198,7 @@ class BiaffineSemanticDependencyParser(Parser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, *feats = batch.compose(self.transform)
+            words, *feats = batch
             mask, lens = batch.mask, (batch.lens - 1).tolist()
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -434,7 +434,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         bar, metric = progress_bar(loader), ChartMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, labels = batch.compose(self.transform)
+            words, *feats, labels = batch
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -461,7 +461,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         metric = ChartMetric()
 
         for batch in progress_bar(loader):
-            words, *feats, labels = batch.compose(self.transform)
+            words, *feats, labels = batch
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
@@ -476,7 +476,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, *feats = batch.compose(self.transform)
+            words, *feats = batch
             mask, lens = batch.mask, (batch.lens - 1).tolist()
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0

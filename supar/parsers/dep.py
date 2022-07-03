@@ -178,7 +178,7 @@ class BiaffineDependencyParser(Parser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -210,7 +210,7 @@ class BiaffineDependencyParser(Parser):
         metric = AttachmentMetric()
 
         for batch in progress_bar(loader):
-            words, texts, *feats, arcs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -230,7 +230,7 @@ class BiaffineDependencyParser(Parser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, texts, *feats = batch.compose(self.transform)
+            words, texts, *feats = batch
             mask, lens = batch.mask, (batch.lens - 1).tolist()
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -486,7 +486,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -518,7 +518,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
         metric = AttachmentMetric()
 
         for batch in progress_bar(loader):
-            words, texts, *feats, arcs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -539,7 +539,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
     def _predict(self, loader):
         CRF = DependencyCRF if self.args.proj else MatrixTree
         for batch in progress_bar(loader):
-            words, _, *feats = batch.compose(self.transform)
+            words, _, *feats = batch
             mask, lens = batch.mask, batch.lens - 1
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -716,7 +716,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, sibs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -749,7 +749,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         metric = AttachmentMetric()
 
         for batch in progress_bar(loader):
-            words, texts, *feats, arcs, sibs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, sibs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -770,7 +770,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, texts, *feats = batch.compose(self.transform)
+            words, texts, *feats = batch
             mask, lens = batch.mask, batch.lens - 1
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -1022,7 +1022,7 @@ class VIDependencyParser(BiaffineDependencyParser):
         bar, metric = progress_bar(loader), AttachmentMetric()
 
         for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -1054,7 +1054,7 @@ class VIDependencyParser(BiaffineDependencyParser):
         metric = AttachmentMetric()
 
         for batch in progress_bar(loader):
-            words, texts, *feats, arcs, rels = batch.compose(self.transform)
+            words, texts, *feats, arcs, rels = batch
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
@@ -1074,7 +1074,7 @@ class VIDependencyParser(BiaffineDependencyParser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, texts, *feats = batch.compose(self.transform)
+            words, texts, *feats = batch
             mask, lens = batch.mask, (batch.lens - 1).tolist()
             # ignore the first token of each sentence
             mask[:, 0] = 0

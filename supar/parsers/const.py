@@ -182,7 +182,7 @@ class CRFConstituencyParser(Parser):
         bar = progress_bar(loader)
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, trees, charts = batch.compose(self.transform)
+            words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -206,7 +206,7 @@ class CRFConstituencyParser(Parser):
         metric = SpanMetric()
 
         for batch in progress_bar(loader):
-            words, *feats, trees, charts = batch.compose(self.transform)
+            words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -226,7 +226,7 @@ class CRFConstituencyParser(Parser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, *feats, trees = batch.compose(self.transform)
+            words, *feats, trees = batch
             mask, lens = batch.mask[:, 1:], batch.lens - 2
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -472,7 +472,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         bar = progress_bar(loader)
 
         for i, batch in enumerate(bar, 1):
-            words, *feats, trees, charts = batch.compose(self.transform)
+            words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -496,7 +496,7 @@ class VIConstituencyParser(CRFConstituencyParser):
         metric = SpanMetric()
 
         for batch in progress_bar(loader):
-            words, *feats, trees, charts = batch.compose(self.transform)
+            words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
@@ -516,7 +516,7 @@ class VIConstituencyParser(CRFConstituencyParser):
     @parallel(training=False, op=None)
     def _predict(self, loader):
         for batch in progress_bar(loader):
-            words, *feats, trees = batch.compose(self.transform)
+            words, *feats, trees = batch
             mask, lens = batch.mask[:, 1:], batch.lens - 2
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
             with torch.autocast(self.device, enabled=self.args.amp):
