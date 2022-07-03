@@ -9,7 +9,7 @@ from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
 
 import nltk
 import torch
-from supar.utils.fn import pad
+from supar.utils.fn import debinarize
 from supar.utils.logging import logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
 from torch.distributions.utils import lazy_property
@@ -698,11 +698,11 @@ class Batch(object):
 
     @lazy_property
     def lens(self):
-        return torch.tensor([len(sentence) for sentence in self.sentences]).to(self.device)
+        return torch.tensor([len(i) for i in self.sentences]).to(self.device, non_blocking=True)
 
     @lazy_property
     def mask(self):
-        return pad([torch.ones(i, dtype=torch.bool) for i in self.lens]).to(self.device)
+        return self.lens.unsqueeze(-1).gt(self.lens.new_tensor(range(self.lens.max())))
 
     def compose(self, transform: Transform):
         return [f.compose([s.fields[f.name] for s in self.sentences]) for f in transform.flattened_fields]
@@ -775,6 +775,10 @@ class Sentence(object):
             self.fields[f.name] = next(f.transform([getattr(self, f.name)]))
         self.pad_index = fields[0].pad_index
         return self
+
+    @classmethod
+    def from_cache(cls, fbin: str, pos: Tuple[int, int]) -> Sentence:
+        return debinarize(fbin, pos)
 
 
 class CoNLLSentence(Sentence):
