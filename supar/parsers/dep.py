@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 import torch
 import torch.nn as nn
@@ -17,6 +18,11 @@ from supar.utils.metric import AttachmentMetric
 from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import CoNLL
+
+if sys.version < '3.7':
+    from contextlib import suppress as nullcontext
+else:
+    from contextlib import nullcontext
 
 logger = get_logger(__name__)
 
@@ -182,11 +188,12 @@ class BiaffineDependencyParser(Parser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_arc, s_rel = self.model(words, feats)
-                loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_arc, s_rel = self.model(words, feats)
+                    loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -266,7 +273,10 @@ class BiaffineDependencyParser(Parser):
         args = Config(**locals())
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
-            return cls.load(**args)
+            parser = cls.load(**args)
+            parser.model = cls.MODEL(**parser.args)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            return parser
 
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
@@ -487,11 +497,12 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_arc, s_rel = self.model(words, feats)
-                loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_arc, s_rel = self.model(words, feats)
+                    loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -717,12 +728,13 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_arc, s_sib, s_rel = self.model(words, feats)
-                loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
-                                                     self.args.mbr, self.args.partial)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_arc, s_sib, s_rel = self.model(words, feats)
+                    loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
+                                                         self.args.mbr, self.args.partial)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -804,7 +816,10 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         args = Config(**locals())
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
-            return cls.load(**args)
+            parser = cls.load(**args)
+            parser.model = cls.MODEL(**parser.args)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            return parser
 
         logger.info("Building the fields")
         TAG, CHAR, ELMO, BERT = None, None, None, None
@@ -1020,11 +1035,12 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_arc, s_sib, s_rel = self.model(words, feats)
-                loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_arc, s_sib, s_rel = self.model(words, feats)
+                    loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)

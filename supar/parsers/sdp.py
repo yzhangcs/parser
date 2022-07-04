@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,11 @@ from supar.utils.metric import ChartMetric
 from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import CoNLL
+
+if sys.version < '3.7':
+    from contextlib import suppress as nullcontext
+else:
+    from contextlib import nullcontext
 
 logger = get_logger(__name__)
 
@@ -160,11 +166,12 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_edge, s_label = self.model(words, feats)
-                loss = self.model.loss(s_edge, s_label, labels, mask)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_edge, s_label = self.model(words, feats)
+                    loss = self.model.loss(s_edge, s_label, labels, mask)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -233,7 +240,10 @@ class BiaffineSemanticDependencyParser(Parser):
         args = Config(**locals())
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
-            return cls.load(**args)
+            parser = cls.load(**args)
+            parser.model = cls.MODEL(**parser.args)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            return parser
 
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, lower=True)
@@ -435,11 +445,12 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-                loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+                    loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)

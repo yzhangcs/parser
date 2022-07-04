@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,11 @@ from supar.utils.metric import SpanMetric
 from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import Tree
+
+if sys.version < '3.7':
+    from contextlib import suppress as nullcontext
+else:
+    from contextlib import nullcontext
 
 logger = get_logger(__name__)
 
@@ -185,11 +191,12 @@ class CRFConstituencyParser(Parser):
             words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_span, s_label = self.model(words, feats)
-                loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_span, s_label = self.model(words, feats)
+                    loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -260,7 +267,10 @@ class CRFConstituencyParser(Parser):
         args = Config(**locals())
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
-            return cls.load(**args)
+            parser = cls.load(**args)
+            parser.model = cls.MODEL(**parser.args)
+            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            return parser
 
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, eos=EOS, lower=True)
@@ -472,11 +482,12 @@ class VIConstituencyParser(CRFConstituencyParser):
             words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_span, s_pair, s_label = self.model(words, feats)
-                loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
-                loss = loss / self.args.update_steps
-            self.scaler.scale(loss).backward()
+            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+                with torch.autocast(self.device, enabled=self.args.amp):
+                    s_span, s_pair, s_label = self.model(words, feats)
+                    loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
+                    loss = loss / self.args.update_steps
+                self.scaler.scale(loss).backward()
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
