@@ -76,6 +76,10 @@ class Parser(object):
             self.model = DDP(self.model,
                              device_ids=[args.local_rank],
                              find_unused_parameters=args.get('find_unused_parameters', True))
+            if args.amp:
+                from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook, bf16_compress_hook
+                self.model.register_comm_hook(dist.group.WORLD, fp16_compress_hook)
+                self.model.register_comm_hook(dist.group.WORLD, bf16_compress_hook)
 
         self.epoch, self.best_e, self.patience, self.best_metric, self.elapsed = 1, 1, patience, Metric(), timedelta()
         if self.args.checkpoint:
