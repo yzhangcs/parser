@@ -260,10 +260,7 @@ class CRFConstituencyParser(Parser):
         args = Config(**locals())
         os.makedirs(os.path.dirname(path) or './', exist_ok=True)
         if os.path.exists(path) and not args.build:
-            parser = cls.load(**args)
-            parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
-            return parser
+            return cls.load(**args)
 
         logger.info("Building the fields")
         WORD = Field('words', pad=PAD, unk=UNK, bos=BOS, eos=EOS, lower=True)
