@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 
 import torch
 import torch.nn as nn
@@ -13,14 +12,9 @@ from supar.utils.common import BOS, EOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import SpanMetric
-from supar.utils.parallel import parallel
+from supar.utils.parallel import parallel, sync
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import Tree
-
-if sys.version < '3.7':
-    from contextlib import suppress as nullcontext
-else:
-    from contextlib import nullcontext
 
 logger = get_logger(__name__)
 
@@ -191,7 +185,7 @@ class CRFConstituencyParser(Parser):
             words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_span, s_label = self.model(words, feats)
                     loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
@@ -203,7 +197,7 @@ class CRFConstituencyParser(Parser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f}")
         logger.info(f"{bar.postfix}")
@@ -482,7 +476,7 @@ class VIConstituencyParser(CRFConstituencyParser):
             words, *feats, trees, charts = batch
             mask = batch.mask[:, 1:]
             mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_span, s_pair, s_label = self.model(words, feats)
                     loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
@@ -494,7 +488,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f}")
         logger.info(f"{bar.postfix}")

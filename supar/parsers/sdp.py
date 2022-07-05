@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 
 import torch
 import torch.nn as nn
@@ -13,14 +12,9 @@ from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import ChartMetric
-from supar.utils.parallel import parallel
+from supar.utils.parallel import parallel, sync
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import CoNLL
-
-if sys.version < '3.7':
-    from contextlib import suppress as nullcontext
-else:
-    from contextlib import nullcontext
 
 logger = get_logger(__name__)
 
@@ -166,7 +160,7 @@ class BiaffineSemanticDependencyParser(Parser):
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_edge, s_label = self.model(words, feats)
                     loss = self.model.loss(s_edge, s_label, labels, mask)
@@ -178,7 +172,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             label_preds = self.model.decode(s_edge, s_label)
             metric += ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
@@ -445,7 +439,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
             mask = batch.mask
             mask = mask.unsqueeze(1) & mask.unsqueeze(2)
             mask[:, 0] = 0
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                     loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
@@ -457,7 +451,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             label_preds = self.model.decode(s_edge, s_label)
             metric + ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))

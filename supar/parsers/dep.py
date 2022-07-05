@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 
 import torch
 import torch.nn as nn
@@ -15,14 +14,9 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.metric import AttachmentMetric
-from supar.utils.parallel import parallel
+from supar.utils.parallel import parallel, sync
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import CoNLL
-
-if sys.version < '3.7':
-    from contextlib import suppress as nullcontext
-else:
-    from contextlib import nullcontext
 
 logger = get_logger(__name__)
 
@@ -188,7 +182,7 @@ class BiaffineDependencyParser(Parser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_rel = self.model(words, feats)
                     loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
@@ -200,7 +194,7 @@ class BiaffineDependencyParser(Parser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
             if self.args.partial:
@@ -497,7 +491,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_rel = self.model(words, feats)
                     loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
@@ -509,7 +503,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
             if self.args.partial:
@@ -728,7 +722,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_sib, s_rel = self.model(words, feats)
                     loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
@@ -741,7 +735,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
             if self.args.partial:
@@ -1035,7 +1029,7 @@ class VIDependencyParser(BiaffineDependencyParser):
             mask = batch.mask
             # ignore the first token of each sentence
             mask[:, 0] = 0
-            with (self.model.no_sync if i % self.args.update_steps != 0 else nullcontext)():
+            with sync(self.model, i % self.args.update_steps == 0):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_sib, s_rel = self.model(words, feats)
                     loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
@@ -1047,7 +1041,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(True)
 
             arc_preds, rel_preds = self.model.decode(s_arc, s_rel, mask)
             if self.args.partial:

@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import functools
+import sys
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Iterable
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+
+if sys.version < '3.7':
+    from contextlib import suppress as nullcontext
+else:
+    from contextlib import nullcontext
 
 if TYPE_CHECKING:
     from supar.parsers import Parser
@@ -66,6 +73,12 @@ class parallel(object):
                 else:
                     raise NotImplementedError(f"Op {self.op} not supported yet")
         return wrapper
+
+
+def sync(model: DistributedDataParallel, sync: bool = False) -> contextmanager:
+    if dist.is_initialized() and not sync:
+        return model.no_sync()
+    return nullcontext()
 
 
 def is_master():
