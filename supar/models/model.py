@@ -95,6 +95,7 @@ class Model(nn.Module):
                                               n_heads=self.args.n_encoder_heads,
                                               n_model=self.args.n_encoder_hidden,
                                               n_inner=self.args.n_encoder_inner,
+                                              embed_scale=self.args.embed_scale,
                                               dropout=self.args.encoder_dropout)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
         else:
@@ -157,8 +158,6 @@ class Model(nn.Module):
             if len(feat_embed) > 0:
                 embed = torch.cat((embed, torch.cat(feat_embed, -1)), -1)
             embed = self.embed_dropout(embed)
-        if 'embed_factor' in self.args:
-            embed = embed * self.args.embed_factor
         return embed
 
     def encode(self, words, feats=None):
