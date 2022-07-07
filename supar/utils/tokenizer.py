@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import torch.distributed as dist
 from supar.utils.parallel import is_master
@@ -92,7 +92,7 @@ class BPETokenizer:
         from tokenizers import Tokenizer
         from tokenizers.decoders import BPEDecoder
         from tokenizers.models import BPE
-        from tokenizers.pre_tokenizers import Whitespace
+        from tokenizers.pre_tokenizers import WhitespaceSplit
         from tokenizers.trainers import BpeTrainer
 
         self.path = path
@@ -106,7 +106,7 @@ class BPETokenizer:
         if not os.path.exists(path) and is_master():
             # start to train a tokenizer from scratch
             self.tokenizer = Tokenizer(BPE(unk_token=unk))
-            self.tokenizer.pre_tokenizer = Whitespace()
+            self.tokenizer.pre_tokenizer = WhitespaceSplit()
             self.tokenizer.decoder = BPEDecoder()
             self.tokenizer.train(files=files,
                                  trainer=BpeTrainer(vocab_size=vocab_size,
@@ -123,8 +123,9 @@ class BPETokenizer:
     def __len__(self) -> int:
         return self.vocab_size
 
-    def __call__(self, text: str) -> List[str]:
-        return self.tokenizer.encode(text).tokens
+    def __call__(self, text: Union[str, List]) -> List[str]:
+        is_pretokenized = isinstance(text, list)
+        return self.tokenizer.encode(text, is_pretokenized=is_pretokenized).tokens
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.tokenizer, name)
