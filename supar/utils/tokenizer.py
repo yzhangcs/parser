@@ -83,6 +83,7 @@ class BPETokenizer:
         path: str = None,
         files: Optional[List[str]] = None,
         vocab_size: Optional[int] = 32000,
+        min_freq: Optional[int] = 2,
         pad: Optional[str] = None,
         unk: Optional[str] = None,
         bos: Optional[str] = None,
@@ -110,6 +111,7 @@ class BPETokenizer:
             self.tokenizer.decoder = BPEDecoder()
             self.tokenizer.train(files=files,
                                  trainer=BpeTrainer(vocab_size=vocab_size,
+                                                    min_frequency=min_freq,
                                                     special_tokens=self.special_tokens,
                                                     end_of_word_suffix='</w>'))
             self.tokenizer.save(path)
