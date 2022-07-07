@@ -82,13 +82,16 @@ class Parser(object):
 
         self.epoch, self.best_e, self.patience, self.best_metric, self.elapsed = 1, 1, patience, Metric(), timedelta()
         if self.args.checkpoint:
-            self.optimizer.load_state_dict(self.checkpoint_state_dict.pop('optimizer_state_dict'))
-            self.scheduler.load_state_dict(self.checkpoint_state_dict.pop('scheduler_state_dict'))
-            self.scaler.load_state_dict(self.checkpoint_state_dict.pop('scaler_state_dict'))
-            set_rng_state(self.checkpoint_state_dict.pop('rng_state'))
-            for k, v in self.checkpoint_state_dict.items():
-                setattr(self, k, v)
-            train.loader.batch_sampler.epoch = self.epoch
+            try:
+                self.optimizer.load_state_dict(self.checkpoint_state_dict.pop('optimizer_state_dict'))
+                self.scheduler.load_state_dict(self.checkpoint_state_dict.pop('scheduler_state_dict'))
+                self.scaler.load_state_dict(self.checkpoint_state_dict.pop('scaler_state_dict'))
+                set_rng_state(self.checkpoint_state_dict.pop('rng_state'))
+                for k, v in self.checkpoint_state_dict.items():
+                    setattr(self, k, v)
+                train.loader.batch_sampler.epoch = self.epoch
+            except AttributeError:
+                logger.warning("No checkpoint found. Try re-launching the traing procedure instead")
 
         for epoch in range(self.epoch, args.epochs + 1):
             start = datetime.now()
@@ -250,7 +253,7 @@ class Parser(object):
         model.load_state_dict(state['state_dict'], False)
         transform = state['transform']
         parser = cls(args, model, transform)
-        parser.checkpoint_state_dict = state['checkpoint_state_dict'] if checkpoint else None
+        parser.checkpoint_state_dict = state.get('checkpoint_state_dict', None) if checkpoint else None
         parser.model.to(parser.device)
         return parser
 
