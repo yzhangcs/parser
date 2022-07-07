@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 from supar.modules import (CharLSTM, ELMoEmbedding, IndependentDropout,
-                           SharedDropout, TokenDropout, TransformerEmbedding,
+                           SharedDropout, TransformerEmbedding,
                            TransformerWordEmbedding, VariationalLSTM)
 from supar.modules.transformer import TransformerEncoder
 from supar.utils import Config
@@ -93,7 +93,7 @@ class Model(nn.Module):
                                                        n_embed=self.args.n_embed,
                                                        pos=self.args.pos,
                                                        pad_index=self.args.pad_index)
-            self.embed_dropout = TokenDropout(p=self.args.embed_dropout)
+            self.embed_dropout = nn.Dropout(p=self.args.embed_dropout)
             self.encoder = TransformerEncoder(n_layers=self.args.n_encoder_layers,
                                               n_heads=self.args.n_encoder_heads,
                                               n_model=self.args.n_encoder_hidden,
