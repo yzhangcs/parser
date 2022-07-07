@@ -11,6 +11,69 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 
+class TransformerWordEmbedding(nn.Module):
+
+    def __init__(
+        self,
+        n_vocab: int = None,
+        n_embed: int = None,
+        embed_scale: Optional[int] = None,
+        max_len: Optional[int] = 512,
+        pos: Optional[str] = None,
+        pad_index: Optional[int] = None,
+    ) -> TransformerWordEmbedding:
+        super(TransformerWordEmbedding, self).__init__()
+
+        self.embed = nn.Embedding(num_embeddings=n_vocab,
+                                  embedding_dim=n_embed)
+        if pos is None:
+            self.pos_embed = nn.Identity()
+        elif pos == 'sinusoid':
+            self.pos_embed = SinusoidPositionalEmbedding()
+        elif pos == 'learnable':
+            self.pos_embed = PositionalEmbedding(max_len=max_len)
+        elif pos == 'relative_sinusoid':
+            self.pos_embed = SinusoidRelativePositionalEmbedding()
+        elif pos == 'relative_learnable':
+            self.pos_embed = RelativePositionalEmbedding(max_len=max_len)
+        else:
+            raise ValueError(f'Unknown positional embedding type {pos}')
+
+        self.n_vocab = n_vocab
+        self.n_embed = n_embed
+        self.embed_scale = embed_scale or n_embed ** 0.5
+        self.max_len = max_len
+        self.pos = pos
+        self.pad_index = pad_index
+
+        self.reset_parameters()
+
+    def __repr__(self):
+        s = self.__class__.__name__ + '('
+        s += f"{self.n_vocab}, {self.n_embed}"
+        if self.embed_scale is not None:
+            s += f", embed_scale={self.embed_scale:.2f}"
+        if self.max_len is not None:
+            s += f", max_len={self.max_len}"
+        if self.pos is not None:
+            s += f", pos={self.pos}"
+        if self.pad_index is not None:
+            s += f", pad_index={self.pad_index}"
+        s += ')'
+        return s
+
+    def reset_parameters(self):
+        nn.init.normal_(self.embed.weight, 0, self.n_embed ** -0.5)
+        if self.pad_index is not None:
+            nn.init.zeros_(self.embed.weight[self.pad_index])
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.embed(x)
+        if self.embed_scale:
+            x = x * self.embed_scale
+        return x + self.pos_embed(x)
+
+
 class TransformerEncoder(nn.Module):
 
     def __init__(
@@ -20,7 +83,6 @@ class TransformerEncoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
-        embed_scale: Optional[int] = None,
         dropout: float = 0.1
     ) -> TransformerEncoder:
         super(TransformerEncoder, self).__init__()
@@ -29,11 +91,8 @@ class TransformerEncoder(nn.Module):
         self.n_heads = n_heads
         self.n_model = n_model
         self.n_inner = n_inner
-        self.embed_scale = embed_scale
         self.pre_norm = pre_norm
-        self.embed_scale = embed_scale
 
-        self.pos_embed = SinusoidPositionalEmbedding()
         self.layers = nn.ModuleList([TransformerEncoderLayer(n_heads=n_heads,
                                                              n_model=n_model,
                                                              n_inner=n_inner,
@@ -61,9 +120,7 @@ class TransformerEncoder(nn.Module):
                 nn.init.xavier_uniform_(param)
 
     def forward(self, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
-        if self.embed_scale:
-            x = x * self.embed_scale
-        x = self.dropout(x + self.pos_embed(x)).transpose(0, 1)
+        x = x.transpose(0, 1)
         for layer in self.layers:
             x = layer(x, mask)
         if self.pre_norm:
@@ -80,7 +137,6 @@ class RelativePositionTransformerEncoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
-        embed_scale: Optional[int] = None,
         dropout: float = 0.1
     ) -> RelativePositionTransformerEncoder:
         super(RelativePositionTransformerEncoder, self).__init__()
@@ -90,7 +146,6 @@ class RelativePositionTransformerEncoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
-        self.embed_scale = embed_scale
 
         self.layers = nn.ModuleList([RelativePositionTransformerEncoderLayer(n_heads=n_heads,
                                                                              n_model=n_model,
@@ -119,9 +174,7 @@ class RelativePositionTransformerEncoder(nn.Module):
                 nn.init.xavier_uniform_(param)
 
     def forward(self, x: torch.Tensor, mask: torch.BoolTensor) -> torch.Tensor:
-        if self.embed_scale:
-            x = x * self.embed_scale
-        x = self.dropout(x).transpose(0, 1)
+        x = x.transpose(0, 1)
         for layer in self.layers:
             x = layer(x, mask)
         if self.pre_norm:
@@ -138,7 +191,6 @@ class TransformerDecoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
-        embed_scale: Optional[int] = None,
         dropout: float = 0.1
     ) -> TransformerDecoder:
         super(TransformerDecoder, self).__init__()
@@ -148,9 +200,7 @@ class TransformerDecoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
-        self.embed_scale = embed_scale
 
-        self.pos_embed = SinusoidPositionalEmbedding()
         self.layers = nn.ModuleList([TransformerDecoderLayer(n_heads=n_heads,
                                                              n_model=n_model,
                                                              n_inner=n_inner,
@@ -185,9 +235,6 @@ class TransformerDecoder(nn.Module):
         src_mask: torch.BoolTensor,
         attn_mask: Optional[torch.BoolTensor] = None
     ) -> torch.Tensor:
-        if self.embed_scale:
-            x_tgt = x_tgt * self.embed_scale
-        x_tgt = self.dropout(x_tgt + self.pos_embed(x_tgt))
         x_tgt, x_src = x_tgt.transpose(0, 1), x_src.transpose(0, 1)
         for layer in self.layers:
             x_tgt = layer(x_tgt=x_tgt,
@@ -209,7 +256,6 @@ class RelativePositionTransformerDecoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
-        embed_scale: Optional[int] = None,
         dropout: float = 0.1
     ) -> RelativePositionTransformerDecoder:
         super(RelativePositionTransformerDecoder, self).__init__()
@@ -219,7 +265,6 @@ class RelativePositionTransformerDecoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
-        self.embed_scale = embed_scale
 
         self.layers = nn.ModuleList([RelativePositionTransformerDecoderLayer(n_heads=n_heads,
                                                                              n_model=n_model,
@@ -255,9 +300,6 @@ class RelativePositionTransformerDecoder(nn.Module):
         src_mask: torch.BoolTensor,
         attn_mask: Optional[torch.BoolTensor] = None
     ) -> torch.Tensor:
-        if self.embed_scale:
-            x_tgt = x_tgt * self.embed_scale
-        x_tgt = self.dropout(x_tgt)
         x_tgt, x_src = x_tgt.transpose(0, 1), x_src.transpose(0, 1)
         for layer in self.layers:
             x_tgt = layer(x_tgt=x_tgt,

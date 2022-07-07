@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from supar.modules import (CharLSTM, ELMoEmbedding, IndependentDropout,
                            SharedDropout, TokenDropout, TransformerEmbedding,
-                           VariationalLSTM)
+                           TransformerWordEmbedding, VariationalLSTM)
 from supar.modules.transformer import TransformerEncoder
 from supar.utils import Config
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
@@ -43,7 +43,7 @@ class Model(nn.Module):
 
         self.args = Config().update(locals())
 
-        if encoder != 'bert':
+        if encoder == 'lstm':
             self.word_embed = nn.Embedding(num_embeddings=self.args.n_words,
                                            embedding_dim=self.args.n_embed)
 
@@ -81,7 +81,6 @@ class Model(nn.Module):
                                                        mix_dropout=self.args.mix_dropout,
                                                        finetune=self.args.finetune)
                 n_input += self.bert_embed.n_out
-        if encoder == 'lstm':
             self.embed_dropout = IndependentDropout(p=self.args.embed_dropout)
             self.encoder = VariationalLSTM(input_size=n_input,
                                            hidden_size=self.args.n_encoder_hidden//2,
@@ -90,12 +89,15 @@ class Model(nn.Module):
                                            dropout=self.args.encoder_dropout)
             self.encoder_dropout = SharedDropout(p=self.args.encoder_dropout)
         elif encoder == 'transformer':
+            self.word_embed = TransformerWordEmbedding(n_vocab=self.args.n_words,
+                                                       n_embed=self.args.n_embed,
+                                                       pos=self.args.pos,
+                                                       pad_index=self.args.pad_index)
             self.embed_dropout = TokenDropout(p=self.args.embed_dropout)
             self.encoder = TransformerEncoder(n_layers=self.args.n_encoder_layers,
                                               n_heads=self.args.n_encoder_heads,
                                               n_model=self.args.n_encoder_hidden,
                                               n_inner=self.args.n_encoder_inner,
-                                              embed_scale=self.args.embed_scale,
                                               dropout=self.args.encoder_dropout)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
         else:
