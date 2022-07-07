@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import functools
+import os
+import re
 import sys
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Iterable
@@ -92,6 +94,12 @@ def get_free_port():
     port = str(s.getsockname()[1])
     s.close()
     return port
+
+
+def get_device_count():
+    if 'CUDA_VISIBLE_DEVICES' in os.environ:
+        return len(re.findall(r'\d+', os.environ['CUDA_VISIBLE_DEVICES']))
+    return torch.cuda.device_count()
 
 
 def gather(obj: Any) -> Iterable[Any]:

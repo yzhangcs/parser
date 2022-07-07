@@ -7,7 +7,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from supar.utils import Config
 from supar.utils.logging import init_logger, logger
-from supar.utils.parallel import get_free_port
+from supar.utils.parallel import get_device_count, get_free_port
 
 
 def init(parser):
@@ -25,11 +25,10 @@ def init(parser):
     args = Config.load(**vars(args), unknown=unknown)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
-    device_count = torch.cuda.device_count()
-    if device_count > 1:
+    if get_device_count() > 1:
         os.environ['MASTER_ADDR'] = 'tcp://localhost'
         os.environ['MASTER_PORT'] = get_free_port()
-        mp.spawn(parse, args=(args,), nprocs=device_count)
+        mp.spawn(parse, args=(args,), nprocs=get_device_count())
     else:
         parse(0 if torch.cuda.is_available() else -1, args)
 
@@ -38,10 +37,10 @@ def parse(local_rank, args):
     Parser = args.pop('Parser')
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
-    if torch.cuda.device_count() > 1:
+    if get_device_count() > 1:
         dist.init_process_group(backend='nccl',
                                 init_method=f"{os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}",
-                                world_size=torch.cuda.device_count(),
+                                world_size=get_device_count(),
                                 rank=local_rank)
     torch.cuda.set_device(local_rank)
     # init logger after dist has been initialized
