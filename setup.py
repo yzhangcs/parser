@@ -34,7 +34,8 @@ setup(
         'dill',
         'pathos'],
     extras_require={
-        'elmo': ['allennlp']
+        'elmo': ['allennlp'],
+        'bpe': ['subword-nmt']
     },
     entry_points={
         'console_scripts': [

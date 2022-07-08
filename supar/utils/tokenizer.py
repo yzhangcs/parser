@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import os
+import re
+import tempfile
+from collections import Counter
 from typing import Any, Dict, List, Optional, Union
 
 import torch.distributed as dist
 from supar.utils.parallel import is_master
+from supar.utils.vocab import Vocab
 
 
 class Tokenizer:
@@ -84,64 +88,119 @@ class BPETokenizer:
         files: Optional[List[str]] = None,
         vocab_size: Optional[int] = 32000,
         min_freq: Optional[int] = 2,
+        dropout: float = .0,
+        backend: str = 'huggingface',
         pad: Optional[str] = None,
         unk: Optional[str] = None,
         bos: Optional[str] = None,
-        eos: Optional[str] = None
+        eos: Optional[str] = None,
     ) -> BPETokenizer:
-
-        from tokenizers import Tokenizer
-        from tokenizers.decoders import BPEDecoder
-        from tokenizers.models import BPE
-        from tokenizers.pre_tokenizers import WhitespaceSplit
-        from tokenizers.trainers import BpeTrainer
 
         self.path = path
         self.files = files
+        self.min_freq = min_freq
+        self.dropout = dropout
+        self.backend = backend
         self.pad = pad
         self.unk = unk
         self.bos = bos
         self.eos = eos
         self.special_tokens = [i for i in [pad, unk, bos, eos] if i is not None]
 
-        if not os.path.exists(path) and is_master():
-            # start to train a tokenizer from scratch
-            self.tokenizer = Tokenizer(BPE(unk_token=unk))
-            self.tokenizer.pre_tokenizer = WhitespaceSplit()
-            self.tokenizer.decoder = BPEDecoder()
-            self.tokenizer.train(files=files,
-                                 trainer=BpeTrainer(vocab_size=vocab_size,
-                                                    min_frequency=min_freq,
-                                                    special_tokens=self.special_tokens,
-                                                    end_of_word_suffix='</w>'))
-            self.tokenizer.save(path)
-        if dist.is_initialized():
-            dist.barrier()
-        self.tokenizer = Tokenizer.from_file(path)
+        if backend == 'huggingface':
+            from tokenizers import Tokenizer
+            from tokenizers.decoders import BPEDecoder
+            from tokenizers.models import BPE
+            from tokenizers.pre_tokenizers import WhitespaceSplit
+            from tokenizers.trainers import BpeTrainer
+            path = os.path.join(path, 'tokenizer.json')
+            if is_master() and not os.path.exists(path):
+                # start to train a tokenizer from scratch
+                self.tokenizer = Tokenizer(BPE(dropout=dropout, unk_token=unk))
+                self.tokenizer.pre_tokenizer = WhitespaceSplit()
+                self.tokenizer.decoder = BPEDecoder()
+                self.tokenizer.train(files=files,
+                                     trainer=BpeTrainer(vocab_size=vocab_size,
+                                                        min_frequency=min_freq,
+                                                        special_tokens=self.special_tokens,
+                                                        end_of_word_suffix='</w>'))
+                self.tokenizer.save(path)
+            if dist.is_initialized():
+                dist.barrier()
+            self.tokenizer = Tokenizer.from_file(path)
+            self.vocab = self.tokenizer.get_vocab()
+
+        elif backend == 'subword-nmt':
+            import argparse
+            from argparse import Namespace
+
+            from subword_nmt.apply_bpe import BPE, read_vocabulary
+            from subword_nmt.learn_joint_bpe_and_vocab import \
+                learn_joint_bpe_and_vocab
+            fmerge = os.path.join(path, 'merge.txt')
+            fvocab = os.path.join(path, 'vocab.txt')
+            separator = '@@'
+            if is_master() and not os.path.exists(fmerge) or not os.path.exists(fvocab):
+                with tempfile.TemporaryDirectory() as ftemp:
+                    fall = os.path.join(ftemp, 'fall')
+                    with open(fall, 'w') as f:
+                        for file in files:
+                            with open(file) as fi:
+                                f.write(fi.read())
+                    learn_joint_bpe_and_vocab(Namespace(input=[argparse.FileType()(fall)],
+                                                        output=argparse.FileType('w')(fmerge),
+                                                        symbols=vocab_size,
+                                                        separator=separator,
+                                                        vocab=[argparse.FileType('w')(fvocab)],
+                                                        min_frequency=min_freq,
+                                                        total_symbols=False,
+                                                        verbose=False,
+                                                        num_workers=32))
+            if dist.is_initialized():
+                dist.barrier()
+            self.tokenizer = BPE(codes=open(fmerge), separator=separator, vocab=read_vocabulary(open(fvocab), None))
+            self.vocab = Vocab(counter=Counter(self.tokenizer.vocab),
+                               specials=self.special_tokens,
+                               unk_index=self.special_tokens.index(unk))
+        else:
+            raise ValueError(f'Unsupported backend: {backend}')
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.vocab_size})"
+        s = self.__class__.__name__ + f'({self.vocab_size}, min_freq={self.min_freq}'
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
+        s += f", backend={self.backend}"
+        if self.pad is not None:
+            s += f", pad={self.pad}"
+        if self.unk is not None:
+            s += f", unk={self.unk}"
+        if self.bos is not None:
+            s += f", bos={self.bos}"
+        if self.eos is not None:
+            s += f", eos={self.eos}"
+        s += ')'
+        return s
 
     def __len__(self) -> int:
         return self.vocab_size
 
     def __call__(self, text: Union[str, List]) -> List[str]:
         is_pretokenized = isinstance(text, list)
-        return self.tokenizer.encode(text, is_pretokenized=is_pretokenized).tokens
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.tokenizer, name)
-
-    def __getstate__(self) -> Dict:
-        return self.__dict__
-
-    def __setstate__(self, state: Dict):
-        self.__dict__.update(state)
-
-    @property
-    def vocab(self):
-        return self.tokenizer.get_vocab()
+        if self.backend == 'huggingface':
+            return self.tokenizer.encode(text, is_pretokenized=is_pretokenized).tokens
+        else:
+            if not is_pretokenized:
+                text = text.split()
+            return self.tokenizer.segment_tokens(text, dropout=self.dropout)
 
     @property
     def vocab_size(self):
-        return self.tokenizer.get_vocab_size()
+        return len(self.vocab)
+
+    def decode(self, text: List) -> str:
+        if self.backend == 'huggingface':
+            return self.tokenizer.decode(text)
+        else:
+            text = self.vocab(text)
+            text = ' '.join([i for i in text if i not in self.special_tokens])
+            return re.sub(f'({self.tokenizer.separator} )|({self.tokenizer.separator} ?$)', '', text)
