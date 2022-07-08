@@ -201,6 +201,6 @@ class BPETokenizer:
         if self.backend == 'huggingface':
             return self.tokenizer.decode(text)
         else:
-            text = self.vocab(text)
+            text = self.vocab[text]
             text = ' '.join([i for i in text if i not in self.special_tokens])
             return re.sub(f'({self.tokenizer.separator} )|({self.tokenizer.separator} ?$)', '', text)
