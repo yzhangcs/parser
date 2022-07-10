@@ -88,7 +88,7 @@ class BPETokenizer:
         files: Optional[List[str]] = None,
         vocab_size: Optional[int] = 32000,
         min_freq: Optional[int] = 2,
-        dropout: float = .0,
+        dropout: float = None,
         backend: str = 'huggingface',
         pad: Optional[str] = None,
         unk: Optional[str] = None,
@@ -99,7 +99,7 @@ class BPETokenizer:
         self.path = path
         self.files = files
         self.min_freq = min_freq
-        self.dropout = dropout
+        self.dropout = dropout or .0
         self.backend = backend
         self.pad = pad
         self.unk = unk
@@ -140,7 +140,7 @@ class BPETokenizer:
             fmerge = os.path.join(path, 'merge.txt')
             fvocab = os.path.join(path, 'vocab.txt')
             separator = '@@'
-            if is_master() and not os.path.exists(fmerge) or not os.path.exists(fvocab):
+            if is_master() and (not os.path.exists(fmerge) or not os.path.exists(fvocab)):
                 with tempfile.TemporaryDirectory() as ftemp:
                     fall = os.path.join(ftemp, 'fall')
                     with open(fall, 'w') as f:
@@ -163,7 +163,7 @@ class BPETokenizer:
                                specials=self.special_tokens,
                                unk_index=self.special_tokens.index(unk))
         else:
-            raise ValueError(f'Unsupported backend: {backend}')
+            raise ValueError(f'Unsupported backend: {backend} not in (huggingface, subword-nmt)')
 
     def __repr__(self) -> str:
         s = self.__class__.__name__ + f'({self.vocab_size}, min_freq={self.min_freq}'
