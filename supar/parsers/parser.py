@@ -9,12 +9,12 @@ import dill
 import supar
 import torch
 import torch.distributed as dist
-from supar.modules.transformer import InverseSquareRootLR
 from supar.utils import Config, Dataset
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
 from supar.utils.logging import init_logger, logger, progress_bar
 from supar.utils.metric import Metric
+from supar.utils.optim import InverseSquareRootLR, LinearLR
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import gather, is_master, parallel
 from torch.cuda.amp import GradScaler
@@ -63,13 +63,12 @@ class Parser(object):
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
             self.scheduler = InverseSquareRootLR(self.optimizer, args.warmup_steps)
         else:
-            from transformers import get_linear_schedule_with_warmup
             steps = len(train.loader) * epochs // args.update_steps
             self.optimizer = AdamW(
                 [{'params': p, 'lr': args.lr * (1 if n.startswith('encoder') else args.lr_rate)}
                  for n, p in self.model.named_parameters()],
                 args.lr)
-            self.scheduler = get_linear_schedule_with_warmup(self.optimizer, int(steps*args.warmup), steps)
+            self.scheduler = LinearLR(self.optimizer, int(steps*args.warmup), steps)
         self.scaler = GradScaler(enabled=args.amp)
 
         if dist.is_initialized():

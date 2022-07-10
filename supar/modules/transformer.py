@@ -7,8 +7,6 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
 
 
 class TransformerWordEmbedding(nn.Module):
@@ -713,20 +711,3 @@ class SinusoidRelativePositionalEmbedding(nn.Module):
         pos[..., 0::2], pos[..., 1::2] = pos[..., 0::2].sin(), pos[..., 1::2].cos()
         return pos
 
-
-class InverseSquareRootLR(_LRScheduler):
-
-    def __init__(
-        self,
-        optimizer: Optimizer,
-        warmup_steps: int,
-        last_epoch: int = -1
-    ) -> InverseSquareRootLR:
-        self.warmup_steps = warmup_steps
-        self.factor = warmup_steps ** 0.5
-        super(InverseSquareRootLR, self).__init__(optimizer, last_epoch)
-
-    def get_lr(self):
-        epoch = max(self.last_epoch, 1)
-        scale = min(epoch ** -0.5, epoch * self.warmup_steps ** -1.5) * self.factor
-        return [scale * lr for lr in self.base_lrs]
