@@ -98,9 +98,11 @@ class Model(nn.Module):
                                               n_heads=self.args.n_encoder_heads,
                                               n_model=self.args.n_encoder_hidden,
                                               n_inner=self.args.n_encoder_inner,
+                                              attn_dropout=self.args.encoder_attn_dropout,
+                                              ffn_dropout=self.args.encoder_ffn_dropout,
                                               dropout=self.args.encoder_dropout)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
-        else:
+        elif encoder == 'bert':
             self.encoder = TransformerEmbedding(model=self.args.bert,
                                                 n_layers=self.args.n_bert_layers,
                                                 pooling=self.args.bert_pooling,

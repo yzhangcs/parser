@@ -69,7 +69,9 @@ class TransformerWordEmbedding(nn.Module):
         x = self.embed(x)
         if self.embed_scale:
             x = x * self.embed_scale
-        return x + self.pos_embed(x)
+        if self.pos is not None:
+            x = x + self.pos_embed(x)
+        return x
 
 
 class TransformerEncoder(nn.Module):
@@ -81,6 +83,8 @@ class TransformerEncoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
         dropout: float = 0.1
     ) -> TransformerEncoder:
         super(TransformerEncoder, self).__init__()
@@ -90,23 +94,31 @@ class TransformerEncoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
+        self.attn_dropout = attn_dropout
+        self.ffn_dropout = ffn_dropout
+        self.dropout = dropout
 
         self.layers = nn.ModuleList([TransformerEncoderLayer(n_heads=n_heads,
                                                              n_model=n_model,
                                                              n_inner=n_inner,
                                                              pre_norm=pre_norm,
+                                                             attn_dropout=attn_dropout,
+                                                             ffn_dropout=ffn_dropout,
                                                              dropout=dropout)
                                      for _ in range(n_layers)])
         self.norm = nn.LayerNorm(n_model) if self.pre_norm else None
-        self.dropout = nn.Dropout(dropout)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
         s += f"{self.n_layers}, {self.n_heads}, n_model={self.n_model}, n_inner={self.n_inner}"
         if self.pre_norm:
             s += f", pre_norm={self.pre_norm}"
-        if self.dropout.p > 0:
-            s += f", dropout={self.dropout.p}"
+        if self.attn_dropout > 0:
+            s += f", attn_dropout={self.attn_dropout}"
+        if self.ffn_dropout > 0:
+            s += f", ffn_dropout={self.ffn_dropout}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
         s += ')'
         return s
 
@@ -128,6 +140,8 @@ class RelativePositionTransformerEncoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
         dropout: float = 0.1
     ) -> RelativePositionTransformerEncoder:
         super(RelativePositionTransformerEncoder, self).__init__()
@@ -137,23 +151,31 @@ class RelativePositionTransformerEncoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
+        self.attn_dropout = attn_dropout
+        self.ffn_dropout = ffn_dropout
+        self.dropout = dropout
 
         self.layers = nn.ModuleList([RelativePositionTransformerEncoderLayer(n_heads=n_heads,
                                                                              n_model=n_model,
                                                                              n_inner=n_inner,
                                                                              pre_norm=pre_norm,
+                                                                             attn_dropout=attn_dropout,
+                                                                             ffn_dropout=ffn_dropout,
                                                                              dropout=dropout)
                                      for _ in range(n_layers)])
         self.norm = nn.LayerNorm(n_model) if self.pre_norm else None
-        self.dropout = nn.Dropout(dropout)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
         s += f"{self.n_layers}, {self.n_heads}, n_model={self.n_model}, n_inner={self.n_inner}"
         if self.pre_norm:
             s += f", pre_norm={self.pre_norm}"
-        if self.dropout.p > 0:
-            s += f", dropout={self.dropout.p}"
+        if self.attn_dropout > 0:
+            s += f", attn_dropout={self.attn_dropout}"
+        if self.ffn_dropout > 0:
+            s += f", ffn_dropout={self.ffn_dropout}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
         s += ')'
         return s
 
@@ -175,6 +197,8 @@ class TransformerDecoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
         dropout: float = 0.1
     ) -> TransformerDecoder:
         super(TransformerDecoder, self).__init__()
@@ -184,23 +208,31 @@ class TransformerDecoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
+        self.attn_dropout = attn_dropout
+        self.ffn_dropout = ffn_dropout
+        self.dropout = dropout
 
         self.layers = nn.ModuleList([TransformerDecoderLayer(n_heads=n_heads,
                                                              n_model=n_model,
                                                              n_inner=n_inner,
                                                              pre_norm=pre_norm,
+                                                             attn_dropout=attn_dropout,
+                                                             ffn_dropout=ffn_dropout,
                                                              dropout=dropout)
                                      for _ in range(n_layers)])
         self.norm = nn.LayerNorm(n_model) if self.pre_norm else None
-        self.dropout = nn.Dropout(dropout)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
         s += f"{self.n_layers}, {self.n_heads}, n_model={self.n_model}, n_inner={self.n_inner}"
         if self.pre_norm:
             s += f", pre_norm={self.pre_norm}"
-        if self.dropout.p > 0:
-            s += f", dropout={self.dropout.p}"
+        if self.attn_dropout > 0:
+            s += f", attn_dropout={self.attn_dropout}"
+        if self.ffn_dropout > 0:
+            s += f", ffn_dropout={self.ffn_dropout}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
         s += ')'
         return s
 
@@ -233,6 +265,8 @@ class RelativePositionTransformerDecoder(nn.Module):
         n_model: int = 1024,
         n_inner: int = 2048,
         pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
         dropout: float = 0.1
     ) -> RelativePositionTransformerDecoder:
         super(RelativePositionTransformerDecoder, self).__init__()
@@ -242,23 +276,31 @@ class RelativePositionTransformerDecoder(nn.Module):
         self.n_model = n_model
         self.n_inner = n_inner
         self.pre_norm = pre_norm
+        self.attn_dropout = attn_dropout
+        self.ffn_dropout = ffn_dropout
+        self.dropout = dropout
 
         self.layers = nn.ModuleList([RelativePositionTransformerDecoderLayer(n_heads=n_heads,
                                                                              n_model=n_model,
                                                                              n_inner=n_inner,
                                                                              pre_norm=pre_norm,
+                                                                             attn_dropout=attn_dropout,
+                                                                             ffn_dropout=ffn_dropout,
                                                                              dropout=dropout)
                                      for _ in range(n_layers)])
         self.norm = nn.LayerNorm(n_model) if self.pre_norm else None
-        self.dropout = nn.Dropout(dropout)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
         s += f"{self.n_layers}, {self.n_heads}, n_model={self.n_model}, n_inner={self.n_inner}"
         if self.pre_norm:
             s += f", pre_norm={self.pre_norm}"
-        if self.dropout.p > 0:
-            s += f", dropout={self.dropout.p}"
+        if self.attn_dropout > 0:
+            s += f", attn_dropout={self.attn_dropout}"
+        if self.ffn_dropout > 0:
+            s += f", ffn_dropout={self.ffn_dropout}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
         s += ')'
         return s
 
@@ -289,23 +331,25 @@ class TransformerEncoderLayer(nn.Module):
         n_heads: int,
         n_model: int,
         n_inner: int,
-        dropout: float = 0.1,
         activation: str = 'relu',
         bias: bool = True,
-        pre_norm: bool = False
+        pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
+        dropout: float = 0.1
     ) -> TransformerEncoderLayer:
         super(TransformerEncoderLayer, self).__init__()
 
         self.attn = MultiHeadAttention(n_heads=n_heads,
                                        n_model=n_model,
                                        n_embed=n_model//8,
-                                       dropout=dropout,
+                                       dropout=attn_dropout,
                                        bias=bias)
         self.attn_norm = nn.LayerNorm(n_model)
         self.ffn = PositionwiseFeedForward(n_model=n_model,
                                            n_inner=n_inner,
                                            activation=activation,
-                                           dropout=dropout)
+                                           dropout=ffn_dropout)
         self.ffn_norm = nn.LayerNorm(n_model)
         self.dropout = nn.Dropout(dropout)
 
@@ -330,22 +374,23 @@ class RelativePositionTransformerEncoderLayer(nn.Module):
         n_heads: int,
         n_model: int,
         n_inner: int,
-        dropout: float = 0.1,
         activation: str = 'relu',
-        bias: bool = True,
-        pre_norm: bool = False
+        pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
+        dropout: float = 0.1
     ) -> RelativePositionTransformerEncoderLayer:
         super(RelativePositionTransformerEncoderLayer, self).__init__()
 
         self.attn = RelativePositionMultiHeadAttention(n_heads=n_heads,
                                                        n_model=n_model,
                                                        n_embed=n_model//8,
-                                                       dropout=dropout)
+                                                       dropout=attn_dropout)
         self.attn_norm = nn.LayerNorm(n_model)
         self.ffn = PositionwiseFeedForward(n_model=n_model,
                                            n_inner=n_inner,
                                            activation=activation,
-                                           dropout=dropout)
+                                           dropout=ffn_dropout)
         self.ffn_norm = nn.LayerNorm(n_model)
         self.dropout = nn.Dropout(dropout)
 
@@ -370,29 +415,31 @@ class TransformerDecoderLayer(nn.Module):
         n_heads: int,
         n_model: int,
         n_inner: int,
-        dropout: float = 0.1,
         activation: str = 'relu',
         bias: bool = True,
-        pre_norm: bool = False
+        pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
+        dropout: float = 0.1
     ) -> TransformerDecoderLayer:
         super(TransformerDecoderLayer, self).__init__()
 
         self.self_attn = MultiHeadAttention(n_heads=n_heads,
                                             n_model=n_model,
                                             n_embed=n_model//8,
-                                            dropout=dropout,
+                                            dropout=attn_dropout,
                                             bias=bias)
         self.self_attn_norm = nn.LayerNorm(n_model)
         self.mha_attn = MultiHeadAttention(n_heads=n_heads,
                                            n_model=n_model,
                                            n_embed=n_model//8,
-                                           dropout=dropout,
+                                           dropout=attn_dropout,
                                            bias=bias)
         self.mha_attn_norm = nn.LayerNorm(n_model)
         self.ffn = PositionwiseFeedForward(n_model=n_model,
                                            n_inner=n_inner,
                                            activation=activation,
-                                           dropout=dropout)
+                                           dropout=ffn_dropout)
         self.ffn_norm = nn.LayerNorm(n_model)
         self.dropout = nn.Dropout(dropout)
 
@@ -429,6 +476,8 @@ class RelativePositionTransformerDecoderLayer(nn.Module):
         n_inner: int,
         activation: str = 'relu',
         pre_norm: bool = False,
+        attn_dropout: float = 0.1,
+        ffn_dropout: float = 0.1,
         dropout: float = 0.1
     ) -> RelativePositionTransformerDecoderLayer:
         super(RelativePositionTransformerDecoderLayer, self).__init__()
@@ -436,17 +485,17 @@ class RelativePositionTransformerDecoderLayer(nn.Module):
         self.self_attn = RelativePositionMultiHeadAttention(n_heads=n_heads,
                                                             n_model=n_model,
                                                             n_embed=n_model//8,
-                                                            dropout=dropout)
+                                                            dropout=attn_dropout)
         self.self_attn_norm = nn.LayerNorm(n_model)
         self.mha_attn = RelativePositionMultiHeadAttention(n_heads=n_heads,
                                                            n_model=n_model,
                                                            n_embed=n_model//8,
-                                                           dropout=dropout)
+                                                           dropout=attn_dropout)
         self.mha_attn_norm = nn.LayerNorm(n_model)
         self.ffn = PositionwiseFeedForward(n_model=n_model,
                                            n_inner=n_inner,
                                            activation=activation,
-                                           dropout=dropout)
+                                           dropout=ffn_dropout)
         self.ffn_norm = nn.LayerNorm(n_model)
         self.dropout = nn.Dropout(dropout)
 
@@ -710,4 +759,3 @@ class SinusoidRelativePositionalEmbedding(nn.Module):
         pos = pos / 10000 ** (x.new_tensor(range(n_model)).div(2, rounding_mode='floor') * 2 / n_model)
         pos[..., 0::2], pos[..., 1::2] = pos[..., 0::2].sin(), pos[..., 1::2].cos()
         return pos
-
