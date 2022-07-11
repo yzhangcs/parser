@@ -39,6 +39,8 @@ class Dataset(torch.utils.data.Dataset):
             Default: ``False``.
         binarize (bool):
             If ``True``, binarizes the dataset once building it. Only works if ``cache=True``. Default: ``False``.
+        max_len (int):
+            Sentences exceeding the length will be discarded. Default: ``None``.
         kwargs (dict):
             Together with `data`, kwargs will be passed into :meth:`transform.load` to control the loading behaviour.
 
@@ -57,6 +59,7 @@ class Dataset(torch.utils.data.Dataset):
         data: Union[str, Iterable],
         cache: bool = False,
         binarize: bool = False,
+        max_len: int = None,
         **kwargs
     ) -> Dataset:
         super(Dataset, self).__init__()
@@ -65,6 +68,7 @@ class Dataset(torch.utils.data.Dataset):
         self.data = data
         self.cache = cache
         self.binarize = binarize
+        self.max_len = max_len or float('inf')
         self.kwargs = kwargs
 
         if cache:
@@ -130,7 +134,7 @@ class Dataset(torch.utils.data.Dataset):
     ) -> Dataset:
         # numericalize all fields
         if not self.cache:
-            self.sentences = self.transform(self.sentences)
+            self.sentences = [i for i in self.transform(self.sentences) if len(i) < self.max_len]
         else:
             # if not forced to do binarization and the binarized file already exists, directly load the meta file
             if os.path.exists(self.fbin) and not self.binarize:
@@ -145,14 +149,15 @@ class Dataset(torch.utils.data.Dataset):
                     global_transform = self.transform
                     sentences = binarize({'sentences': progress_bar(sentences)}, fs)[1]['sentences']
                     try:
-                        yield ((sentences[s:s+chunk_size], fs, f"{fb}.{i}")
+                        yield ((sentences[s:s+chunk_size], fs, f"{fb}.{i}", self.max_len)
                                for i, s in enumerate(range(0, len(sentences), chunk_size)))
                     finally:
                         del global_transform
                         shutil.rmtree(ftemp)
 
-                def numericalize(sentences, fs, fb):
+                def numericalize(sentences, fs, fb, max_len):
                     sentences = global_transform((debinarize(fs, sentence) for sentence in sentences))
+                    sentences = [i for i in sentences if len(i) < max_len]
                     lens = [sentence.size for sentence in sentences]
                     return binarize({'sentences': sentences, 'lens': lens}, fb)[0]
 

@@ -319,7 +319,6 @@ class CoNLL(Transform):
         data: Union[str, Iterable],
         lang: Optional[str] = None,
         proj: bool = False,
-        max_len: Optional[int] = None,
         **kwargs
     ) -> Iterable[CoNLLSentence]:
         r"""
@@ -335,8 +334,6 @@ class CoNLL(Transform):
                 Default: ``None``.
             proj (bool):
                 If ``True``, discards all non-projective sentences. Default: ``False``.
-            max_len (int):
-                Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
             A list of :class:`CoNLLSentence` instances.
@@ -368,8 +365,6 @@ class CoNLL(Transform):
                 sentence = CoNLLSentence(self, sentence, index)
                 if isconll and proj and not self.isprojective(list(map(int, sentence.arcs))):
                     logger.warning(f"Sentence {index} is not projective. Discarding it!")
-                elif max_len is not None and len(sentence) >= max_len:
-                    logger.warning(f"Sentence {index} has {len(sentence)} tokens, exceeding {max_len}. Discarding it!")
                 else:
                     yield sentence
                     index += 1
@@ -617,7 +612,6 @@ class Tree(Transform):
         self,
         data: Union[str, Iterable],
         lang: Optional[str] = None,
-        max_len: Optional[int] = None,
         **kwargs
     ) -> List[TreeSentence]:
         r"""
@@ -628,8 +622,6 @@ class Tree(Transform):
                 Language code (e.g., ``en``) or language name (e.g., ``English``) for the text to tokenize.
                 ``None`` if tokenization is not required.
                 Default: ``None``.
-            max_len (int):
-                Sentences exceeding the length will be discarded. Default: ``None``.
 
         Returns:
             A list of :class:`TreeSentence` instances.
@@ -656,8 +648,6 @@ class Tree(Transform):
             except ValueError:
                 logger.warning(f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!")
                 continue
-            if max_len is not None and len(sentence) >= max_len:
-                logger.warning(f"Sentence {index} has {len(sentence)} tokens, exceeding {max_len}. Discarding it!")
             else:
                 yield sentence
                 index += 1
