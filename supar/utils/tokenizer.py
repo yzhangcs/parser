@@ -79,6 +79,9 @@ class TransformerTokenizer:
     def eos(self):
         return self.tokenizer.eos_token or self.tokenizer.sep_token
 
+    def decode(self, text: List) -> str:
+        return self.tokenizer.decode(text, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+
 
 class BPETokenizer:
 
