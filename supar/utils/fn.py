@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from collections import defaultdict
 import gzip
 import mmap
 import os
@@ -12,11 +11,13 @@ import tarfile
 import unicodedata
 import urllib
 import zipfile
+from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 from omegaconf import DictConfig, OmegaConf
 from supar.utils.common import CACHE
+from supar.utils.parallel import wait
 
 
 def ispunct(token: str) -> bool:
@@ -251,6 +252,7 @@ def pad(
     return out_tensor
 
 
+@wait
 def download(url: str, path: Optional[str] = None, reload: bool = False, clean: bool = False) -> str:
     filename = os.path.basename(urllib.parse.urlparse(url).path)
     if path is None:
@@ -260,7 +262,7 @@ def download(url: str, path: Optional[str] = None, reload: bool = False, clean: 
     if reload and os.path.exists(path):
         os.remove(path)
     if not os.path.exists(path):
-        sys.stderr.write(f"Downloading: {url} to {path}\n")
+        sys.stderr.write(f"Downloading {url} to {path}\n")
         try:
             torch.hub.download_url_to_file(url, path, progress=True)
         except (ValueError, urllib.error.URLError):

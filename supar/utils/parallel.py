@@ -83,6 +83,19 @@ def sync(model: DistributedDataParallel, sync: bool = False) -> contextmanager:
     return nullcontext()
 
 
+def wait(fn) -> Any:
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        value = None
+        if is_master():
+            value = fn(*args, **kwargs)
+        if dist.is_initialized():
+            dist.barrier()
+            value = gather(value)[0]
+        return value
+    return wrapper
+
+
 def is_master():
     return not dist.is_available() or not dist.is_initialized() or dist.get_rank() == 0
 
