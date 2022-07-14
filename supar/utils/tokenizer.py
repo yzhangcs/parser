@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 import tempfile
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Any, Dict, List, Optional, Union
 
 import torch.distributed as dist
@@ -57,7 +57,7 @@ class TransformerTokenizer:
 
     @property
     def vocab(self):
-        return self.tokenizer.get_vocab()
+        return defaultdict(lambda: self.tokenizer.vocab[self.unk], self.tokenizer.get_vocab())
 
     @property
     def vocab_size(self):
