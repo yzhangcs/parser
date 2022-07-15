@@ -563,12 +563,15 @@ class Tree(Transform):
         while nodes:
             node = nodes.pop()
             if isinstance(node, nltk.Tree):
-                label = '' if implicit else node.label()
-                if mark not in label:
-                    label = f'{label}{mark}'
+                if implicit:
+                    label = ''
+                else:
+                    label = node.label()
+                    if mark not in label:
+                        label = f'{label}{mark}'
                 # ensure that only non-terminals can be attached to a n-ary subtree
                 if len(node) > 1:
-                    for i, child in enumerate(node):
+                    for child in node:
                         if not isinstance(child[0], nltk.Tree):
                             child[:] = [nltk.Tree(child.label(), child[:])]
                             child.set_label(label)
@@ -578,11 +581,9 @@ class Tree(Transform):
                         node[:-1] = [nltk.Tree(label, node[:-1])]
                     else:
                         node[1:] = [nltk.Tree(label, node[1:])]
-                # collapse unary productions
-                if len(node) == 1 and isinstance(node[0][0], nltk.Tree):
-                    node.set_label(node.label() + join + node[0].label())
-                    node[:] = node[0][:]
-                nodes.extend([child for child in node])
+                nodes.extend(node)
+        # collapse unary productions, shoule be conducted after binarization
+        tree.collapse_unary(joinChar=join)
         return tree
 
     @classmethod
