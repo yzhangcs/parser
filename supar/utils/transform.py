@@ -443,7 +443,14 @@ class Tree(Transform):
         return nltk.Tree(root, [nltk.Tree('', [nltk.Tree(pos, [word])]) for word, pos in tokens])
 
     @classmethod
-    def binarize(cls, tree: nltk.Tree) -> nltk.Tree:
+    def binarize(
+        cls,
+        tree: nltk.Tree,
+        left: bool = True,
+        mark: str = '*',
+        join: str = '::',
+        implicit: bool = False
+    ) -> nltk.Tree:
         r"""
         Conducts binarization over the tree.
 
@@ -454,11 +461,20 @@ class Tree(Transform):
         Args:
             tree (nltk.tree.Tree):
                 The tree to be binarized.
+            left (bool):
+                If ``True``, left-binarization is conducted. Default: ``True``.
+            mark (str):
+                A string used to mark newly inserted nodes, working if performing explicit binarization. Default: ``'*'``.
+            join (str):
+                A string used to connect collapsed node labels. Default: ``'::'``.
+            implicit (bool):
+                If ``True``, performs implicit binarization. Default: ``False``.
 
         Returns:
             The binarized tree.
 
         Examples:
+            >>> from supar.utils import Tree
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -466,35 +482,107 @@ class Tree(Transform):
                                                 (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
                                                 (_ .)))
                                             ''')
-            >>> print(Tree.binarize(tree))
-            (TOP
-              (S
-                (S|<>
-                  (NP (_ She))
-                  (VP
-                    (VP|<> (_ enjoys))
-                    (S::VP (VP|<> (_ playing)) (NP (_ tennis)))))
-                (S|<> (_ .))))
+            >>> tree.pretty_print()
+                         TOP
+                          |
+                          S
+              ____________|________________
+             |            VP               |
+             |     _______|_____           |
+             |    |             S          |
+             |    |             |          |
+             |    |             VP         |
+             |    |        _____|____      |
+             NP   |       |          NP    |
+             |    |       |          |     |
+             _    _       _          _     _
+             |    |       |          |     |
+            She enjoys playing     tennis  .
+
+            >>> Tree.binarize(tree).pretty_print()
+                             TOP
+                              |
+                              S
+                         _____|__________________
+                        S*                       |
+              __________|_____                   |
+             |                VP                 |
+             |     ___________|______            |
+             |    |                S::VP         |
+             |    |            ______|_____      |
+             NP  VP*         VP*           NP    S*
+             |    |           |            |     |
+             _    _           _            _     _
+             |    |           |            |     |
+            She enjoys     playing       tennis  .
+
+            >>> Tree.binarize(tree, implicit=True).pretty_print()
+                             TOP
+                              |
+                              S
+                         _____|__________________
+                                                 |
+              __________|_____                   |
+             |                VP                 |
+             |     ___________|______            |
+             |    |                S::VP         |
+             |    |            ______|_____      |
+             NP                            NP
+             |    |           |            |     |
+             _    _           _            _     _
+             |    |           |            |     |
+            She enjoys     playing       tennis  .
+
+            >>> Tree.binarize(tree, left=False).pretty_print()
+                         TOP
+                          |
+                          S
+              ____________|______
+             |                   S*
+             |             ______|___________
+             |            VP                 |
+             |     _______|______            |
+             |    |            S::VP         |
+             |    |        ______|_____      |
+             NP  VP*     VP*           NP    S*
+             |    |       |            |     |
+             _    _       _            _     _
+             |    |       |            |     |
+            She enjoys playing       tennis  .
 
         .. _Chomsky Normal Form (CNF):
             https://en.wikipedia.org/wiki/Chomsky_normal_form
         """
 
         tree = tree.copy(True)
-        if len(tree) == 1 and not isinstance(tree[0][0], nltk.Tree):
-            tree[0] = nltk.Tree(f"{tree.label()}|<>", [tree[0]])
         nodes = [tree]
+        if len(tree) == 1:
+            if not isinstance(tree[0][0], nltk.Tree):
+                tree[0] = nltk.Tree(f'{tree.label()}{mark}', [tree[0]])
+            nodes = [tree[0]]
         while nodes:
             node = nodes.pop()
             if isinstance(node, nltk.Tree):
-                nodes.extend([child for child in node])
+                label = '' if implicit else node.label()
+                if mark not in label:
+                    label = f'{label}{mark}'
+                # ensure that only non-terminals can be attached to a n-ary subtree
                 if len(node) > 1:
                     for i, child in enumerate(node):
                         if not isinstance(child[0], nltk.Tree):
-                            node[i] = nltk.Tree(f"{node.label()}|<>", [child])
-        tree.chomsky_normal_form('left', 0, 0)
-        tree.collapse_unary(joinChar='::')
-
+                            child[:] = [nltk.Tree(child.label(), child[:])]
+                            child.set_label(label)
+                # chomsky normal form factorization
+                if len(node) > 2:
+                    if left:
+                        node[:-1] = [nltk.Tree(label, node[:-1])]
+                    else:
+                        node[1:] = [nltk.Tree(label, node[1:])]
+                # collapse unary productions
+                if len(node) == 1 and isinstance(node[0][0], nltk.Tree):
+                    node.set_label(node.label() + join + node[0].label())
+                    node[:] = node[0][:]
+                nodes.extend([child for child in node])
         return tree
 
     @classmethod
@@ -561,11 +649,17 @@ class Tree(Transform):
         return track(tree, 0)[1]
 
     @classmethod
-    def build(cls, tree: nltk.Tree, sequence: List[Tuple]) -> nltk.Tree:
+    def build(
+        cls,
+        tree: nltk.Tree,
+        sequence: List[Tuple],
+        mark: Union[str, Tuple[str]] = ('*', '|<>'),
+        join: str = '::'
+    ) -> nltk.Tree:
         r"""
         Builds a constituency tree from the sequence. The sequence is generated in pre-order.
         During building the tree, the sequence is de-binarized to the original format (i.e.,
-        the suffixes ``|<>`` are ignored, the collapsed labels are recovered).
+        the suffixes ``*`` are ignored, the collapsed labels are recovered).
 
         Args:
             tree (nltk.tree.Tree):
@@ -573,20 +667,36 @@ class Tree(Transform):
             sequence (list[tuple]):
                 A list of tuples used for generating a tree.
                 Each tuple consits of the indices of left/right boundaries and label of the constituent.
+            mark (Union[str, List[str]]):
+                A string used to mark newly inserted nodes. Non-terminals containing this will be removed.
+                Default: ``('*', '|<>')``.
+            join (str):
+                A string used to connect collapsed node labels. Non-terminals containing this will be expanded to unary chains.
+                Default: ``'::'``.
 
         Returns:
             A result constituency tree.
 
         Examples:
             >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
-            >>> sequence = [(0, 5, 'S'), (0, 4, 'S|<>'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP|<>'),
-                            (2, 4, 'S::VP'), (2, 3, 'VP|<>'), (3, 4, 'NP'), (4, 5, 'S|<>')]
-            >>> print(Tree.build(tree, sequence))
-            (TOP
-              (S
-                (NP (_ She))
-                (VP (_ enjoys) (S (VP (_ playing) (NP (_ tennis)))))
-                (_ .)))
+            >>> sequence = [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
+                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]
+            >>> Tree.build(tree, sequence).pretty_print()
+                         TOP
+                          |
+                          S
+              ____________|________________
+             |            VP               |
+             |     _______|_____           |
+             |    |             S          |
+             |    |             |          |
+             |    |             VP         |
+             |    |        _____|____      |
+             NP   |       |          NP    |
+             |    |       |          |     |
+             _    _       _          _     _
+             |    |       |          |     |
+            She enjoys playing     tennis  .
         """
 
         root = tree.label()
@@ -599,9 +709,9 @@ class Tree(Transform):
                 children = [leaves[i]]
             else:
                 children = track(node) + track(node)
-            if label is None or label.endswith('|<>'):
+            if not label or label.endswith(mark):
                 return children
-            labels = label.split('::')
+            labels = label.split(join)
             tree = nltk.Tree(labels[-1], children)
             for label in reversed(labels[:-1]):
                 tree = nltk.Tree(label, [tree])
