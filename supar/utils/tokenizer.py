@@ -32,7 +32,10 @@ class TransformerTokenizer:
     def __init__(self, name) -> TransformerTokenizer:
         from transformers import AutoTokenizer
         self.name = name
-        self.tokenizer = AutoTokenizer.from_pretrained(name)
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(name, local_files_only=True)
+        except Exception:
+            self.tokenizer = AutoTokenizer.from_pretrained(name, local_files_only=False)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.name})"

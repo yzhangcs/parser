@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from supar.modules.scalar_mix import ScalarMix
 from supar.utils.fn import pad
+from supar.utils.tokenizer import TransformerTokenizer
 
 
 class TransformerEmbedding(nn.Module):
@@ -52,9 +53,13 @@ class TransformerEmbedding(nn.Module):
     ) -> TransformerEmbedding:
         super().__init__()
 
-        from transformers import AutoConfig, AutoModel, AutoTokenizer
-        self.bert = AutoModel.from_pretrained(model, config=AutoConfig.from_pretrained(model, output_hidden_states=True))
+        from transformers import AutoModel
+        try:
+            self.bert = AutoModel.from_pretrained(model, output_hidden_states=True, local_files_only=True)
+        except Exception:
+            self.bert = AutoModel.from_pretrained(model, output_hidden_states=True, local_files_only=False)
         self.bert = self.bert.requires_grad_(finetune)
+        self.tokenizer = TransformerTokenizer(model)
 
         self.model = model
         self.n_layers = n_layers or self.bert.config.num_hidden_layers
@@ -66,8 +71,6 @@ class TransformerEmbedding(nn.Module):
         self.finetune = finetune
         self.max_len = int(max(0, self.bert.config.max_position_embeddings) or 1e12) - 2
         self.stride = min(stride, self.max_len)
-
-        self.tokenizer = AutoTokenizer.from_pretrained(model)
 
         self.scalar_mix = ScalarMix(self.n_layers, mix_dropout)
         self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
