@@ -348,11 +348,11 @@ class ChartField(Field):
     Field dealing with chart inputs.
 
     Examples:
-        >>> chart = [[    None,    'NP',    None,    None,  'S|<>',     'S'],
-                     [    None,    None, 'VP|<>',    None,    'VP',    None],
-                     [    None,    None,    None, 'VP|<>', 'S::VP',    None],
+        >>> chart = [[    None,    'NP',    None,    None,    'S*',     'S'],
+                     [    None,    None,   'VP*',    None,    'VP',    None],
+                     [    None,    None,    None,   'VP*', 'S::VP',    None],
                      [    None,    None,    None,    None,    'NP',    None],
-                     [    None,    None,    None,    None,    None,  'S|<>'],
+                     [    None,    None,    None,    None,    None,    'S*'],
                      [    None,    None,    None,    None,    None,    None]]
         >>> next(field.transform([chart]))
         tensor([[ -1,  37,  -1,  -1, 107,  79],
