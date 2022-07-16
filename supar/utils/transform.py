@@ -419,6 +419,7 @@ class Tree(Transform):
         cls,
         tokens: List[Union[str, Tuple]],
         root: str = '',
+        normalize: Dict[str, str] = {'(': '-LRB-', ')': '-RRB-'}
     ) -> nltk.Tree:
         r"""
         Converts a list of tokens to a :class:`nltk.tree.Tree`.
@@ -429,18 +430,37 @@ class Tree(Transform):
                 This can be either a list of words or word/pos pairs.
             root (str):
                 The root label of the tree. Default: ''.
+            normalize (dict):
+                Keys within the dict in each token will be replaced by the values. Default: ``{'(': '-LRB-', ')': '-RRB-'}``.
 
         Returns:
             A :class:`nltk.tree.Tree` object.
 
         Examples:
-            >>> print(Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP'))
-            (TOP ( (_ She)) ( (_ enjoys)) ( (_ playing)) ( (_ tennis)) ( (_ .)))
+            >>> Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP').pretty_print()
+                         TOP
+              ____________|____________
+
+             |    |       |      |     |
+             _    _       _      _     _
+             |    |       |      |     |
+            She enjoys playing tennis  .
+
+            >>> Tree.totree(['(', 'If', 'You', 'Let', 'It', ')'], 'TOP').pretty_print()
+                      TOP
+               ________|____________
+
+              |    |   |   |   |    |
+              _    _   _   _   _    _
+              |    |   |   |   |    |
+            -LRB-  If You Let  It -RRB-
+
         """
 
+        normalize = str.maketrans(normalize)
         if isinstance(tokens[0], str):
             tokens = [(token, '_') for token in tokens]
-        return nltk.Tree(root, [nltk.Tree('', [nltk.Tree(pos, [word])]) for word, pos in tokens])
+        return nltk.Tree(root, [nltk.Tree('', [nltk.Tree(pos, [word.translate(normalize)])]) for word, pos in tokens])
 
     @classmethod
     def binarize(
