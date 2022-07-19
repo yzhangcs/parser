@@ -106,7 +106,10 @@ class Dataset(torch.utils.data.Dataset):
         if name not in {f.name for f in self.transform.flattened_fields}:
             raise AttributeError
         if self.cache:
-            sentences = self if os.path.exists(self.fbin) else self.transform.load(self.data, **self.kwargs)
+            if os.path.exists(self.fbin) and not self.binarize:
+                sentences = self
+            else:
+                sentences = self.transform.load(self.data, **self.kwargs)
             return (getattr(sentence, name) for sentence in sentences)
         return [getattr(sentence, name) for sentence in self.sentences]
 

@@ -265,7 +265,7 @@ class BiaffineSemanticDependencyParser(Parser):
         LABEL = ChartField('labels', fn=CoNLL.get_labels)
         transform = CoNLL(FORM=(WORD, CHAR, ELMO, BERT), LEMMA=LEMMA, POS=TAG, PHEAD=LABEL)
 
-        train = Dataset(transform, args.train)
+        train = Dataset(transform, args.train, **args)
         if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed) if args.embed else None), lambda x: x / torch.std(x))
             if TAG is not None:

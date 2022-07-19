@@ -291,7 +291,7 @@ class CRFConstituencyParser(Parser):
         CHART = ChartField('charts')
         transform = Tree(WORD=(WORD, CHAR, ELMO, BERT), POS=TAG, TREE=TREE, CHART=CHART)
 
-        train = Dataset(transform, args.train)
+        train = Dataset(transform, args.train, **args)
         if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed) if args.embed else None), lambda x: x / torch.std(x))
             if TAG is not None:

@@ -297,7 +297,7 @@ class BiaffineDependencyParser(Parser):
         REL = Field('rels', bos=BOS)
         transform = CoNLL(FORM=(WORD, TEXT, CHAR, ELMO, BERT), CPOS=TAG, HEAD=ARC, DEPREL=REL)
 
-        train = Dataset(transform, args.train)
+        train = Dataset(transform, args.train, **args)
         if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed) if args.embed else None), lambda x: x / torch.std(x))
             if TAG is not None:
@@ -841,7 +841,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         REL = Field('rels', bos=BOS)
         transform = CoNLL(FORM=(WORD, TEXT, CHAR, ELMO, BERT), CPOS=TAG, HEAD=(ARC, SIB), DEPREL=REL)
 
-        train = Dataset(transform, args.train)
+        train = Dataset(transform, args.train, **args)
         if args.encoder != 'bert':
             WORD.build(train, args.min_freq, (Embedding.load(args.embed) if args.embed else None), lambda x: x / torch.std(x))
             if TAG is not None:
