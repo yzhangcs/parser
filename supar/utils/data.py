@@ -79,7 +79,7 @@ class Dataset(torch.utils.data.Dataset):
                 logger.info(f"Seeking to cache the data to {self.fbin} first")
             else:
                 try:
-                    self.sentences = debinarize(self.fbin, meta=True)
+                    self.sentences = debinarize(self.fbin, meta=True)['sentences']
                 except Exception:
                     raise RuntimeError(f"Error found while debinarizing {self.fbin}, which may have been corrupted. "
                                        "Try re-binarizing it first")
