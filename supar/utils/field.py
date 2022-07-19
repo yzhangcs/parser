@@ -10,6 +10,7 @@ from supar.utils.data import Dataset
 from supar.utils.embed import Embedding
 from supar.utils.fn import pad
 from supar.utils.logging import progress_bar
+from supar.utils.parallel import wait
 from supar.utils.vocab import Vocab
 
 
@@ -199,17 +200,22 @@ class Field(RawField):
 
         if hasattr(self, 'vocab'):
             return
-        counter = Counter(token
-                          for seq in progress_bar(getattr(dataset, self.name))
-                          for token in self.preprocess(seq))
-        self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
+
+        @wait
+        def build_vocab(dataset):
+            return Vocab(counter=Counter(token
+                                         for seq in progress_bar(getattr(dataset, self.name))
+                                         for token in self.preprocess(seq)),
+                         min_freq=min_freq,
+                         specials=self.specials,
+                         unk_index=self.unk_index)
+        self.vocab = build_vocab(dataset)
 
         if not embed:
             self.embed = None
         else:
             tokens = self.preprocess(embed.tokens)
-            # if the `unk` token has existed in the pretrained,
-            # then replace it with a self-defined one
+            # replace the `unk` token in the pretrained with a self-defined one if existed
             if embed.unk:
                 tokens[embed.unk_index] = self.unk
 
@@ -306,11 +312,17 @@ class SubwordField(Field):
     ) -> SubwordField:
         if hasattr(self, 'vocab'):
             return
-        counter = Counter(piece
-                          for seq in progress_bar(getattr(dataset, self.name))
-                          for token in seq
-                          for piece in self.preprocess(token))
-        self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
+
+        @wait
+        def build_vocab(dataset):
+            return Vocab(counter=Counter(piece
+                                         for seq in progress_bar(getattr(dataset, self.name))
+                                         for token in seq
+                                         for piece in self.preprocess(token)),
+                         min_freq=min_freq,
+                         specials=self.specials,
+                         unk_index=self.unk_index)
+        self.vocab = build_vocab(dataset)
 
         if not embed:
             self.embed = None
@@ -368,11 +380,16 @@ class ChartField(Field):
         dataset: Dataset,
         min_freq: int = 1
     ) -> ChartField:
-        counter = Counter(i
-                          for chart in progress_bar(getattr(dataset, self.name))
-                          for row in self.preprocess(chart)
-                          for i in row if i is not None)
-        self.vocab = Vocab(counter, min_freq, self.specials, self.unk_index)
+        @wait
+        def build_vocab(dataset):
+            return Vocab(counter=Counter(i
+                                         for chart in progress_bar(getattr(dataset, self.name))
+                                         for row in self.preprocess(chart)
+                                         for i in row if i is not None),
+                         min_freq=min_freq,
+                         specials=self.specials,
+                         unk_index=self.unk_index)
+        self.vocab = build_vocab(dataset)
         return self
 
     def transform(self, charts: Iterable[List[List]]) -> Iterable[torch.Tensor]:
