@@ -43,7 +43,7 @@ class ScalarMix(nn.Module):
     def forward(self, tensors: List[torch.Tensor]) -> torch.Tensor:
         r"""
         Args:
-            tensors (list[~torch.Tensor]):
+            tensors (List[~torch.Tensor]):
                 :math:`N` tensors to be mixed.
 
         Returns:

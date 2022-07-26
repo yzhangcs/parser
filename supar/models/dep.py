@@ -29,7 +29,7 @@ class BiaffineDependencyModel(Model):
             ``'lstm'``: BiLSTM encoder.
             ``'bert'``: BERT-like pretrained language model (for finetuning), e.g., ``'bert-base-cased'``.
             Default: ``'lstm'``.
-        feat (list[str]):
+        feat (List[str]):
             Additional features to use, required if ``encoder='lstm'``.
             ``'tag'``: POS tag embeddings.
             ``'char'``: Character-level representations extracted by CharLSTM.
@@ -49,7 +49,7 @@ class BiaffineDependencyModel(Model):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
         elmo (str):
             Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
-        elmo_bos_eos (tuple[bool]):
+        elmo_bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
             Default: ``(True, False)``.
         bert (str):
@@ -147,7 +147,7 @@ class BiaffineDependencyModel(Model):
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Word indices.
-            feats (list[~torch.LongTensor]):
+            feats (List[~torch.LongTensor]):
                 A list of feat indices.
                 The size is either ``[batch_size, seq_len, fix_len]`` if ``feat`` is ``'char'`` or ``'bert'``,
                 or ``[batch_size, seq_len]`` otherwise.
@@ -254,7 +254,7 @@ class CRFDependencyModel(BiaffineDependencyModel):
             ``'lstm'``: BiLSTM encoder.
             ``'bert'``: BERT-like pretrained language model (for finetuning), e.g., ``'bert-base-cased'``.
             Default: ``'lstm'``.
-        feat (list[str]):
+        feat (List[str]):
             Additional features to use, required if ``encoder='lstm'``.
             ``'tag'``: POS tag embeddings.
             ``'char'``: Character-level representations extracted by CharLSTM.
@@ -274,7 +274,7 @@ class CRFDependencyModel(BiaffineDependencyModel):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
         elmo (str):
             Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
-        elmo_bos_eos (tuple[bool]):
+        elmo_bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
             Default: ``(True, False)``.
         bert (str):
@@ -379,7 +379,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
             ``'lstm'``: BiLSTM encoder.
             ``'bert'``: BERT-like pretrained language model (for finetuning), e.g., ``'bert-base-cased'``.
             Default: ``'lstm'``.
-        feat (list[str]):
+        feat (List[str]):
             Additional features to use, required if ``encoder='lstm'``.
             ``'tag'``: POS tag embeddings.
             ``'char'``: Character-level representations extracted by CharLSTM.
@@ -399,7 +399,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
         elmo (str):
             Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
-        elmo_bos_eos (tuple[bool]):
+        elmo_bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
             Default: ``(True, False)``.
         bert (str):
@@ -501,7 +501,7 @@ class CRF2oDependencyModel(BiaffineDependencyModel):
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Word indices.
-            feats (list[~torch.LongTensor]):
+            feats (List[~torch.LongTensor]):
                 A list of feat indices.
                 The size is either ``[batch_size, seq_len, fix_len]`` if ``feat`` is ``'char'`` or ``'bert'``,
                 or ``[batch_size, seq_len]`` otherwise.
@@ -629,7 +629,7 @@ class VIDependencyModel(BiaffineDependencyModel):
             ``'lstm'``: BiLSTM encoder.
             ``'bert'``: BERT-like pretrained language model (for finetuning), e.g., ``'bert-base-cased'``.
             Default: ``'lstm'``.
-        feat (list[str]):
+        feat (List[str]):
             Additional features to use, required if ``encoder='lstm'``.
             ``'tag'``: POS tag embeddings.
             ``'char'``: Character-level representations extracted by CharLSTM.
@@ -649,7 +649,7 @@ class VIDependencyModel(BiaffineDependencyModel):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
         elmo (str):
             Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
-        elmo_bos_eos (tuple[bool]):
+        elmo_bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
             Default: ``(True, False)``.
         bert (str):
@@ -763,7 +763,7 @@ class VIDependencyModel(BiaffineDependencyModel):
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Word indices.
-            feats (list[~torch.LongTensor]):
+            feats (List[~torch.LongTensor]):
                 A list of feat indices.
                 The size is either ``[batch_size, seq_len, fix_len]`` if ``feat`` is ``'char'`` or ``'bert'``,
                 or ``[batch_size, seq_len]`` otherwise.

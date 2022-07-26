@@ -30,7 +30,7 @@ class Dataset(torch.utils.data.Dataset):
         transform (Transform):
             An instance of :class:`~supar.utils.transform.Transform` or its derivations.
             The instance holds a series of loading and processing behaviours with regard to the specific data format.
-        data (str or Iterable):
+        data (Union[str, Iterable]):
             A filename or a list of instances that will be passed into :meth:`transform.load`.
         cache (bool):
             If ``True``, tries to use the previously cached binarized data for fast loading.
@@ -41,13 +41,13 @@ class Dataset(torch.utils.data.Dataset):
             If ``True``, binarizes the dataset once building it. Only works if ``cache=True``. Default: ``False``.
         max_len (int):
             Sentences exceeding the length will be discarded. Default: ``None``.
-        kwargs (dict):
+        kwargs (Dict):
             Together with `data`, kwargs will be passed into :meth:`transform.load` to control the loading behaviour.
 
     Attributes:
         transform (Transform):
             An instance of :class:`~supar.utils.transform.Transform`.
-        sentences (list[Sentence]):
+        sentences (List[Sentence]):
             A list of sentences loaded from the data.
             Each sentence includes fields obeying the data format defined in ``transform``.
             If ``cache=True``, each is a pointer to the sentence stored in the cache file.
@@ -189,7 +189,7 @@ class Sampler(torch.utils.data.Sampler):
     Sampler that supports for bucketization and token-level batchification.
 
     Args:
-        buckets (dict):
+        buckets (Dict):
             A dict that maps each centroid to indices of clustered sentences.
             The centroid corresponds to the average length of all sentences in the bucket.
         batch_size (int):

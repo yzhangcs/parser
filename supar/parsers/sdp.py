@@ -38,7 +38,7 @@ class BiaffineSemanticDependencyParser(Parser):
               verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -54,7 +54,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -63,7 +63,7 @@ class BiaffineSemanticDependencyParser(Parser):
     def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -77,7 +77,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -90,7 +90,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -114,7 +114,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 If ``True``, outputs the probabilities. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -140,7 +140,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:
@@ -227,7 +227,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
                 Default: 20.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
 
@@ -317,7 +317,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
               verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -333,7 +333,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 Gradient accumulation steps. Default: 1.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -342,7 +342,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
     def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -356,7 +356,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -369,7 +369,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -393,7 +393,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 If ``True``, outputs the probabilities. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -419,7 +419,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:

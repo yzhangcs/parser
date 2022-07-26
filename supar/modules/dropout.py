@@ -140,7 +140,7 @@ class IndependentDropout(nn.Module):
     def forward(self, *items: List[torch.Tensor]) -> List[torch.Tensor]:
         r"""
         Args:
-            items (list[~torch.Tensor]):
+            items (List[~torch.Tensor]):
                 A list of tensors that have the same shape except the last dimension.
         Returns:
             A tensors are of the same shape as `items`.

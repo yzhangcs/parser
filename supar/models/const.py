@@ -27,7 +27,7 @@ class CRFConstituencyModel(Model):
             ``'lstm'``: BiLSTM encoder.
             ``'bert'``: BERT-like pretrained language model (for finetuning), e.g., ``'bert-base-cased'``.
             Default: ``'lstm'``.
-        feat (list[str]):
+        feat (List[str]):
             Additional features to use, required if ``encoder='lstm'``.
             ``'tag'``: POS tag embeddings.
             ``'char'``: Character-level representations extracted by CharLSTM.
@@ -47,7 +47,7 @@ class CRFConstituencyModel(Model):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
         elmo (str):
             Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
-        elmo_bos_eos (tuple[bool]):
+        elmo_bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
             Default: ``(True, False)``.
         bert (str):
@@ -142,7 +142,7 @@ class CRFConstituencyModel(Model):
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Word indices.
-            feats (list[~torch.LongTensor]):
+            feats (List[~torch.LongTensor]):
                 A list of feat indices.
                 The size is either ``[batch_size, seq_len, fix_len]`` if ``feat`` is ``'char'`` or ``'bert'``,
                 or ``[batch_size, seq_len]`` otherwise.
@@ -212,7 +212,7 @@ class CRFConstituencyModel(Model):
                 The mask for covering the unpadded tokens in each chart.
 
         Returns:
-            list[list[tuple]]:
+            List[List[Tuple]]:
                 Sequences of factorized labeled trees traversed in pre-order.
         """
 
@@ -239,7 +239,7 @@ class VIConstituencyModel(CRFConstituencyModel):
             ``'lstm'``: BiLSTM encoder.
             ``'bert'``: BERT-like pretrained language model (for finetuning), e.g., ``'bert-base-cased'``.
             Default: ``'lstm'``.
-        feat (list[str]):
+        feat (List[str]):
             Additional features to use, required if ``encoder='lstm'``.
             ``'tag'``: POS tag embeddings.
             ``'char'``: Character-level representations extracted by CharLSTM.
@@ -259,7 +259,7 @@ class VIConstituencyModel(CRFConstituencyModel):
             The index of the padding token in the character vocabulary, required if using CharLSTM. Default: 0.
         elmo (str):
             Name of the pretrained ELMo registered in `ELMoEmbedding.OPTION`. Default: ``'original_5b'``.
-        elmo_bos_eos (tuple[bool]):
+        elmo_bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of elmo outputs.
             Default: ``(True, False)``.
         bert (str):
@@ -371,7 +371,7 @@ class VIConstituencyModel(CRFConstituencyModel):
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Word indices.
-            feats (list[~torch.LongTensor]):
+            feats (List[~torch.LongTensor]):
                 A list of feat indices.
                 The size is either ``[batch_size, seq_len, fix_len]`` if ``feat`` is ``'char'`` or ``'bert'``,
                 or ``[batch_size, seq_len]`` otherwise.
@@ -441,7 +441,7 @@ class VIConstituencyModel(CRFConstituencyModel):
                 The mask for covering the unpadded tokens in each chart.
 
         Returns:
-            list[list[tuple]]:
+            List[List[Tuple]]:
                 Sequences of factorized labeled trees traversed in pre-order.
         """
 

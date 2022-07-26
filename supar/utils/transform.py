@@ -85,8 +85,8 @@ class Transform(object):
 class CoNLL(Transform):
     r"""
     The CoNLL object holds ten fields required for CoNLL-X data format :cite:`buchholz-marsi-2006-conll`.
-    Each field can be bound to one or more :class:`~supar.utils.field.Field` objects. For example,
-    ``FORM`` can contain both :class:`~supar.utils.field.Field` and :class:`~supar.utils.field.SubwordField`
+    Each field can be bound to one or more :class:`~supar.utils.field.Field` objects.
+    For example, ``FORM`` can contain both :class:`~supar.utils.field.Field` and :class:`~supar.utils.field.SubwordField`
     to produce tensors for words and subwords.
 
     Attributes:
@@ -200,11 +200,10 @@ class CoNLL(Transform):
     @classmethod
     def toconll(cls, tokens: List[Union[str, Tuple]]) -> str:
         r"""
-        Converts a list of tokens to a string in CoNLL-X format.
-        Missing fields are filled with underscores.
+        Converts a list of tokens to a string in CoNLL-X format with missing fields filled with underscores.
 
         Args:
-            tokens (list[str] or list[tuple]):
+            tokens (List[Union[str, Tuple]]):
                 This can be either a list of words, word/pos pairs or word/lemma/pos triples.
 
         Returns:
@@ -254,7 +253,7 @@ class CoNLL(Transform):
         which are hard to detect in the scenario of partial annotation.
 
         Args:
-            sequence (list[int]):
+            sequence (List[int]):
                 A list of head indices.
 
         Returns:
@@ -285,7 +284,7 @@ class CoNLL(Transform):
         Checks if the arcs form an valid dependency tree.
 
         Args:
-            sequence (list[int]):
+            sequence (List[int]):
                 A list of head indices.
             proj (bool):
                 If ``True``, requires the tree to be projective. Default: ``False``.
@@ -326,7 +325,7 @@ class CoNLL(Transform):
         Also supports for loading data from CoNLL-U file with comments and non-integer IDs.
 
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 A filename or a list of instances.
             lang (str):
                 Language code (e.g., ``en``) or language name (e.g., ``English``) for the text to tokenize.
@@ -426,11 +425,11 @@ class Tree(Transform):
         Missing fields are filled with underscores.
 
         Args:
-            tokens (list[str] or list[tuple]):
+            tokens (List[Union[str, Tuple]]):
                 This can be either a list of words or word/pos pairs.
             root (str):
                 The root label of the tree. Default: ''.
-            normalize (dict):
+            normalize (Dict):
                 Keys within the dict in each token will be replaced by the values. Default: ``{'(': '-LRB-', ')': '-RRB-'}``.
 
         Returns:
@@ -620,14 +619,14 @@ class Tree(Transform):
         Args:
             tree (nltk.tree.Tree):
                 The tree to be factorized.
-            delete_labels (set[str]):
+            delete_labels (Set[str]):
                 A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
                 If it is a non-terminal label, just delete the brackets (don't delete children).
                 In `EVALB`_, the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
                 Default: ``None``.
-            equal_labels (dict[str, str]):
+            equal_labels (Dict[str, str]):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default dict defined in `EVALB`_ is: {'ADVP': 'PRT'}
                 Default: ``None``.
@@ -685,7 +684,7 @@ class Tree(Transform):
         Args:
             tree (nltk.tree.Tree):
                 An empty tree that provides a base for building a result tree.
-            sequence (list[tuple]):
+            sequence (List[Tuple]):
                 A list of tuples used for generating a tree.
                 Each tuple consits of the indices of left/right boundaries and label of the constituent.
             mark (Union[str, List[str]]):
@@ -747,7 +746,7 @@ class Tree(Transform):
     ) -> List[TreeSentence]:
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 A filename or a list of instances.
             lang (str):
                 Language code (e.g., ``en``) or language name (e.g., ``English``) for the text to tokenize.
@@ -919,7 +918,7 @@ class CoNLLSentence(Sentence):
     Args:
         transform (CoNLL):
             A :class:`~supar.utils.transform.CoNLL` object.
-        lines (list[str]):
+        lines (List[str]):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
         index (Optional[int]):

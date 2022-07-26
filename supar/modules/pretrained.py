@@ -135,7 +135,7 @@ class ELMoEmbedding(nn.Module):
     Args:
         model (str):
             The name of the pretrained ELMo registered in `OPTION` and `WEIGHT`. Default: ``'original_5b'``.
-        bos_eos (tuple[bool]):
+        bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of sentence outputs.
             Default: ``(True, True)``.
         n_out (int):

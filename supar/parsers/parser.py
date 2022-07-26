@@ -232,7 +232,7 @@ class Parser(object):
                 Default: ``'github'``.
             checkpoint (bool):
                 If ``True``, loads all checkpoint states to restore the training process. Default: ``False``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:

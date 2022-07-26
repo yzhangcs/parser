@@ -41,7 +41,7 @@ class CRFConstituencyParser(Parser):
               **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -57,15 +57,15 @@ class CRFConstituencyParser(Parser):
                 Gradient accumulation steps. Default: 1.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
-            delete (set[str]):
+            delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
-            equal (dict[str, str]):
+            equal (Dict[str, str]):
                 The pairs in the dict are considered equivalent during evaluation.
                 Default: {'ADVP': 'PRT'}.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -79,7 +79,7 @@ class CRFConstituencyParser(Parser):
                  **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -93,15 +93,15 @@ class CRFConstituencyParser(Parser):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             mbr (bool):
                 If ``True``, performs MBR decoding. Default: ``True``.
-            delete (set[str]):
+            delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
-            equal (dict[str, str]):
+            equal (Dict[str, str]):
                 The pairs in the dict are considered equivalent during evaluation.
                 Default: {'ADVP': 'PRT'}.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -114,7 +114,7 @@ class CRFConstituencyParser(Parser):
                 mbr=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -140,7 +140,7 @@ class CRFConstituencyParser(Parser):
                 If ``True``, performs MBR decoding. Default: ``True``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -166,7 +166,7 @@ class CRFConstituencyParser(Parser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:
@@ -254,7 +254,7 @@ class CRFConstituencyParser(Parser):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
                 Default: 20.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
 
@@ -337,7 +337,7 @@ class VIConstituencyParser(CRFConstituencyParser):
               **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -351,15 +351,15 @@ class VIConstituencyParser(CRFConstituencyParser):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
             update_steps (int):
                 Gradient accumulation steps. Default: 1.
-            delete (set[str]):
+            delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
-            equal (dict[str, str]):
+            equal (Dict[str, str]):
                 The pairs in the dict are considered equivalent during evaluation.
                 Default: {'ADVP': 'PRT'}.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -372,7 +372,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                  **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -384,15 +384,15 @@ class VIConstituencyParser(CRFConstituencyParser):
                 Specifies whether to use automatic mixed precision. Default: ``False``.
             cache (bool):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
-            delete (set[str]):
+            delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
-            equal (dict[str, str]):
+            equal (Dict[str, str]):
                 The pairs in the dict are considered equivalent during evaluation.
                 Default: {'ADVP': 'PRT'}.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -405,7 +405,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -431,7 +431,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 If ``True``, performs MBR decoding. Default: ``True``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -457,7 +457,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:

@@ -39,7 +39,7 @@ class BiaffineDependencyParser(Parser):
               punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -63,7 +63,7 @@ class BiaffineDependencyParser(Parser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -73,7 +73,7 @@ class BiaffineDependencyParser(Parser):
                  punct=False, tree=True, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -95,7 +95,7 @@ class BiaffineDependencyParser(Parser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -108,7 +108,7 @@ class BiaffineDependencyParser(Parser):
                 tree=True, proj=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -136,7 +136,7 @@ class BiaffineDependencyParser(Parser):
                 If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -162,7 +162,7 @@ class BiaffineDependencyParser(Parser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:
@@ -260,7 +260,7 @@ class BiaffineDependencyParser(Parser):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
                 Default: 20.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
 
@@ -342,7 +342,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
               punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -368,7 +368,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -378,7 +378,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                  punct=False, mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -402,7 +402,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -415,7 +415,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -445,7 +445,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -471,7 +471,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:
@@ -573,7 +573,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
               punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -599,7 +599,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -609,7 +609,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                  punct=False, mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -633,7 +633,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -646,7 +646,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 mbr=True, tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -676,7 +676,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -702,7 +702,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:
@@ -803,7 +803,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                 The max length of all subword pieces. The excess part of each piece will be truncated.
                 Required if using CharLSTM/BERT.
                 Default: 20.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding the unconsumed arguments.
         """
 
@@ -886,7 +886,7 @@ class VIDependencyParser(BiaffineDependencyParser):
               punct=False, tree=False, proj=False, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            train/dev/test (str or Iterable):
+            train/dev/test (Union[str, Iterable]):
                 Filenames of the train/dev/test datasets.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 32.
@@ -910,7 +910,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs.
         """
 
@@ -920,7 +920,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                  punct=False, tree=True, proj=True, partial=False, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for evaluation. Both a filename and a list of instances are allowed.
             buckets (int):
                 The number of buckets that sentences are assigned to. Default: 8.
@@ -942,7 +942,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 ``True`` denotes the trees are partially annotated. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating evaluation configs.
 
         Returns:
@@ -955,7 +955,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 tree=True, proj=True, verbose=True, **kwargs):
         r"""
         Args:
-            data (str or Iterable):
+            data (Union[str, Iterable]):
                 The data for prediction.
                 - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
                 - a list of instances.
@@ -983,7 +983,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 If ``True``, ensures to output projective trees. Default: ``False``.
             verbose (bool):
                 If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating prediction configs.
 
         Returns:
@@ -1009,7 +1009,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 ``'github'``: github release page.
                 ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
                 Default: ``'github'``.
-            kwargs (dict):
+            kwargs (Dict):
                 A dict holding unconsumed arguments for updating training configs and initializing the model.
 
         Examples:
