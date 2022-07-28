@@ -149,34 +149,6 @@ class CRFConstituencyParser(Parser):
 
         return super().predict(**Config().update(locals()))
 
-    @classmethod
-    def load(cls, path, reload=False, src='github', **kwargs):
-        r"""
-        Loads a parser with data fields and pretrained model parameters.
-
-        Args:
-            path (str):
-                - a string with the shortcut name of a pretrained model defined in ``supar.MODEL``
-                  to load from cache or download, e.g., ``'crf-con-en'``.
-                - a local path to a pretrained model, e.g., ``./<path>/model``.
-            reload (bool):
-                Whether to discard the existing cache and force a fresh download. Default: ``False``.
-            src (str):
-                Specifies where to download the model.
-                ``'github'``: github release page.
-                ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: ``'github'``.
-            kwargs (Dict):
-                A dict holding unconsumed arguments for updating training configs and initializing the model.
-
-        Examples:
-            >>> from supar import Parser
-            >>> parser = Parser.load('crf-con-en')
-            >>> parser = Parser.load('./ptb.crf.con.lstm.char')
-        """
-
-        return super().load(path, reload, src, **kwargs)
-
     @parallel()
     def _train(self, loader):
         bar = progress_bar(loader)
@@ -439,34 +411,6 @@ class VIConstituencyParser(CRFConstituencyParser):
         """
 
         return super().predict(**Config().update(locals()))
-
-    @classmethod
-    def load(cls, path, reload=False, src='github', **kwargs):
-        r"""
-        Loads a parser with data fields and pretrained model parameters.
-
-        Args:
-            path (str):
-                - a string with the shortcut name of a pretrained model defined in ``supar.MODEL``
-                  to load from cache or download, e.g., ``'vi-con-en'``.
-                - a local path to a pretrained model, e.g., ``./<path>/model``.
-            reload (bool):
-                Whether to discard the existing cache and force a fresh download. Default: ``False``.
-            src (str):
-                Specifies where to download the model.
-                ``'github'``: github release page.
-                ``'hlt'``: hlt homepage, only accessible from 9:00 to 18:00 (UTC+8).
-                Default: ``'github'``.
-            kwargs (Dict):
-                A dict holding unconsumed arguments for updating training configs and initializing the model.
-
-        Examples:
-            >>> from supar import Parser
-            >>> parser = Parser.load('vi-con-en')
-            >>> parser = Parser.load('./ptb.vi.con.lstm.char')
-        """
-
-        return super().load(path, reload, src, **kwargs)
 
     @parallel()
     def _train(self, loader):
