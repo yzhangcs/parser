@@ -6,8 +6,9 @@ Modules
 .. toctree::
    :maxdepth: 2
 
-   affine
    lstm
+   gnn
+   affine
    pretrained
    dropout
    mlp
