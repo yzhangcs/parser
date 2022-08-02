@@ -213,7 +213,7 @@ class CRFConstituencyModel(Model):
 
         Returns:
             List[List[Tuple]]:
-                Sequences of factorized labeled trees traversed in pre-order.
+                Sequences of factorized labeled trees traversed in post-order.
         """
 
         span_preds = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).argmax
@@ -442,7 +442,7 @@ class VIConstituencyModel(CRFConstituencyModel):
 
         Returns:
             List[List[Tuple]]:
-                Sequences of factorized labeled trees traversed in pre-order.
+                Sequences of factorized labeled trees traversed in post-order.
         """
 
         span_preds = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).argmax

@@ -445,10 +445,10 @@ class ConstituencyCRF(StructuredDistribution):
 
     @lazy_property
     def argmax(self):
-        return [sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in self.backward(self.max.sum())]
+        return [sorted(torch.nonzero(i).tolist(), key=lambda x: (x[1], x[1]-x[0])) for i in self.backward(self.max.sum())]
 
     def topk(self, k: int) -> List[List[Tuple]]:
-        return list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x:(x[0], -x[1])) for j in self.backward(i)]
+        return list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x: (x[1], x[1]-x[0])) for j in self.backward(i)]
                           for i in self.kmax(k).sum(0)]))
 
     def score(self, value: torch.BoolTensor) -> torch.Tensor:

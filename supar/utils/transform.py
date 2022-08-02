@@ -385,7 +385,7 @@ class Tree(Transform):
         TREE:
             The raw constituency tree in :class:`nltk.tree.Tree` format.
         CHART:
-            The factorized sequence of binarized tree traversed in pre-order.
+            The factorized sequence of binarized tree traversed in post-order.
     """
 
     root = ''
@@ -613,8 +613,7 @@ class Tree(Transform):
         equal_labels: Optional[Dict[str, str]] = None
     ) -> List[Tuple]:
         r"""
-        Factorizes the tree into a sequence.
-        The tree is traversed in pre-order.
+        Factorizes the tree into a sequence traversed in post-order.
 
         Args:
             tree (nltk.tree.Tree):
@@ -644,9 +643,9 @@ class Tree(Transform):
                                                 (_ .)))
                                             ''')
             >>> Tree.factorize(tree)
-            [(0, 5, 'TOP'), (0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]
+            [(0, 1, 'NP'), (3, 4, 'NP'), (2, 4, 'VP'), (2, 4, 'S'), (1, 4, 'VP'), (0, 5, 'S'), (0, 5, 'TOP')]
             >>> Tree.factorize(tree, delete_labels={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''})
-            [(0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]
+            [(0, 1, 'NP'), (3, 4, 'NP'), (2, 4, 'VP'), (2, 4, 'S'), (1, 4, 'VP'), (0, 5, 'S')]
 
         .. _EVALB:
             https://nlp.cs.nyu.edu/evalb/
@@ -665,7 +664,7 @@ class Tree(Transform):
                 j, s = track(child, j)
                 spans += s
             if label is not None and j > i:
-                spans = [(i, j, label)] + spans
+                spans = spans + [(i, j, label)]
             return j, spans
         return track(tree, 0)[1]
 
@@ -678,9 +677,8 @@ class Tree(Transform):
         join: str = '::'
     ) -> nltk.Tree:
         r"""
-        Builds a constituency tree from the sequence generated in pre-order.
-        During building, the sequence is de-binarized to the original format (i.e.,
-        the suffixes ``*`` are ignored, the collapsed labels are recovered).
+        Builds a constituency tree from the sequence generated in post-order.
+        During building, the sequence is recovered to the original format, i.e., de-binarized.
 
         Args:
             tree (nltk.tree.Tree):
@@ -701,9 +699,10 @@ class Tree(Transform):
         Examples:
             >>> from supar.utils import Tree
             >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
-            >>> Tree.build(tree,
-                           [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
-                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]).pretty_print()
+            >>> sequence = [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
+                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]
+            # post-order
+            >>> Tree.build(tree, sorted(sequence, key=lambda x: (x[1], x[1]-x[0]))).pretty_print()
                          TOP
                           |
                           S
@@ -721,7 +720,7 @@ class Tree(Transform):
             She enjoys playing     tennis  .
 
             >>> Tree.build(tree,
-                           [(0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]).pretty_print()
+                           [(0, 1, 'NP'), (3, 4, 'NP'), (2, 4, 'VP'), (2, 4, 'S'), (1, 4, 'VP'), (0, 5, 'S')]).pretty_print()
                          TOP
                           |
                           S
@@ -742,31 +741,25 @@ class Tree(Transform):
 
         root = tree.label()
         leaves = [subtree for subtree in tree.subtrees() if not isinstance(subtree[0], nltk.Tree)]
-
-        def track(node, i):
-            try:
-                *span, label = next(node)
-            except StopIteration:
-                return [], i
-            siblings = []
-            if i < span[0]:
-                i, siblings = span[0], leaves[i:span[0]]
-            if span[1] - span[0] == 1:
-                children = leaves[span[0]:span[1]]
-            else:
-                left, j = track(node, i)
-                right, j = track(node, j)
-                children = left + right + leaves[j:span[1]]
+        start, stack = 0, []
+        for node in sequence:
+            i, j, label = node
+            stack.extend([(n, n+1, leaf) for n, leaf in enumerate(leaves[start:i], start)])
+            children = []
+            while len(stack) > 0 and i <= stack[-1][0]:
+                children = [stack.pop()] + children
+            start = children[-1][1] if len(children) > 0 else i
+            children.extend([(n, n+1, leaf) for n, leaf in enumerate(leaves[start:j], start)])
+            start = j
             if not label or label.endswith(mark):
-                return siblings + children, span[1]
+                stack.extend(children)
+                continue
             labels = label.split(join)
-            tree = nltk.Tree(labels[-1], children)
+            tree = nltk.Tree(labels[-1], [child[-1] for child in children])
             for label in reversed(labels[:-1]):
                 tree = nltk.Tree(label, [tree])
-            return siblings + [tree], span[1]
-        children, i = track(iter(sequence), 0)
-        children = children + leaves[i:len(leaves)]
-        return nltk.Tree(root, children)
+            stack.append((i, j, tree))
+        return nltk.Tree(root, [stack[-1][-1]])
 
     def load(
         self,
