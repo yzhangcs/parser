@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class Transform(object):
     r"""
-    A Transform object corresponds to a specific data format, which holds several instances of data fields
+    A :class:`Transform` object corresponds to a specific data format, which holds several instances of data fields
     that provide instructions for preprocessing and numericalization, etc.
 
     Attributes:
@@ -84,7 +84,7 @@ class Transform(object):
 
 class CoNLL(Transform):
     r"""
-    The CoNLL object holds ten fields required for CoNLL-X data format :cite:`buchholz-marsi-2006-conll`.
+    A :class:`CoNLL` object holds ten fields required for CoNLL-X data format :cite:`buchholz-marsi-2006-conll`.
     Each field can be bound to one or more :class:`~supar.utils.field.Field` objects.
     For example, ``FORM`` can contain both :class:`~supar.utils.field.Field` and :class:`~supar.utils.field.SubwordField`
     to produce tensors for words and subwords.
@@ -374,7 +374,7 @@ class CoNLL(Transform):
 
 class Tree(Transform):
     r"""
-    The Tree object factorize a constituency tree into four fields,
+    A :class:`Tree` object factorize a constituency tree into four fields,
     each associated with one or more :class:`~supar.utils.field.Field` objects.
 
     Attributes:
@@ -635,6 +635,7 @@ class Tree(Transform):
             The sequence of the factorized tree.
 
         Examples:
+            >>> from supar.utils import Tree
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -677,8 +678,8 @@ class Tree(Transform):
         join: str = '::'
     ) -> nltk.Tree:
         r"""
-        Builds a constituency tree from the sequence. The sequence is generated in pre-order.
-        During building the tree, the sequence is de-binarized to the original format (i.e.,
+        Builds a constituency tree from the sequence generated in pre-order.
+        During building, the sequence is de-binarized to the original format (i.e.,
         the suffixes ``*`` are ignored, the collapsed labels are recovered).
 
         Args:
@@ -698,10 +699,11 @@ class Tree(Transform):
             A result constituency tree.
 
         Examples:
+            >>> from supar.utils import Tree
             >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
-            >>> sequence = [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
-                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]
-            >>> Tree.build(tree, sequence).pretty_print()
+            >>> Tree.build(tree,
+                           [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
+                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]).pretty_print()
                          TOP
                           |
                           S
@@ -717,26 +719,54 @@ class Tree(Transform):
              _    _       _          _     _
              |    |       |          |     |
             She enjoys playing     tennis  .
+
+            >>> Tree.build(tree,
+                           [(0, 5, 'S'), (0, 1, 'NP'), (1, 4, 'VP'), (2, 4, 'S'), (2, 4, 'VP'), (3, 4, 'NP')]).pretty_print()
+                         TOP
+                          |
+                          S
+              ____________|________________
+             |            VP               |
+             |     _______|_____           |
+             |    |             S          |
+             |    |             |          |
+             |    |             VP         |
+             |    |        _____|____      |
+             NP   |       |          NP    |
+             |    |       |          |     |
+             _    _       _          _     _
+             |    |       |          |     |
+            She enjoys playing     tennis  .
+
         """
 
         root = tree.label()
-        leaves = [subtree for subtree in tree.subtrees()
-                  if not isinstance(subtree[0], nltk.Tree)]
+        leaves = [subtree for subtree in tree.subtrees() if not isinstance(subtree[0], nltk.Tree)]
 
-        def track(node):
-            i, j, label = next(node)
-            if j == i+1:
-                children = [leaves[i]]
+        def track(node, i):
+            try:
+                *span, label = next(node)
+            except StopIteration:
+                return [], i
+            siblings = []
+            if i < span[0]:
+                i, siblings = span[0], leaves[i:span[0]]
+            if span[1] - span[0] == 1:
+                children = leaves[span[0]:span[1]]
             else:
-                children = track(node) + track(node)
+                left, j = track(node, i)
+                right, j = track(node, j)
+                children = left + right + leaves[j:span[1]]
             if not label or label.endswith(mark):
-                return children
+                return siblings + children, span[1]
             labels = label.split(join)
             tree = nltk.Tree(labels[-1], children)
             for label in reversed(labels[:-1]):
                 tree = nltk.Tree(label, [tree])
-            return [tree]
-        return nltk.Tree(root, track(iter(sequence)))
+            return siblings + [tree], span[1]
+        children, i = track(iter(sequence), 0)
+        children = children + leaves[i:len(leaves)]
+        return nltk.Tree(root, children)
 
     def load(
         self,
