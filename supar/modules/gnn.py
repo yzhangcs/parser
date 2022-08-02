@@ -36,8 +36,10 @@ class GraphConvolutionalNetwork(nn.Module):
             The number of GCN layers. Default: 1.
         selfloop (bool):
             If ``True``, adds self-loops to adjacent matrices. Default: ``True``.
+        dropout (float):
+            The probability of feature vector elements to be zeroed. Default: 0.
         norm (bool):
-            If ``True``, adds a LayerNorm layer after each GCN layer. Default: ``True``.
+            If ``True``, adds a :class:`~torch.nn.LayerNorm` layer after each GCN layer. Default: ``True``.
     """
 
     def __init__(
@@ -45,6 +47,7 @@ class GraphConvolutionalNetwork(nn.Module):
         n_model: int,
         n_layers: int = 1,
         selfloop: bool = True,
+        dropout: float = 0.,
         norm: bool = True
     ) -> GraphConvolutionalNetwork:
         super().__init__()
@@ -61,11 +64,14 @@ class GraphConvolutionalNetwork(nn.Module):
             )
             for _ in range(n_layers)
         ])
+        self.dropout = nn.Dropout(dropout)
 
     def __repr__(self):
         s = f"n_model={self.n_model}, n_layers={self.n_layers}"
         if self.selfloop:
             s += f", selfloop={self.selfloop}"
+        if self.dropout.p > 0:
+            s += f", dropout={self.dropout.p}"
         if self.norm:
             s += f", norm={self.norm}"
         return f"{self.__class__.__name__}({s})"
@@ -87,9 +93,9 @@ class GraphConvolutionalNetwork(nn.Module):
 
         if self.selfloop:
             adj.diagonal(0, 1, 2).fill_(1.)
-        adj = adj.masked_fill(~mask.unsqueeze(1), 0)
+        adj = adj.masked_fill(~(mask.unsqueeze(1) & mask.unsqueeze(2)), 0)
         for conv, norm in self.conv_layers:
-            x = x + norm(conv(x, adj)).relu()
+            x = norm(x + self.dropout(conv(x, adj).relu()))
         return x
 
 
