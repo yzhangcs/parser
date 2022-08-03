@@ -674,7 +674,8 @@ class Tree(Transform):
         tree: nltk.Tree,
         sequence: List[Tuple],
         mark: Union[str, Tuple[str]] = ('*', '|<>'),
-        join: str = '::'
+        join: str = '::',
+        postorder: bool = True
     ) -> nltk.Tree:
         r"""
         Builds a constituency tree from the sequence generated in post-order.
@@ -692,6 +693,8 @@ class Tree(Transform):
             join (str):
                 A string used to connect collapsed node labels. Non-terminals containing this will be expanded to unary chains.
                 Default: ``'::'``.
+            postorder (bool):
+                If ``True``, enforces the sequence is sorted in post-order. Default: ``True``.
 
         Returns:
             A result constituency tree.
@@ -699,10 +702,9 @@ class Tree(Transform):
         Examples:
             >>> from supar.utils import Tree
             >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
-            >>> sequence = [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
-                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]
-            # post-order
-            >>> Tree.build(tree, sorted(sequence, key=lambda x: (x[1], x[1]-x[0]))).pretty_print()
+            >>> Tree.build(tree,
+                           [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
+                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]).pretty_print()
                          TOP
                           |
                           S
@@ -741,6 +743,9 @@ class Tree(Transform):
 
         root = tree.label()
         leaves = [subtree for subtree in tree.subtrees() if not isinstance(subtree[0], nltk.Tree)]
+        if postorder:
+            sequence = sorted(sequence, key=lambda x: (x[1], x[1]-x[0]))
+
         start, stack = 0, []
         for node in sequence:
             i, j, label = node

@@ -445,11 +445,10 @@ class ConstituencyCRF(StructuredDistribution):
 
     @lazy_property
     def argmax(self):
-        return [sorted(torch.nonzero(i).tolist(), key=lambda x: (x[1], x[1]-x[0])) for i in self.backward(self.max.sum())]
+        return [torch.nonzero(i).tolist() for i in self.backward(self.max.sum())]
 
     def topk(self, k: int) -> List[List[Tuple]]:
-        return list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x: (x[1], x[1]-x[0])) for j in self.backward(i)]
-                          for i in self.kmax(k).sum(0)]))
+        return list(zip(*[[torch.nonzero(j).tolist() for j in self.backward(i)] for i in self.kmax(k).sum(0)]))
 
     def score(self, value: torch.BoolTensor) -> torch.Tensor:
         return LogSemiring.prod(LogSemiring.prod(LogSemiring.one_mask(self.scores, ~(self.mask & value)), -1), -1)
@@ -552,7 +551,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         marginals = self.backward(self.max.sum())
         dep_mask = self.mask[:, 0]
         dep = self.lens.new_zeros(dep_mask.shape).masked_scatter_(dep_mask, torch.where(marginals[0])[2])
-        con = [sorted(torch.nonzero(i).tolist(), key=lambda x:(x[0], -x[1])) for i in marginals[1]]
+        con = [torch.nonzero(i).tolist() for i in marginals[1]]
         return dep, con
 
     def topk(self, k: int) -> Tuple[torch.LongTensor, List[List[Tuple]]]:
@@ -560,8 +559,7 @@ class BiLexicalizedConstituencyCRF(StructuredDistribution):
         marginals = [self.backward(i) for i in self.kmax(k).sum(0)]
         dep_preds = torch.stack([torch.where(i)[2] for i in marginals[0]], -1)
         dep_preds = self.lens.new_zeros(*dep_mask.shape, k).masked_scatter_(dep_mask.unsqueeze(-1), dep_preds)
-        con_preds = list(zip(*[[sorted(torch.nonzero(j).tolist(), key=lambda x:(x[0], -x[1])) for j in i]
-                               for i in marginals[1]]))
+        con_preds = list(zip(*[[torch.nonzero(j).tolist() for j in i] for i in marginals[1]]))
         return dep_preds, con_preds
 
     def score(self, value: List[Union[torch.LongTensor, torch.BoolTensor]], partial: bool = False) -> torch.Tensor:
