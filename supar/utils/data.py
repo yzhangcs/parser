@@ -14,10 +14,12 @@ import pathos.multiprocessing as mp
 import torch
 import torch.distributed as dist
 from supar.utils.fn import binarize, debinarize, kmeans
-from supar.utils.logging import logger, progress_bar
+from supar.utils.logging import get_logger, progress_bar
 from supar.utils.parallel import is_master
 from supar.utils.transform import Batch, Transform
 from torch.distributions.utils import lazy_property
+
+logger = get_logger(__name__)
 
 
 class Dataset(torch.utils.data.Dataset):

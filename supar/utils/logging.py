@@ -2,19 +2,24 @@
 
 import logging
 import os
-import sys
-from logging import Handler, Logger
+from logging import FileHandler, Formatter, Handler, Logger, StreamHandler
 from typing import Iterable, Optional
 
 from supar.utils.parallel import is_master
 from tqdm import tqdm
 
 
-def get_logger(name: str) -> Logger:
-    return logging.getLogger(name)
+def get_logger(name: Optional[str] = None) -> Logger:
+    logger = logging.getLogger(name)
+    # init the root logger
+    if name is None:
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S',
+                            handlers=[TqdmHandler()])
+    return logger
 
 
-class TqdmHandler(logging.StreamHandler):
+class TqdmHandler(StreamHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,28 +39,17 @@ def init_logger(
     logger: Logger,
     path: Optional[str] = None,
     mode: str = 'w',
-    level: Optional[int] = None,
     handlers: Optional[Iterable[Handler]] = None,
     verbose: bool = True
-) -> None:
-    level = level or logging.WARNING
+) -> Logger:
     if not handlers:
-        handlers = [TqdmHandler()]
         if path:
             os.makedirs(os.path.dirname(path) or './', exist_ok=True)
-            handlers.append(logging.FileHandler(path, mode))
-    if sys.version >= '3.8':
-        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
-                            datefmt='%Y-%m-%d %H:%M:%S',
-                            level=level,
-                            handlers=handlers,
-                            force=True)
-    else:
-        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
-                            datefmt='%Y-%m-%d %H:%M:%S',
-                            level=level,
-                            handlers=handlers)
+            logger.addHandler(FileHandler(path, mode))
+    for handler in logger.handlers:
+        handler.setFormatter(ColoredFormatter(colored=not isinstance(handler, FileHandler)))
     logger.setLevel(logging.INFO if is_master() and verbose else logging.WARNING)
+    return logger
 
 
 def progress_bar(
@@ -74,4 +68,31 @@ def progress_bar(
                 **kwargs)
 
 
-logger = get_logger('supar')
+class ColoredFormatter(Formatter):
+
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+
+    COLORS = {
+        logging.ERROR: RED,
+        logging.WARNING: RED,
+        logging.INFO: GREEN,
+        logging.DEBUG: BLACK,
+        logging.NOTSET: BLACK
+    }
+
+    def __init__(self, colored=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.colored = colored
+
+    def format(self, record):
+        fmt = '%(asctime)s %(levelname)s %(message)s'
+        if self.colored:
+            fmt = f'{self.COLORS[record.levelno]}%(asctime)s %(levelname)s\033[0m %(message)s'
+        datefmt = '%Y-%m-%d %H:%M:%S'
+        return Formatter(fmt=fmt, datefmt=datefmt).format(record)
+
+
+logger = get_logger()

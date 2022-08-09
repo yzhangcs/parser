@@ -12,7 +12,7 @@ import torch.distributed as dist
 from supar.utils import Config, Dataset
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
-from supar.utils.logging import init_logger, logger, progress_bar
+from supar.utils.logging import get_logger, init_logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.optim import InverseSquareRootLR, LinearLR
 from supar.utils.parallel import DistributedDataParallel as DDP
@@ -20,6 +20,8 @@ from supar.utils.parallel import gather, is_master, parallel
 from torch.cuda.amp import GradScaler
 from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import ExponentialLR
+
+logger = get_logger(__name__)
 
 
 class Parser(object):

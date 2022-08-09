@@ -10,12 +10,14 @@ from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
 import nltk
 import torch
 from supar.utils.fn import debinarize
-from supar.utils.logging import logger, progress_bar
+from supar.utils.logging import get_logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
 from torch.distributions.utils import lazy_property
 
 if TYPE_CHECKING:
     from supar.utils import Field
+
+logger = get_logger(__name__)
 
 
 class Transform(object):
