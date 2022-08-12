@@ -271,6 +271,7 @@ def download(url: str, path: Optional[str] = None, reload: bool = False, clean: 
 
 
 def extract(path: str, reload: bool = False, clean: bool = False) -> str:
+    extracted = path
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as f:
             extracted = os.path.join(os.path.dirname(path), f.infolist()[0].filename)
@@ -286,8 +287,6 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
         with gzip.open(path) as fgz:
             with open(extracted, 'wb') as f:
                 shutil.copyfileobj(fgz, f)
-    else:
-        raise Warning("Not supported format. Return the archive file instead")
     if clean:
         os.remove(path)
     return extracted
