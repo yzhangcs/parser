@@ -129,8 +129,7 @@ class GraphConv(nn.Module):
         """
 
         x = self.linear(x)
-        d = adj.sum(-1)
-        x = torch.matmul(adj * (d.unsqueeze(-1) * d.unsqueeze(2) + torch.finfo(adj.dtype).eps).pow(-0.5), x)
+        x = torch.matmul(adj * (adj.sum(1, True) * adj.sum(2, True) + torch.finfo(adj.dtype).eps).pow(-0.5), x)
         if self.bias is not None:
             x = x + self.bias
         return x
