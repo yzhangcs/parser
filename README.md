@@ -6,18 +6,19 @@
 [![downloads](https://img.shields.io/github/downloads/yzhangcs/parser/total)](https://pypistats.org/packages/supar)
 [![LICENSE](https://img.shields.io/github/license/yzhangcs/parser)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
-A Python package designed for structured prediction, including reproductions of many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages), and
+A Python package designed for structured prediction, including reproductions of many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages),
 
 * Dependency Parser
   * Biaffine ([Dozat and Manning, 2017](https://openreview.net/forum?id=Hk95PK9le))
   * CRF/CRF2o ([Zhang et al., 2020a](https://aclanthology.org/2020.acl-main.302))
 * Constituency Parser
   * CRF ([Zhang et al., 2020b](https://www.ijcai.org/Proceedings/2020/560/))
+  * AttachJuxtapose ([Yang and Deng, 2020](https://papers.nips.cc/paper/2020/hash/f7177163c833dff4b38fc8d2872f1ec6-Abstract.html))
 * Semantic Dependency Parser
   * Biaffine ([Dozat and Manning, 2018](https://aclanthology.org/P18-2077))
   * MFVI/LBP ([Wang et al, 2019](https://aclanthology.org/P18-2077))
 
-highly-parallelized implementations of several well-known structured prediction algorithms.[^1]
+and highly-parallelized implementations of several well-known structured prediction algorithms.[^1]
 
 * Chain:
   * LinearChainCRF ([Lafferty et al., 2001](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2001/crf.pdf))

@@ -8,6 +8,11 @@ CRFConstituencyModel
 .. autoclass:: CRFConstituencyModel
     :members:
 
+AttachJuxtaposeConstituencyModel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: AttachJuxtaposeConstituencyModel
+    :members:
+
 VIConstituencyModel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: VIConstituencyModel

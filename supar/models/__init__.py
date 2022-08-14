@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from .const import CRFConstituencyModel, VIConstituencyModel
+from .const import (AttachJuxtaposeConstituencyModel, CRFConstituencyModel,
+                    VIConstituencyModel)
 from .dep import (BiaffineDependencyModel, CRF2oDependencyModel,
                   CRFDependencyModel, VIDependencyModel)
 from .model import Model
@@ -12,6 +13,7 @@ __all__ = ['Model',
            'CRF2oDependencyModel',
            'VIDependencyModel',
            'CRFConstituencyModel',
+           'AttachJuxtaposeConstituencyModel',
            'VIConstituencyModel',
            'BiaffineSemanticDependencyModel',
            'VISemanticDependencyModel']

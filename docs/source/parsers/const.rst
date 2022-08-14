@@ -8,6 +8,11 @@ CRFConstituencyParser
 .. autoclass:: CRFConstituencyParser
     :members:
 
+AttachJuxtaposeConstituencyParser
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: AttachJuxtaposeConstituencyParser
+    :members:
+
 VIConstituencyParser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: VIConstituencyParser
