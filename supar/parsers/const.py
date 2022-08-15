@@ -546,7 +546,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
             'unk_index': WORD.unk_index,
             'bos_index': WORD.bos_index,
             'eos_index': WORD.eos_index,
-            'attach_index': NEW.vocab[NUL]
+            'nul_index': NEW.vocab[NUL]
         })
         logger.info(f"{transform}")
 
