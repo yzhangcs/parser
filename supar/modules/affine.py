@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
+from supar.modules.mlp import MLP
 
 
 class Biaffine(nn.Module):
@@ -20,6 +23,10 @@ class Biaffine(nn.Module):
             The size of the input feature.
         n_out (int):
             The number of output channels.
+        n_proj (Optional[int]):
+            If specified, applies MLP layers to reduce vector dimensions. Default: ``None``.
+        dropout (Optional[float]):
+            If specified, applies a :class:`SharedDropout` layer with the ratio on MLP outputs. Default: 0.
         scale (float):
             Factor to scale the scores. Default: 0.
         bias_x (bool):
@@ -32,6 +39,8 @@ class Biaffine(nn.Module):
         self,
         n_in: int,
         n_out: int = 1,
+        n_proj: Optional[int] = None,
+        dropout: Optional[float] = 0,
         scale: int = 0,
         bias_x: bool = True,
         bias_y: bool = True
@@ -40,10 +49,16 @@ class Biaffine(nn.Module):
 
         self.n_in = n_in
         self.n_out = n_out
+        self.n_proj = n_proj
+        self.dropout = dropout
         self.scale = scale
         self.bias_x = bias_x
         self.bias_y = bias_y
-        self.weight = nn.Parameter(torch.Tensor(n_out, n_in+bias_x, n_in+bias_y))
+
+        if n_proj is not None:
+            self.mlp_x, self.mlp_y = MLP(n_in, n_proj, dropout), MLP(n_in, n_proj, dropout)
+        self.n_model = n_proj or n_in
+        self.weight = nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x, self.n_model + bias_y))
 
         self.reset_parameters()
 
@@ -51,6 +66,10 @@ class Biaffine(nn.Module):
         s = f"n_in={self.n_in}"
         if self.n_out > 1:
             s += f", n_out={self.n_out}"
+        if self.n_proj is not None:
+            s += f", n_proj={self.n_proj}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
         if self.scale != 0:
             s += f", scale={self.scale}"
         if self.bias_x:
@@ -63,7 +82,11 @@ class Biaffine(nn.Module):
     def reset_parameters(self):
         nn.init.zeros_(self.weight)
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor
+    ) -> torch.Tensor:
         r"""
         Args:
             x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
@@ -75,6 +98,8 @@ class Biaffine(nn.Module):
                 If ``n_out=1``, the dimension for ``n_out`` will be squeezed automatically.
         """
 
+        if hasattr(self, 'mlp_x'):
+            x, y = self.mlp_x(x), self.mlp_y(y)
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:
@@ -101,6 +126,10 @@ class Triaffine(nn.Module):
             The size of the input feature.
         n_out (int):
             The number of output channels.
+        n_proj (Optional[int]):
+            If specified, applies MLP layers to reduce vector dimensions. Default: ``None``.
+        dropout (Optional[float]):
+            If specified, applies a :class:`SharedDropout` layer with the ratio on MLP outputs. Default: 0.
         scale (float):
             Factor to scale the scores. Default: 0.
         bias_x (bool):
@@ -115,6 +144,8 @@ class Triaffine(nn.Module):
         self,
         n_in: int,
         n_out: int = 1,
+        n_proj: Optional[int] = None,
+        dropout: Optional[float] = 0,
         scale: int = 0,
         bias_x: bool = False,
         bias_y: bool = False,
@@ -124,17 +155,24 @@ class Triaffine(nn.Module):
 
         self.n_in = n_in
         self.n_out = n_out
+        self.n_proj = n_proj
+        self.dropout = dropout
         self.scale = scale
         self.bias_x = bias_x
         self.bias_y = bias_y
         self.decompose = decompose
 
+        if n_proj is not None:
+            self.mlp_x = MLP(n_in, n_proj, dropout)
+            self.mlp_y = MLP(n_in, n_proj, dropout)
+            self.mlp_z = MLP(n_in, n_proj, dropout)
+        self.n_model = n_proj or n_in
         if not decompose:
-            self.weight = nn.Parameter(torch.Tensor(n_out, n_in+bias_x, n_in, n_in+bias_y))
+            self.weight = nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x, self.n_model, self.n_model + bias_y))
         else:
-            self.weight = nn.ParameterList((nn.Parameter(torch.Tensor(n_out, n_in+bias_x)),
-                                            nn.Parameter(torch.Tensor(n_out, n_in)),
-                                            nn.Parameter(torch.Tensor(n_out, n_in+bias_y))))
+            self.weight = nn.ParameterList((nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x)),
+                                            nn.Parameter(torch.Tensor(n_out, self.n_model)),
+                                            nn.Parameter(torch.Tensor(n_out, self.n_model + bias_y))))
 
         self.reset_parameters()
 
@@ -142,6 +180,10 @@ class Triaffine(nn.Module):
         s = f"n_in={self.n_in}"
         if self.n_out > 1:
             s += f", n_out={self.n_out}"
+        if self.n_proj is not None:
+            s += f", n_proj={self.n_proj}"
+        if self.dropout > 0:
+            s += f", dropout={self.dropout}"
         if self.scale != 0:
             s += f", scale={self.scale}"
         if self.bias_x:
@@ -160,7 +202,12 @@ class Triaffine(nn.Module):
         else:
             nn.init.zeros_(self.weight)
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        z: torch.Tensor
+    ) -> torch.Tensor:
         r"""
         Args:
             x (torch.Tensor): ``[batch_size, seq_len, n_in]``.
@@ -173,6 +220,8 @@ class Triaffine(nn.Module):
                 If ``n_out=1``, the dimension for ``n_out`` will be squeezed automatically.
         """
 
+        if hasattr(self, 'mlp_x'):
+            x, y, z = self.mlp_x(x), self.mlp_y(y), self.mlp_z(y)
         if self.bias_x:
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:
