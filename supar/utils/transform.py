@@ -1459,6 +1459,8 @@ class AttachJuxtaposeTreeSentence(Sentence):
         if transform.training:
             oracle_tree = tree.copy(True)
             oracle_tree.collapse_unary(joinChar='::')
+            if len(oracle_tree) == 1 and not isinstance(tree[0][0], nltk.Tree):
+                oracle_tree[0] = nltk.Tree(f'*', [oracle_tree[0]])
             nodes, parents, news = zip(*transform.tree2action(oracle_tree))
         self.values = [words, tags, tree, nodes, parents, news]
 
