@@ -805,7 +805,7 @@ class Tree(Transform):
         for s in data:
             try:
                 tree = nltk.Tree.fromstring(s) if isinstance(s, str) else self.totree(s, self.root)
-                sentence = TreeSentence(self, tree, index)
+                sentence = TreeSentence(self, tree, index, **kwargs)
             except ValueError:
                 logger.warning(f"Error found while converting Sentence {index} to a tree:\n{s}\nDiscarding it!")
                 continue
@@ -1412,13 +1412,19 @@ class TreeSentence(Sentence):
             Index of the sentence in the corpus. Default: ``None``.
     """
 
-    def __init__(self, transform: Tree, tree: nltk.Tree, index: Optional[int] = None) -> TreeSentence:
+    def __init__(
+        self,
+        transform: Tree,
+        tree: nltk.Tree,
+        index: Optional[int] = None,
+        **kwargs
+    ) -> TreeSentence:
         super().__init__(transform, index)
 
         words, tags, chart = *zip(*tree.pos()), None
         if transform.training:
             chart = [[None] * (len(words) + 1) for _ in range(len(words) + 1)]
-            for i, j, label in Tree.factorize(Tree.binarize(tree)[0]):
+            for i, j, label in Tree.factorize(Tree.binarize(tree, implicit=kwargs.get('implicit', False))[0]):
                 chart[i][j] = label
         self.values = [words, tags, tree, chart]
 

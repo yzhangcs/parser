@@ -16,6 +16,7 @@ def main():
     subparser.add_argument('--feat', '-f', choices=['tag', 'char', 'elmo', 'bert'], nargs='*', help='features to use')
     subparser.add_argument('--build', '-b', action='store_true', help='whether to build the model first')
     subparser.add_argument('--checkpoint', action='store_true', help='whether to load a checkpoint to restore training')
+    subparser.add_argument('--implicit', action='store_true', help='whether to conduct implicit binarization')
     subparser.add_argument('--encoder', choices=['lstm', 'transformer', 'bert'], default='lstm', help='encoder to use')
     subparser.add_argument('--max-len', type=int, help='max length of the sentences')
     subparser.add_argument('--buckets', default=32, type=int, help='max num of buckets to use')
