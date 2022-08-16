@@ -13,7 +13,7 @@ def get_logger(name: Optional[str] = None) -> Logger:
     logger = logging.getLogger(name)
     # init the root logger
     if name is None:
-        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+        logging.basicConfig(format='[%(asctime)s %(levelname)s] %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S',
                             handlers=[TqdmHandler()])
     return logger
@@ -55,7 +55,7 @@ def init_logger(
 def progress_bar(
     iterator: Iterable,
     ncols: Optional[int] = None,
-    bar_format: str = '{l_bar}{bar:18}| {n_fmt}/{total_fmt} {elapsed}<{remaining}, {rate_fmt}{postfix}',
+    bar_format: str = '{l_bar}{bar:20}| {n_fmt}/{total_fmt} {elapsed}<{remaining}, {rate_fmt}{postfix}',
     leave: bool = False,
     **kwargs
 ) -> tqdm:
@@ -73,6 +73,8 @@ class ColoredFormatter(Formatter):
     BLACK = '\033[30m'
     RED = '\033[31m'
     GREEN = '\033[32m'
+    GREY = '\033[37m'
+    RESET = '\033[0m'
 
     COLORS = {
         logging.ERROR: RED,
@@ -88,9 +90,9 @@ class ColoredFormatter(Formatter):
         self.colored = colored
 
     def format(self, record):
-        fmt = '%(asctime)s %(levelname)s %(message)s'
+        fmt = '[%(asctime)s %(levelname)s] %(message)s'
         if self.colored:
-            fmt = f'{self.COLORS[record.levelno]}%(asctime)s %(levelname)s\033[0m %(message)s'
+            fmt = f'{self.COLORS[record.levelno]}[%(asctime)s %(levelname)s]{self.RESET} %(message)s'
         datefmt = '%Y-%m-%d %H:%M:%S'
         return Formatter(fmt=fmt, datefmt=datefmt).format(record)
 
