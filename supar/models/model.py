@@ -5,7 +5,7 @@ import torch.nn as nn
 from supar.modules import (CharLSTM, ELMoEmbedding, IndependentDropout,
                            SharedDropout, TransformerEmbedding,
                            TransformerWordEmbedding, VariationalLSTM)
-from supar.modules.transformer import TransformerEncoder
+from supar.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 from supar.utils import Config
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -94,13 +94,14 @@ class Model(nn.Module):
                                                        pos=self.args.pos,
                                                        pad_index=self.args.pad_index)
             self.embed_dropout = nn.Dropout(p=self.args.embed_dropout)
-            self.encoder = TransformerEncoder(n_layers=self.args.n_encoder_layers,
-                                              n_heads=self.args.n_encoder_heads,
-                                              n_model=self.args.n_encoder_hidden,
-                                              n_inner=self.args.n_encoder_inner,
-                                              attn_dropout=self.args.encoder_attn_dropout,
-                                              ffn_dropout=self.args.encoder_ffn_dropout,
-                                              dropout=self.args.encoder_dropout)
+            self.encoder = TransformerEncoder(layer=TransformerEncoderLayer(n_heads=self.args.n_encoder_heads,
+                                                                            n_model=self.args.n_encoder_hidden,
+                                                                            n_inner=self.args.n_encoder_inner,
+                                                                            attn_dropout=self.args.encoder_attn_dropout,
+                                                                            ffn_dropout=self.args.encoder_ffn_dropout,
+                                                                            dropout=self.args.encoder_dropout),
+                                              n_layers=self.args.n_encoder_layers,
+                                              n_model=self.args.n_encoder_hidden)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
         elif encoder == 'bert':
             self.encoder = TransformerEmbedding(model=self.args.bert,
