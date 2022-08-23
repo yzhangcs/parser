@@ -1210,6 +1210,9 @@ class Batch(object):
     def __repr__(self):
         return f'{self.__class__.__name__}({", ".join([f"{name}" for name in self.names])})'
 
+    def __len__(self):
+        return len(self.sentences)
+
     def __getitem__(self, index):
         return self.fields[self.names[index]]
 
@@ -1246,6 +1249,13 @@ class Batch(object):
             self.names.append(f.name)
             self.fields[f.name] = f.compose([s.fields[f.name] for s in self.sentences])
         return self
+
+    def shrink(self, batch_size: Optional[int] = None) -> Batch:
+        if batch_size is None:
+            batch_size = len(self) // 2
+        if batch_size <= 0:
+            raise RuntimeError(f"The batch has only {len(self)} sentences and can't be shrinked!")
+        return Batch([self.sentences[i] for i in torch.randperm(len(self))[:batch_size].tolist()])
 
     def pin_memory(self):
         for s in self.sentences:
