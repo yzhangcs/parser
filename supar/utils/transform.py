@@ -365,7 +365,7 @@ class CoNLL(Transform):
             line = line.strip()
             if len(line) == 0:
                 sentence = CoNLLSentence(self, sentence, index)
-                if isconll and proj and not self.isprojective(list(map(int, sentence.arcs))):
+                if isconll and self.training and proj and not self.isprojective(list(map(int, sentence.arcs))):
                     logger.warning(f"Sentence {index} is not projective. Discarding it!")
                 else:
                     yield sentence
