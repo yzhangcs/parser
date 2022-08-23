@@ -1310,12 +1310,7 @@ class Sentence(object):
 
     @lazy_property
     def size(self):
-        # number of subwords in the sentence, mainly used for clustering
-        # this is equivalent to __len__ for normal tokens without further subword tokenization
-        try:
-            return next(iter(self.fields.values())).ne(self.pad_index).sum().item()
-        except Exception:
-            raise AttributeError("Cannot get size of a sentence with no fields")
+        return len(self)
 
     def numericalize(self, fields):
         for f in fields:
