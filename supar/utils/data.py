@@ -13,6 +13,7 @@ from typing import Dict, Iterable, List, Union
 import pathos.multiprocessing as mp
 import torch
 import torch.distributed as dist
+from supar.utils.common import INF
 from supar.utils.fn import binarize, debinarize, kmeans
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.parallel import is_master
@@ -70,16 +71,14 @@ class Dataset(torch.utils.data.Dataset):
         self.data = data
         self.cache = cache
         self.binarize = binarize
-        self.max_len = max_len or float('inf')
+        self.max_len = max_len or INF
         self.kwargs = kwargs
 
         if cache:
             if not isinstance(data, str) or not os.path.exists(data):
                 raise FileNotFoundError("Only files are allowed for binarization, but not found")
             self.fbin = data + '.pt'
-            if self.binarize or not os.path.exists(self.fbin):
-                logger.info(f"Seeking to cache the data to {self.fbin} first")
-            else:
+            if not self.binarize and os.path.exists(self.fbin):
                 try:
                     self.sentences = debinarize(self.fbin, meta=True)['sentences']
                 except Exception:
@@ -95,6 +94,8 @@ class Dataset(torch.utils.data.Dataset):
             s += f", n_batches={len(self.loader)}"
         if hasattr(self, 'buckets'):
             s += f", n_buckets={len(self.buckets)}"
+        if self.max_len < INF:
+            s += f", max_len={self.max_len}"
         s += ")"
         return s
 
@@ -125,7 +126,7 @@ class Dataset(torch.utils.data.Dataset):
     def sizes(self):
         if not self.cache:
             return [s.size for s in self.sentences]
-        return debinarize(self.fbin, 'lens')
+        return debinarize(self.fbin, 'sizes')
 
     def build(
         self,
@@ -163,9 +164,9 @@ class Dataset(torch.utils.data.Dataset):
                 def numericalize(sentences, fs, fb, max_len):
                     sentences = global_transform((debinarize(fs, sentence) for sentence in sentences))
                     sentences = [i for i in sentences if len(i) < max_len]
-                    lens = [sentence.size for sentence in sentences]
-                    return binarize({'sentences': sentences, 'lens': lens}, fb)[0]
+                    return binarize({'sentences': sentences, 'sizes': [sentence.size for sentence in sentences]}, fb)[0]
 
+                logger.info(f"Seeking to cache the data to {self.fbin} first")
                 # numericalize the fields of each sentence
                 if is_master():
                     with cache(self.transform.load(self.data, **self.kwargs)) as chunks, mp.Pool(32) as pool:
