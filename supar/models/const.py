@@ -466,12 +466,21 @@ class AttachJuxtaposeConstituencyModel(Model):
                 Sequences of factorized labeled trees.
         """
 
-        spans, action = None, None
+        spans = None
+        batch_size, *_ = x.shape
+        beam_size, n_labels = self.args.beam_size, self.args.n_labels
+        # [batch_size * beam_size, ...]
+        x = x.unsqueeze(1).repeat(1, beam_size, 1, 1).view(-1, *x.shape[1:])
+        mask = mask.unsqueeze(1).repeat(1, beam_size, 1).view(-1, *mask.shape[1:])
+        # [batch_size]
+        batches = x.new_tensor(range(batch_size)).long() * beam_size
+        # accumulated scores
+        scores = x.new_full((batch_size, beam_size), -INF).index_fill_(-1, x.new_tensor(0).long(), 0).view(-1)
         for t in range(x.shape[1]):
             x_p, x_t, mask_p, mask_t = x[:, :t], x[:, t], mask[:, :t], mask[:, t]
             lens = mask_p.sum(-1)
             if t == 0:
-                x_span = self.label_embed(lens.new_full((x.shape[0], 1), self.args.n_labels))
+                x_span = self.label_embed(lens.new_full((x.shape[0], 1), n_labels))
                 span_mask = mask_t.unsqueeze(1)
             else:
                 span_mask = spans[:, :-1, 1:].ge(0)
@@ -505,15 +514,37 @@ class AttachJuxtaposeConstituencyModel(Model):
                 x_tree, span_mask = x_tree[span_mask], span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
                 x_span = x.new_zeros(*span_mask.shape, x.shape[-1]).masked_scatter_(span_mask.unsqueeze(-1), x_tree)
             s_node = self.node_classifier(torch.cat((x_span, x_t.unsqueeze(1).expand_as(x_span)), -1)).squeeze(-1)
-            s_node = s_node.masked_fill_(~span_mask, -INF).masked_fill(~span_mask.any(-1).unsqueeze(-1), 0)
+            s_node = s_node.masked_fill_(~span_mask, -INF).masked_fill(~span_mask.any(-1).unsqueeze(-1), 0).log_softmax(-1)
             # we found softmax is slightly better than sigmoid in the original paper
             x_node = torch.bmm(s_node.softmax(-1).unsqueeze(1), x_span).squeeze(1)
             s_parent, s_new = self.label_classifier(torch.cat((x_t, x_node), -1)).chunk(2, -1)
+            s_parent, s_new = s_parent.log_softmax(-1), s_new.log_softmax(-1)
             if t == 0:
                 s_parent[:, self.args.nul_index] = -INF
                 s_new[:, s_new.new_tensor(range(self.args.n_labels)).ne(self.args.nul_index)] = -INF
-            action = torch.stack((s_node.argmax(-1), s_parent.argmax(-1), s_new.argmax(-1)))
+            s_node, nodes = s_node.topk(min(s_node.shape[-1], beam_size), -1)
+            s_parent, parents = s_parent.topk(min(n_labels, beam_size), -1)
+            s_new, news = s_new.topk(min(n_labels, beam_size), -1)
+            s_action = s_node.unsqueeze(2) + (s_parent.unsqueeze(2) + s_new.unsqueeze(1)).view(x.shape[0], 1, -1)
+            s_action = s_action.view(x.shape[0], -1)
+            k_beam, k_node, k_parent = s_action.shape[-1], parents.shape[-1] * news.shape[-1], news.shape[-1]
+            # [batch_size * beam_size, k_beam]
+            scores = scores.unsqueeze(-1) + s_action
+            # [batch_size, beam_size]
+            scores, cands = scores.view(batch_size, -1).topk(beam_size, -1)
+            # [batch_size * beam_size]
+            scores = scores.view(-1)
+            beams = cands.div(k_beam, rounding_mode='floor')
+            nodes = nodes.view(batch_size, -1).gather(-1, cands.div(k_node, rounding_mode='floor'))
+            indices = (batches.unsqueeze(-1) + beams).view(-1)
+            parents = parents[indices].view(batch_size, -1).gather(-1, cands.div(k_parent, rounding_mode='floor') % k_parent)
+            news = news[indices].view(batch_size, -1).gather(-1, cands % k_parent)
+            action = torch.stack((nodes, parents, news)).view(3, -1)
+            spans = spans[indices] if spans is not None else None
             spans = AttachJuxtaposeTree.action2span(action, spans, self.args.nul_index, mask_t)
+        mask = mask.view(batch_size, beam_size, -1)[:, 0]
+        # select an 1-best tree for each sentence
+        spans = spans[batches + scores.view(batch_size, -1).argmax(-1)]
         span_mask = spans.ge(0)
         span_mask[:, :-1, 1:] &= mask.unsqueeze(1) & mask.unsqueeze(2)
         span_indices = torch.where(span_mask)
