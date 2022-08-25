@@ -69,7 +69,11 @@ class Parser(object):
             self.optimizer = AdamW(
                 [{'params': p, 'lr': args.lr * (1 if n.startswith('encoder') else args.lr_rate)}
                  for n, p in self.model.named_parameters()],
-                args.lr)
+                args.lr,
+                (args.mu, args.nu),
+                args.eps,
+                args.weight_decay
+            )
             self.scheduler = LinearLR(self.optimizer, int(steps*args.warmup), steps)
         self.scaler = GradScaler(enabled=args.amp)
 
