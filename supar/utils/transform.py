@@ -767,6 +767,8 @@ class Tree(Transform):
             for label in reversed(labels[:-1]):
                 tree = nltk.Tree(label, [tree])
             stack.append((i, j, tree))
+        if len(stack) == 0:
+            return nltk.Tree(root, leaves)
         return nltk.Tree(root, [stack[-1][-1]])
 
     def load(
