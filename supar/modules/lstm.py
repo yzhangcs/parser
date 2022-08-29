@@ -61,7 +61,6 @@ class CharLSTM(nn.Module):
         s += f", n_out={self.n_out}, pad_index={self.pad_index}"
         if self.dropout.p != 0:
             s += f", dropout={self.dropout.p}"
-
         return f"{self.__class__.__name__}({s})"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -86,11 +85,11 @@ class CharLSTM(nn.Module):
         x = pack_padded_sequence(x, lens[char_mask].tolist(), True, False)
         x, (h, _) = self.lstm(x)
         # [n, fix_len, n_hidden]
-        h = self.dropout(torch.cat(torch.unbind(h), -1))
+        h = self.dropout(h.movedim(0, -1))
+        # [n, fix_len, n_out]
+        h = self.projection(h)
         # [batch_size, seq_len, n_out]
-        embed = h.new_zeros(*lens.shape, self.n_out).masked_scatter_(char_mask.unsqueeze(-1), self.projection(h))
-
-        return embed
+        return h.new_zeros(*lens.shape, self.n_out).masked_scatter_(char_mask.unsqueeze(-1), h)
 
 
 class VariationalLSTM(nn.Module):
@@ -153,7 +152,6 @@ class VariationalLSTM(nn.Module):
             s += f", bidirectional={self.bidirectional}"
         if self.dropout > 0:
             s += f", dropout={self.dropout}"
-
         return f"{self.__class__.__name__}({s})"
 
     def reset_parameters(self):
