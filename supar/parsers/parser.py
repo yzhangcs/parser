@@ -18,7 +18,7 @@ from supar.utils.optim import InverseSquareRootLR, LinearLR
 from supar.utils.parallel import DistributedDataParallel as DDP
 from supar.utils.parallel import gather, is_master, parallel
 from torch.cuda.amp import GradScaler
-from torch.optim import Adam, AdamW
+from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 logger = get_logger(__name__)
@@ -65,6 +65,8 @@ class Parser(object):
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
             self.scheduler = InverseSquareRootLR(self.optimizer, args.warmup_steps)
         else:
+            # we found that Huggingface's AdamW is more robust and empirically better than the native implementation
+            from transformers import AdamW
             steps = len(train.loader) * epochs // args.update_steps
             self.optimizer = AdamW(
                 [{'params': p, 'lr': args.lr * (1 if n.startswith('encoder') else args.lr_rate)}
