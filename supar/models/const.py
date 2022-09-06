@@ -516,7 +516,7 @@ class AttachJuxtaposeConstituencyModel(Model):
             s_node = self.node_classifier(torch.cat((x_span, x_t.unsqueeze(1).expand_as(x_span)), -1)).squeeze(-1)
             s_node = s_node.masked_fill_(~span_mask, -INF).masked_fill(~span_mask.any(-1).unsqueeze(-1), 0).log_softmax(-1)
             # we found softmax is slightly better than sigmoid in the original paper
-            x_node = torch.bmm(s_node.softmax(-1).unsqueeze(1), x_span).squeeze(1)
+            x_node = torch.bmm(s_node.exp().unsqueeze(1), x_span).squeeze(1)
             s_parent, s_new = self.label_classifier(torch.cat((x_t, x_node), -1)).chunk(2, -1)
             s_parent, s_new = s_parent.log_softmax(-1), s_new.log_softmax(-1)
             if t == 0:
