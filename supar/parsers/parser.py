@@ -217,6 +217,13 @@ class Parser(object):
     def _predict(self, loader):
         raise NotImplementedError
 
+    def backward(self, loss: torch.Tensor, **kwargs):
+        loss /= self.args.update_steps
+        if hasattr(self, 'scaler'):
+            self.scaler.scale(loss).backward(**kwargs)
+        else:
+            loss.backward(**kwargs)
+
     @classmethod
     def build(cls, path, **kwargs):
         raise NotImplementedError

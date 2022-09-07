@@ -162,8 +162,7 @@ class CRFConstituencyParser(Parser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_span, s_label = self.model(words, feats)
                     loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -429,8 +428,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     x = self.model(words, feats)[:, 1:-1]
                     loss = self.model.loss(x, nodes, parents, news, mask)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -689,8 +687,7 @@ class VIConstituencyParser(CRFConstituencyParser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_span, s_pair, s_label = self.model(words, feats)
                     loss, _ = self.model.loss(s_span, s_pair, s_label, charts, mask)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)

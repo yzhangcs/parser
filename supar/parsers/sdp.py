@@ -136,8 +136,7 @@ class BiaffineSemanticDependencyParser(Parser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_edge, s_label = self.model(words, feats)
                     loss = self.model.loss(s_edge, s_label, labels, mask)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -387,8 +386,7 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
                     loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)

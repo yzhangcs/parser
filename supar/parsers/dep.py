@@ -158,8 +158,7 @@ class BiaffineDependencyParser(Parser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_rel = self.model(words, feats)
                     loss = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.partial)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -439,8 +438,7 @@ class CRFDependencyParser(BiaffineDependencyParser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_rel = self.model(words, feats)
                     loss, s_arc = self.model.loss(s_arc, s_rel, arcs, rels, mask, self.args.mbr, self.args.partial)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -643,8 +641,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
                     s_arc, s_sib, s_rel = self.model(words, feats)
                     loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
                                                          self.args.mbr, self.args.partial)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
@@ -921,8 +918,7 @@ class VIDependencyParser(BiaffineDependencyParser):
                 with torch.autocast(self.device, enabled=self.args.amp):
                     s_arc, s_sib, s_rel = self.model(words, feats)
                     loss, s_arc = self.model.loss(s_arc, s_sib, s_rel, arcs, rels, mask)
-                    loss = loss / self.args.update_steps
-                self.scaler.scale(loss).backward()
+                self.backward(loss)
             if i % self.args.update_steps == 0:
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
