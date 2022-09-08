@@ -1,11 +1,11 @@
-Semantic Dependency Models
-=========================================================================
+VI
+================================================================
 
-.. currentmodule:: supar.models.sdp
+.. currentmodule:: supar.models.sdp.vi
 
-BiaffineSemanticDependencyModel
+VISemanticDependencyParser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: BiaffineSemanticDependencyModel
+.. autoclass:: VISemanticDependencyParser
     :members:
 
 VISemanticDependencyModel

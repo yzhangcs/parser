@@ -1,11 +1,10 @@
-Parsers
+Semantic Dependency Parsing
 ================================================================
 
-.. currentmodule:: supar.parsers
+.. currentmodule:: supar.models.sdp
 
 .. toctree::
    :maxdepth: 2
 
-   dep
-   const
-   sdp
+   biaffine
+   vi

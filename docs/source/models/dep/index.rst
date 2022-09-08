@@ -1,11 +1,12 @@
-Models
+Dependency Parsing
 ================================================================
 
-.. currentmodule:: supar.models
+.. currentmodule:: supar.models.dep
 
 .. toctree::
    :maxdepth: 2
 
-   dep/index
-   const/index
-   sdp/index
+   biaffine
+   crf
+   crf2o
+   vi

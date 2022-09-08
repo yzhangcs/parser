@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from .parsers import (AttachJuxtaposeConstituencyParser,
-                      BiaffineDependencyParser,
-                      BiaffineSemanticDependencyParser, CRF2oDependencyParser,
-                      CRFConstituencyParser, CRFDependencyParser, Parser,
-                      VIConstituencyParser, VIDependencyParser,
-                      VISemanticDependencyParser)
+from .models import (AttachJuxtaposeConstituencyParser,
+                     BiaffineDependencyParser,
+                     BiaffineSemanticDependencyParser, CRF2oDependencyParser,
+                     CRFConstituencyParser, CRFDependencyParser,
+                     VIConstituencyParser, VIDependencyParser,
+                     VISemanticDependencyParser)
+from .parser import Parser
 from .structs import (BiLexicalizedConstituencyCRF, ConstituencyCRF,
                       ConstituencyLBP, ConstituencyMFVI, Dependency2oCRF,
                       DependencyCRF, DependencyLBP, DependencyMFVI,
                       LinearChainCRF, MatrixTree, SemanticDependencyLBP,
                       SemanticDependencyMFVI)
 
-__all__ = ['BiaffineDependencyParser',
+__all__ = ['Parser',
+           'BiaffineDependencyParser',
            'CRFDependencyParser',
            'CRF2oDependencyParser',
            'VIDependencyParser',
@@ -21,7 +23,6 @@ __all__ = ['BiaffineDependencyParser',
            'VIConstituencyParser',
            'BiaffineSemanticDependencyParser',
            'VISemanticDependencyParser',
-           'Parser',
            'LinearChainCRF',
            'MatrixTree',
            'DependencyCRF',

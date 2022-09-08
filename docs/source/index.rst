@@ -29,7 +29,6 @@ A Python package designed for structured prediction, including reproductions of 
    :caption: Content
 
    self
-   parsers/index
    models/index
    structs/index
    modules/index

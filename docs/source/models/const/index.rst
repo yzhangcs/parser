@@ -1,11 +1,11 @@
-Models
+Constituency Parsing
 ================================================================
 
-.. currentmodule:: supar.models
+.. currentmodule:: supar.models.const
 
 .. toctree::
    :maxdepth: 2
 
-   dep/index
-   const/index
-   sdp/index
+   crf
+   aj
+   vi

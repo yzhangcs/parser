@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
 
-from .const import (AttachJuxtaposeConstituencyModel, CRFConstituencyModel,
-                    VIConstituencyModel)
-from .dep import (BiaffineDependencyModel, CRF2oDependencyModel,
-                  CRFDependencyModel, VIDependencyModel)
-from .model import Model
-from .sdp import BiaffineSemanticDependencyModel, VISemanticDependencyModel
+from .const import (AttachJuxtaposeConstituencyParser, CRFConstituencyParser,
+                    VIConstituencyParser)
+from .dep import (BiaffineDependencyParser, CRF2oDependencyParser,
+                  CRFDependencyParser, VIDependencyParser)
+from .sdp import BiaffineSemanticDependencyParser, VISemanticDependencyParser
 
-__all__ = ['Model',
-           'BiaffineDependencyModel',
-           'CRFDependencyModel',
-           'CRF2oDependencyModel',
-           'VIDependencyModel',
-           'CRFConstituencyModel',
-           'AttachJuxtaposeConstituencyModel',
-           'VIConstituencyModel',
-           'BiaffineSemanticDependencyModel',
-           'VISemanticDependencyModel']
+__all__ = ['BiaffineDependencyParser',
+           'CRFDependencyParser',
+           'CRF2oDependencyParser',
+           'VIDependencyParser',
+           'CRFConstituencyParser',
+           'AttachJuxtaposeConstituencyParser',
+           'VIConstituencyParser',
+           'BiaffineSemanticDependencyParser',
+           'VISemanticDependencyParser']

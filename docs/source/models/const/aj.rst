@@ -1,19 +1,14 @@
-Constituency Parsers
+AttachJuxtapose
 ================================================================
 
-.. currentmodule:: supar.parsers.const
-
-CRFConstituencyParser
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: CRFConstituencyParser
-    :members:
+.. currentmodule:: supar.models.const.aj
 
 AttachJuxtaposeConstituencyParser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: AttachJuxtaposeConstituencyParser
     :members:
 
-VIConstituencyParser
+AttachJuxtaposeConstituencyModel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: VIConstituencyParser
+.. autoclass:: AttachJuxtaposeConstituencyModel
     :members:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import torch.nn as nn
-from supar.models.model import Model
+from supar.model import Model
 from supar.modules import MLP, Biaffine, Triaffine
 from supar.structs import SemanticDependencyLBP, SemanticDependencyMFVI
 from supar.utils import Config

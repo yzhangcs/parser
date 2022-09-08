@@ -1,14 +1,14 @@
-Semantic Dependency Parsers
+Biaffine
 ================================================================
 
-.. currentmodule:: supar.parsers.sdp
+.. currentmodule:: supar.models.dep.biaffine
 
-BiaffineSemanticDependencyParser
+BiaffineDependencyParser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: BiaffineSemanticDependencyParser
+.. autoclass:: BiaffineDependencyParser
     :members:
 
-VISemanticDependencyParser
+BiaffineDependencyModel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: VISemanticDependencyParser
+.. autoclass:: BiaffineDependencyModel
     :members:

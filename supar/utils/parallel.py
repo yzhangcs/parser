@@ -19,7 +19,7 @@ else:
     from contextlib import nullcontext
 
 if TYPE_CHECKING:
-    from supar.parsers import Parser
+    from supar.parser import Parser
 
 
 class DistributedDataParallel(nn.parallel.DistributedDataParallel):

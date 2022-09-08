@@ -2,12 +2,14 @@
 
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
 from supar.modules import (CharLSTM, ELMoEmbedding, IndependentDropout,
                            SharedDropout, TransformerEmbedding,
                            TransformerWordEmbedding, VariationalLSTM)
-from supar.modules.transformer import TransformerEncoder, TransformerEncoderLayer
+from supar.modules.transformer import (TransformerEncoder,
+                                       TransformerEncoderLayer)
 from supar.utils import Config
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class Model(nn.Module):
