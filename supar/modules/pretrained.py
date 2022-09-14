@@ -15,7 +15,7 @@ class TransformerEmbedding(nn.Module):
     Bidirectional transformer embeddings of words from various transformer architectures :cite:`devlin-etal-2019-bert`.
 
     Args:
-        model (str):
+        name (str):
             Path or name of the pretrained models registered in `transformers`_, e.g., ``'bert-base-cased'``.
         n_layers (int):
             The number of BERT layers to use. If 0, uses all layers.
@@ -41,7 +41,7 @@ class TransformerEmbedding(nn.Module):
 
     def __init__(
         self,
-        model: str,
+        name: str,
         n_layers: int,
         n_out: int = 0,
         stride: int = 256,
@@ -54,28 +54,28 @@ class TransformerEmbedding(nn.Module):
 
         from transformers import AutoModel
         try:
-            self.bert = AutoModel.from_pretrained(model, output_hidden_states=True, local_files_only=True)
+            self.model = AutoModel.from_pretrained(name, output_hidden_states=True, local_files_only=True)
         except Exception:
-            self.bert = AutoModel.from_pretrained(model, output_hidden_states=True, local_files_only=False)
-        self.bert = self.bert.requires_grad_(finetune)
-        self.tokenizer = TransformerTokenizer(model)
+            self.model = AutoModel.from_pretrained(name, output_hidden_states=True, local_files_only=False)
+        self.model = self.model.requires_grad_(finetune)
+        self.tokenizer = TransformerTokenizer(name)
 
-        self.model = model
-        self.n_layers = n_layers or self.bert.config.num_hidden_layers
-        self.hidden_size = self.bert.config.hidden_size
+        self.name = name
+        self.n_layers = n_layers or self.model.config.num_hidden_layers
+        self.hidden_size = self.model.config.hidden_size
         self.n_out = n_out or self.hidden_size
         self.pooling = pooling
         self.pad_index = pad_index
         self.mix_dropout = mix_dropout
         self.finetune = finetune
-        self.max_len = int(max(0, self.bert.config.max_position_embeddings) or 1e12) - 2
+        self.max_len = int(max(0, self.model.config.max_position_embeddings) or 1e12) - 2
         self.stride = min(stride, self.max_len)
 
         self.scalar_mix = ScalarMix(self.n_layers, mix_dropout)
         self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
 
     def __repr__(self):
-        s = f"{self.model}, n_layers={self.n_layers}, n_out={self.n_out}, "
+        s = f"{self.name}, n_layers={self.n_layers}, n_out={self.n_out}, "
         s += f"stride={self.stride}, pooling={self.pooling}, pad_index={self.pad_index}"
         if self.mix_dropout > 0:
             s += f", mix_dropout={self.mix_dropout}"
@@ -83,48 +83,45 @@ class TransformerEmbedding(nn.Module):
             s += f", finetune={self.finetune}"
         return f"{self.__class__.__name__}({s})"
 
-    def forward(self, subwords: torch.Tensor) -> torch.Tensor:
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         r"""
         Args:
-            subwords (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
+            tokens (~torch.Tensor): ``[batch_size, seq_len, fix_len]``.
 
         Returns:
             ~torch.Tensor:
-                BERT embeddings of shape ``[batch_size, seq_len, n_out]``.
+                Contextualized token embeddings of shape ``[batch_size, seq_len, n_out]``.
         """
 
-        mask = subwords.ne(self.pad_index)
+        mask = tokens.ne(self.pad_index)
         lens = mask.sum((1, 2))
         # [batch_size, n_subwords]
-        subwords = pad(subwords[mask].split(lens.tolist()), self.pad_index, padding_side=self.tokenizer.padding_side)
-        bert_mask = pad(mask[mask].split(lens.tolist()), 0, padding_side=self.tokenizer.padding_side)
+        tokens = pad(tokens[mask].split(lens.tolist()), self.pad_index, padding_side=self.tokenizer.padding_side)
+        token_mask = pad(mask[mask].split(lens.tolist()), 0, padding_side=self.tokenizer.padding_side)
 
         # return the hidden states of all layers
-        bert = self.bert(subwords[:, :self.max_len], attention_mask=bert_mask[:, :self.max_len].float())[-1]
-        # [n_layers, batch_size, max_len, hidden_size]
-        bert = bert[-self.n_layers:]
+        x = self.model(tokens[:, :self.max_len], attention_mask=token_mask[:, :self.max_len].float())[-1]
         # [batch_size, max_len, hidden_size]
-        bert = self.scalar_mix(bert)
+        x = self.scalar_mix(x[-self.n_layers:])
         # [batch_size, n_subwords, hidden_size]
-        for i in range(self.stride, (subwords.shape[1]-self.max_len+self.stride-1)//self.stride*self.stride+1, self.stride):
-            part = self.bert(subwords[:, i:i+self.max_len], attention_mask=bert_mask[:, i:i+self.max_len].float())[-1]
-            bert = torch.cat((bert, self.scalar_mix(part[-self.n_layers:])[:, self.max_len-self.stride:]), 1)
-
+        for i in range(self.stride, (tokens.shape[1]-self.max_len+self.stride-1)//self.stride*self.stride+1, self.stride):
+            part = self.model(tokens[:, i:i+self.max_len], attention_mask=token_mask[:, i:i+self.max_len].float())[-1]
+            x = torch.cat((x, self.scalar_mix(part[-self.n_layers:])[:, self.max_len-self.stride:]), 1)
         # [batch_size, seq_len]
-        bert_lens = mask.sum(-1)
-        bert_lens = bert_lens.masked_fill_(bert_lens.eq(0), 1)
+        lens = mask.sum(-1)
+        lens = lens.masked_fill_(lens.eq(0), 1)
         # [batch_size, seq_len, fix_len, hidden_size]
-        embed = bert.new_zeros(*mask.shape, self.hidden_size).masked_scatter_(mask.unsqueeze(-1), bert[bert_mask])
+        x = x.new_zeros(*mask.shape, self.hidden_size).masked_scatter_(mask.unsqueeze(-1), x[token_mask])
         # [batch_size, seq_len, hidden_size]
         if self.pooling == 'first':
-            embed = embed[:, :, 0]
+            x = x[:, :, 0]
         elif self.pooling == 'last':
-            embed = embed.gather(2, (bert_lens-1).unsqueeze(-1).repeat(1, 1, self.hidden_size).unsqueeze(2)).squeeze(2)
+            x = x.gather(2, (lens-1).unsqueeze(-1).repeat(1, 1, self.hidden_size).unsqueeze(2)).squeeze(2)
+        elif self.pooling == 'mean':
+            x = x.sum(2) / lens.unsqueeze(-1)
         else:
-            embed = embed.sum(2) / bert_lens.unsqueeze(-1)
-        embed = self.projection(embed)
-
-        return embed
+            raise RuntimeError(f'Unsupported pooling method "{self.pooling}"!')
+        return self.projection(x)
 
 
 class ELMoEmbedding(nn.Module):
@@ -132,7 +129,7 @@ class ELMoEmbedding(nn.Module):
     Contextual word embeddings using word-level bidirectional LM :cite:`peters-etal-2018-deep`.
 
     Args:
-        model (str):
+        name (str):
             The name of the pretrained ELMo registered in `OPTION` and `WEIGHT`. Default: ``'original_5b'``.
         bos_eos (Tuple[bool]):
             A tuple of two boolean values indicating whether to keep start/end boundaries of sentence outputs.
@@ -160,7 +157,7 @@ class ELMoEmbedding(nn.Module):
 
     def __init__(
         self,
-        model: str = 'original_5b',
+        name: str = 'original_5b',
         bos_eos: Tuple[bool, bool] = (True, True),
         n_out: int = 0,
         dropout: float = 0.5,
@@ -170,14 +167,14 @@ class ELMoEmbedding(nn.Module):
 
         from allennlp.modules import Elmo
 
-        self.elmo = Elmo(options_file=self.OPTION[model],
-                         weight_file=self.WEIGHT[model],
+        self.elmo = Elmo(options_file=self.OPTION[name],
+                         weight_file=self.WEIGHT[name],
                          num_output_representations=1,
                          dropout=dropout,
                          finetune=finetune,
                          keep_sentence_boundaries=True)
 
-        self.model = model
+        self.name = name
         self.bos_eos = bos_eos
         self.hidden_size = self.elmo.get_output_dim()
         self.n_out = n_out or self.hidden_size
@@ -187,7 +184,7 @@ class ELMoEmbedding(nn.Module):
         self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
 
     def __repr__(self):
-        s = f"{self.model}, n_out={self.n_out}"
+        s = f"{self.name}, n_out={self.n_out}"
         if self.dropout > 0:
             s += f", dropout={self.dropout}"
         if self.finetune:
@@ -210,6 +207,7 @@ class ELMoEmbedding(nn.Module):
         if not self.bos_eos[1]:
             x = x[:, :-1]
         return x
+
 
 class ScalarMix(nn.Module):
     r"""

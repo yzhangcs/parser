@@ -75,7 +75,7 @@ class Model(nn.Module):
                                                 finetune=self.args.finetune)
                 n_input += self.elmo_embed.n_out
             if 'bert' in self.args.feat:
-                self.bert_embed = TransformerEmbedding(model=self.args.bert,
+                self.bert_embed = TransformerEmbedding(name=self.args.bert,
                                                        n_layers=self.args.n_bert_layers,
                                                        n_out=self.args.n_plm_embed,
                                                        pooling=self.args.bert_pooling,
@@ -106,7 +106,7 @@ class Model(nn.Module):
                                               n_model=self.args.n_encoder_hidden)
             self.encoder_dropout = nn.Dropout(p=self.args.encoder_dropout)
         elif encoder == 'bert':
-            self.encoder = TransformerEmbedding(model=self.args.bert,
+            self.encoder = TransformerEmbedding(name=self.args.bert,
                                                 n_layers=self.args.n_bert_layers,
                                                 pooling=self.args.bert_pooling,
                                                 pad_index=self.args.pad_index,
