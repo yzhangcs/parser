@@ -48,7 +48,7 @@ class Metric(object):
         return (self.score >= other.score) if not self.reverse else (self.score <= other.score)
 
     def __add__(self, other: Metric) -> Metric:
-        raise NotImplementedError
+        return other
 
     @property
     def score(self):
