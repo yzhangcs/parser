@@ -3,18 +3,17 @@
 import os
 
 import torch
-import torch.nn as nn
 from supar.models.const.crf.model import CRFConstituencyModel
 from supar.parser import Parser
 from supar.structs import ConstituencyCRF
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, EOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
-from supar.utils.logging import get_logger, progress_bar
+from supar.utils.logging import get_logger
 from supar.utils.metric import SpanMetric
-from supar.utils.parallel import parallel, sync
+from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import Tree
+from supar.utils.transform import Batch, Tree
 
 logger = get_logger(__name__)
 
@@ -150,64 +149,41 @@ class CRFConstituencyParser(Parser):
         return super().predict(**Config().update(locals()))
 
     @parallel()
-    def _train(self, loader):
-        bar = progress_bar(loader)
-
-        for i, batch in enumerate(bar, 1):
-            words, *feats, trees, charts = batch
-            mask = batch.mask[:, 1:]
-            mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with sync(self.model, i % self.args.update_steps == 0):
-                with torch.autocast(self.device, enabled=self.args.amp):
-                    s_span, s_label = self.model(words, feats)
-                    loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
-                self.backward(loss)
-            if i % self.args.update_steps == 0:
-                self.scaler.unscale_(self.optimizer)
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.scheduler.step()
-                self.optimizer.zero_grad(True)
-
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f}")
-        logger.info(f"{bar.postfix}")
+    def train_step(self, batch: Batch) -> torch.Tensor:
+        words, *feats, _, charts = batch
+        mask = batch.mask[:, 1:]
+        mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
+        s_span, s_label = self.model(words, feats)
+        loss, _ = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
+        return loss
 
     @parallel(training=False)
-    def _evaluate(self, loader):
-        metric = SpanMetric()
-
-        for batch in progress_bar(loader):
-            words, *feats, trees, charts = batch
-            mask = batch.mask[:, 1:]
-            mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_span, s_label = self.model(words, feats)
-                loss, s_span = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
-            chart_preds = self.model.decode(s_span, s_label, mask)
-            preds = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                     for tree, chart in zip(trees, chart_preds)]
-            metric += SpanMetric(loss,
-                                 [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
-                                 [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
-
-        return metric
+    def eval_step(self, batch: Batch) -> SpanMetric:
+        words, *feats, trees, charts = batch
+        mask = batch.mask[:, 1:]
+        mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
+        s_span, s_label = self.model(words, feats)
+        loss, s_span = self.model.loss(s_span, s_label, charts, mask, self.args.mbr)
+        chart_preds = self.model.decode(s_span, s_label, mask)
+        preds = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+                 for tree, chart in zip(trees, chart_preds)]
+        return SpanMetric(loss,
+                          [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
+                          [Tree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
 
     @parallel(training=False, op=None)
-    def _predict(self, loader):
-        for batch in progress_bar(loader):
-            words, *feats, trees = batch
-            mask, lens = batch.mask[:, 1:], batch.lens - 2
-            mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_span, s_label = self.model(words, feats)
-                s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
-            chart_preds = self.model.decode(s_span, s_label, mask)
-            batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
-                           for tree, chart in zip(trees, chart_preds)]
-            if self.args.prob:
-                batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
-            yield from batch.sentences
+    def pred_step(self, batch: Batch) -> Batch:
+        words, *feats, trees = batch
+        mask, lens = batch.mask[:, 1:], batch.lens - 2
+        mask = (mask.unsqueeze(1) & mask.unsqueeze(2)).triu_(1)
+        s_span, s_label = self.model(words, feats)
+        s_span = ConstituencyCRF(s_span, mask[:, 0].sum(-1)).marginals if self.args.mbr else s_span
+        chart_preds = self.model.decode(s_span, s_label, mask)
+        batch.trees = [Tree.build(tree, [(i, j, self.CHART.vocab[label]) for i, j, label in chart])
+                       for tree, chart in zip(trees, chart_preds)]
+        if self.args.prob:
+            batch.probs = [prob[:i-1, 1:i].cpu() for i, prob in zip(lens, s_span)]
+        return batch
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -232,7 +208,7 @@ class CRFConstituencyParser(Parser):
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            parser.model.load_pretrained(parser.transform.WORD[0].embed).to(parser.device)
             return parser
 
         logger.info("Building the fields")

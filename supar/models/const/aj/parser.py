@@ -3,17 +3,16 @@
 import os
 
 import torch
-import torch.nn as nn
 from supar.models.const.aj.model import AttachJuxtaposeConstituencyModel
 from supar.parser import Parser
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, EOS, NUL, PAD, UNK
 from supar.utils.field import Field, RawField, SubwordField
-from supar.utils.logging import get_logger, progress_bar
+from supar.utils.logging import get_logger
 from supar.utils.metric import SpanMetric
-from supar.utils.parallel import parallel, sync
+from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import AttachJuxtaposeTree
+from supar.utils.transform import AttachJuxtaposeTree, Batch
 
 logger = get_logger(__name__)
 
@@ -35,7 +34,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
         self.NEW = self.transform.NEW
 
     def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
-              mbr=True,
+              beam_size=1,
               delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
               equal={'ADVP': 'PRT'},
               verbose=True,
@@ -50,12 +49,14 @@ class AttachJuxtaposeConstituencyParser(Parser):
                 The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
             batch_size (int):
                 The number of tokens in each batch. Default: 5000.
+            update_steps (int):
+                Gradient accumulation steps. Default: 1.
             amp (bool):
                 Specifies whether to use automatic mixed precision. Default: ``False``.
             cache (bool):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
-            update_steps (int):
-                Gradient accumulation steps. Default: 1.
+            beam_size (int):
+                Beam size for decoding. Default: 1.
             delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
@@ -71,7 +72,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
         return super().train(**Config().update(locals()))
 
     def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
-                 mbr=True,
+                 beam_size=1,
                  delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                  equal={'ADVP': 'PRT'},
                  verbose=True,
@@ -90,6 +91,8 @@ class AttachJuxtaposeConstituencyParser(Parser):
                 Specifies whether to use automatic mixed precision. Default: ``False``.
             cache (bool):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
+            beam_size (int):
+                Beam size for decoding. Default: 1.
             delete (Set[str]):
                 A set of labels that will not be taken into consideration during evaluation.
                 Default: {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}.
@@ -107,8 +110,8 @@ class AttachJuxtaposeConstituencyParser(Parser):
 
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
-                mbr=True, verbose=True, **kwargs):
+    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000,
+                amp=False, cache=False, beam_size=1, prob=False, verbose=True, **kwargs):
         r"""
         Args:
             data (Union[str, Iterable]):
@@ -131,6 +134,8 @@ class AttachJuxtaposeConstituencyParser(Parser):
                 Specifies whether to use automatic mixed precision. Default: ``False``.
             cache (bool):
                 If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
+            beam_size (int):
+                Beam size for decoding. Default: 1.
             prob (bool):
                 If ``True``, outputs the probabilities. Default: ``False``.
             verbose (bool):
@@ -145,61 +150,39 @@ class AttachJuxtaposeConstituencyParser(Parser):
         return super().predict(**Config().update(locals()))
 
     @parallel()
-    def _train(self, loader):
-        bar = progress_bar(loader)
-
-        for i, batch in enumerate(bar, 1):
-            words, *feats, _, nodes, parents, news = batch
-            mask = batch.mask[:, 2:]
-            with sync(self.model, i % self.args.update_steps == 0):
-                with torch.autocast(self.device, enabled=self.args.amp):
-                    x = self.model(words, feats)[:, 1:-1]
-                    loss = self.model.loss(x, nodes, parents, news, mask)
-                self.backward(loss)
-            if i % self.args.update_steps == 0:
-                self.scaler.unscale_(self.optimizer)
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.scheduler.step()
-                self.optimizer.zero_grad(True)
-
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f}")
-        logger.info(f"{bar.postfix}")
+    def train_step(self, batch: Batch) -> torch.Tensor:
+        words, *feats, _, nodes, parents, news = batch
+        mask = batch.mask[:, 2:]
+        x = self.model(words, feats)[:, 1:-1]
+        loss = self.model.loss(x, nodes, parents, news, mask)
+        return loss
 
     @parallel(training=False)
-    def _evaluate(self, loader):
-        metric = SpanMetric()
-
-        for batch in progress_bar(loader):
-            words, *feats, trees, nodes, parents, news = batch
-            mask = batch.mask[:, 2:]
-            with torch.autocast(self.device, enabled=self.args.amp):
-                x = self.model(words, feats)[:, 1:-1]
-                loss = self.model.loss(x, nodes, parents, news, mask)
-            chart_preds = self.model.decode(x, mask)
-            preds = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart
-                                                      if self.NEW.vocab[label] != NUL])
-                     for tree, chart in zip(trees, chart_preds)]
-            metric += SpanMetric(loss,
-                                 [AttachJuxtaposeTree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
-                                 [AttachJuxtaposeTree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
-        return metric
+    def eval_step(self, batch: Batch) -> SpanMetric:
+        words, *feats, trees, nodes, parents, news = batch
+        mask = batch.mask[:, 2:]
+        x = self.model(words, feats)[:, 1:-1]
+        loss = self.model.loss(x, nodes, parents, news, mask)
+        chart_preds = self.model.decode(x, mask, self.args.beam_size)
+        preds = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart
+                                                  if self.NEW.vocab[label] != NUL])
+                 for tree, chart in zip(trees, chart_preds)]
+        return SpanMetric(loss,
+                          [AttachJuxtaposeTree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
+                          [AttachJuxtaposeTree.factorize(tree, self.args.delete, self.args.equal) for tree in trees])
 
     @parallel(training=False, op=None)
-    def _predict(self, loader):
-        for batch in progress_bar(loader):
-            words, *feats, trees = batch
-            mask = batch.mask[:, 2:]
-            with torch.autocast(self.device, enabled=self.args.amp):
-                x = self.model(words, feats)[:, 1:-1]
-            chart_preds = self.model.decode(x, mask)
-            batch.trees = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart
-                                                            if self.NEW.vocab[label] != NUL])
-                           for tree, chart in zip(trees, chart_preds)]
-            if self.args.prob:
-                raise NotImplementedError("Returning action probs are currently not supported yet.")
-            yield from batch.sentences
+    def pred_step(self, batch: Batch) -> Batch:
+        words, *feats, trees = batch
+        mask = batch.mask[:, 2:]
+        x = self.model(words, feats)[:, 1:-1]
+        chart_preds = self.model.decode(x, mask, self.args.beam_size)
+        batch.trees = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart
+                                                        if self.NEW.vocab[label] != NUL])
+                       for tree, chart in zip(trees, chart_preds)]
+        if self.args.prob:
+            raise NotImplementedError("Returning action probs are currently not supported yet.")
+        return batch
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -224,7 +207,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            parser.model.load_pretrained(parser.transform.WORD[0].embed).to(parser.device)
             return parser
 
         logger.info("Building the fields")

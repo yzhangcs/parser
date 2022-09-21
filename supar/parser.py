@@ -6,9 +6,14 @@ import tempfile
 from datetime import datetime, timedelta
 
 import dill
-import supar
 import torch
 import torch.distributed as dist
+import torch.nn as nn
+from torch.cuda.amp import GradScaler
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
+
+import supar
 from supar.utils import Config, Dataset
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
@@ -16,10 +21,8 @@ from supar.utils.logging import get_logger, init_logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.optim import InverseSquareRootLR, LinearLR
 from supar.utils.parallel import DistributedDataParallel as DDP
-from supar.utils.parallel import gather, is_master, parallel
-from torch.cuda.amp import GradScaler
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from supar.utils.parallel import gather, is_master, parallel, sync
+from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
 
@@ -102,13 +105,28 @@ class Parser(object):
 
         for epoch in range(self.epoch, args.epochs + 1):
             start = datetime.now()
+            bar, metric = progress_bar(train.loader), Metric()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
-            self._train(train.loader)
-            metric = self._evaluate(dev.loader)
-            logger.info(f"{'dev:':5} {metric}")
-            if args.test:
-                logger.info(f"{'test:':5} {self._evaluate(test.loader)}")
+            for i, batch in enumerate(bar, 1):
+                with sync(self.model, i % self.args.update_steps == 0):
+                    with torch.autocast(self.device, enabled=self.args.amp):
+                        loss = self.train_step(batch)
+                    loss.backward()
+                if i % self.args.update_steps == 0:
+                    self.scaler.unscale_(self.optimizer)
+                    nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                    self.scheduler.step()
+                    self.optimizer.zero_grad(True)
+                bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e}")
+            logger.info(f"{bar.postfix}")
+            with torch.autocast(self.device, enabled=self.args.amp):
+                metric = sum([self.eval_step(batch) for batch in progress_bar(dev.loader)], Metric())
+                logger.info(f"{'dev:':5} {metric}")
+                if args.test:
+                    logger.info(f"{'test:':5} {sum([self.eval_step(batch) for batch in progress_bar(test.loader)], Metric())}")
 
             t = datetime.now() - start
             self.epoch += 1
@@ -144,16 +162,16 @@ class Parser(object):
 
         self.transform.train()
         logger.info("Loading the data")
-        dataset = Dataset(self.transform, **args)
-        dataset.build(batch_size, buckets, False, dist.is_initialized(), workers)
-        logger.info(f"\n{dataset}")
+        data = Dataset(self.transform, **args)
+        data.build(batch_size, buckets, False, dist.is_initialized(), workers)
+        logger.info(f"\n{data}")
 
-        logger.info("Evaluating the dataset")
+        logger.info("Evaluating the data")
         start = datetime.now()
-        metric = self._evaluate(dataset.loader)
+        metric = sum([self.eval_step(batch) for batch in progress_bar(data.loader)], Metric())
         elapsed = datetime.now() - start
         logger.info(f"{metric}")
-        logger.info(f"{elapsed}s elapsed, {len(dataset)/elapsed.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, {len(data)/elapsed.total_seconds():.2f} Sents/s")
 
         return metric
 
@@ -166,19 +184,21 @@ class Parser(object):
             self.transform.append(Field('probs'))
 
         logger.info("Loading the data")
-        dataset = Dataset(self.transform, **args)
-        dataset.build(batch_size, buckets, False, dist.is_initialized(), workers)
-        logger.info(f"\n{dataset}")
+        data = Dataset(self.transform, **args)
+        data.build(batch_size, buckets, False, dist.is_initialized(), workers)
+        logger.info(f"\n{data}")
 
-        logger.info("Making predictions on the dataset")
+        logger.info("Making predictions on the data")
         start = datetime.now()
         with tempfile.TemporaryDirectory() as t, parallel(False, None):
             # we have clustered the sentences by length here to speed up prediction,
             # so the order of the yielded sentences can't be guaranteed
-            for s in self._predict(dataset.loader):
+            for batch in progress_bar(data.loader):
+                batch = self.pred_step(batch)
                 if args.cache:
-                    with open(os.path.join(t, f"{s.index}"), 'w') as f:
-                        f.write(str(s) + '\n')
+                    for s in batch:
+                        with open(os.path.join(t, f"{s.index}"), 'w') as f:
+                            f.write(str(s) + '\n')
             elapsed = datetime.now() - start
 
             if dist.is_initialized():
@@ -195,26 +215,26 @@ class Parser(object):
                             with open(i) as s:
                                 shutil.copyfileobj(s, f)
                     else:
-                        for s in progress_bar(dataset):
+                        for s in progress_bar(data):
                             f.write(str(s) + '\n')
             # exit util all files have been merged
             if dist.is_initialized():
                 dist.barrier()
-        logger.info(f"{elapsed}s elapsed, {len(dataset) / elapsed.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, {len(data) / elapsed.total_seconds():.2f} Sents/s")
 
         if not cache:
-            return dataset
+            return data
 
     @parallel()
-    def _train(self, loader):
+    def train_step(self, batch: Batch) -> torch.Tensor:
         raise NotImplementedError
 
     @parallel(training=False)
-    def _evaluate(self, loader):
+    def eval_step(self, batch: Batch) -> Metric:
         raise NotImplementedError
 
     @parallel(training=False, op=None)
-    def _predict(self, loader):
+    def pred_step(self, batch: Batch) -> Batch:
         raise NotImplementedError
 
     def backward(self, loss: torch.Tensor, **kwargs):
@@ -275,11 +295,10 @@ class Parser(object):
         model = self.model
         if hasattr(model, 'module'):
             model = self.model.module
-        args = model.args
         state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)
         state = {'name': self.NAME,
-                 'args': args,
+                 'args': model.args,
                  'state_dict': state_dict,
                  'pretrained': pretrained,
                  'transform': self.transform}
@@ -289,7 +308,6 @@ class Parser(object):
         model = self.model
         if hasattr(model, 'module'):
             model = self.model.module
-        args = model.args
         checkpoint_state_dict = {k: getattr(self, k) for k in ['epoch', 'best_e', 'patience', 'best_metric', 'elapsed']}
         checkpoint_state_dict.update({'optimizer_state_dict': self.optimizer.state_dict(),
                                       'scheduler_state_dict': self.scheduler.state_dict(),
@@ -298,7 +316,7 @@ class Parser(object):
         state_dict = {k: v.cpu() for k, v in model.state_dict().items()}
         pretrained = state_dict.pop('pretrained.weight', None)
         state = {'name': self.NAME,
-                 'args': args,
+                 'args': model.args,
                  'state_dict': state_dict,
                  'pretrained': pretrained,
                  'checkpoint_state_dict': checkpoint_state_dict,

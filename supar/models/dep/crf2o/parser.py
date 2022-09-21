@@ -3,7 +3,6 @@
 import os
 
 import torch
-import torch.nn as nn
 from supar.models.dep.biaffine.parser import BiaffineDependencyParser
 from supar.models.dep.crf2o.model import CRF2oDependencyModel
 from supar.structs import Dependency2oCRF
@@ -11,11 +10,11 @@ from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import ispunct
-from supar.utils.logging import get_logger, progress_bar
+from supar.utils.logging import get_logger
 from supar.utils.metric import AttachmentMetric
-from supar.utils.parallel import parallel, sync
+from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import CoNLL
+from supar.utils.transform import Batch, CoNLL
 
 logger = get_logger(__name__)
 
@@ -148,79 +147,47 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         return super().predict(**Config().update(locals()))
 
     @parallel()
-    def _train(self, loader):
-        bar, metric = progress_bar(loader), AttachmentMetric()
-
-        for i, batch in enumerate(bar, 1):
-            words, texts, *feats, arcs, sibs, rels = batch
-            mask = batch.mask
-            # ignore the first token of each sentence
-            mask[:, 0] = 0
-            with sync(self.model, i % self.args.update_steps == 0):
-                with torch.autocast(self.device, enabled=self.args.amp):
-                    s_arc, s_sib, s_rel = self.model(words, feats)
-                    loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
-                                                         self.args.mbr, self.args.partial)
-                self.backward(loss)
-            if i % self.args.update_steps == 0:
-                self.scaler.unscale_(self.optimizer)
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.scheduler.step()
-                self.optimizer.zero_grad(True)
-
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask)
-            if self.args.partial:
-                mask &= arcs.ge(0)
-            # ignore all punctuation if not specified
-            if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
-        logger.info(f"{bar.postfix}")
+    def train_step(self, batch: Batch) -> torch.Tensor:
+        words, _, *feats, arcs, sibs, rels = batch
+        mask = batch.mask
+        # ignore the first token of each sentence
+        mask[:, 0] = 0
+        s_arc, s_sib, s_rel = self.model(words, feats)
+        loss, *_ = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
+        return loss
 
     @parallel(training=False)
-    def _evaluate(self, loader):
-        metric = AttachmentMetric()
-
-        for batch in progress_bar(loader):
-            words, texts, *feats, arcs, sibs, rels = batch
-            mask = batch.mask
-            # ignore the first token of each sentence
-            mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_arc, s_sib, s_rel = self.model(words, feats)
-                loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask,
-                                                     self.args.mbr, self.args.partial)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
-            if self.args.partial:
-                mask &= arcs.ge(0)
-            # ignore all punctuation if not specified
-            if not self.args.punct:
-                mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
-            metric += AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
-
-        return metric
+    def eval_step(self, batch: Batch) -> AttachmentMetric:
+        words, _, *feats, arcs, sibs, rels = batch
+        mask = batch.mask
+        # ignore the first token of each sentence
+        mask[:, 0] = 0
+        s_arc, s_sib, s_rel = self.model(words, feats)
+        loss, s_arc, s_sib = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
+        arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
+        if self.args.partial:
+            mask &= arcs.ge(0)
+        # ignore all punctuation if not specified
+        if not self.args.punct:
+            mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
+        return AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
     @parallel(training=False, op=None)
-    def _predict(self, loader):
-        for batch in progress_bar(loader):
-            words, texts, *feats = batch
-            mask, lens = batch.mask, batch.lens - 1
-            # ignore the first token of each sentence
-            mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_arc, s_sib, s_rel = self.model(words, feats)
-                s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
-            arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
-            lens = lens.tolist()
-            batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
-            batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
-            if self.args.prob:
-                arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
-                batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
-            yield from batch.sentences
+    def pred_step(self, batch: Batch) -> Batch:
+        words, _, *feats = batch
+        mask, lens = batch.mask, batch.lens - 1
+        # ignore the first token of each sentence
+        mask[:, 0] = 0
+        s_arc, s_sib, s_rel = self.model(words, feats)
+        s_arc, s_sib = Dependency2oCRF((s_arc, s_sib), lens).marginals if self.args.mbr else (s_arc, s_sib)
+        arc_preds, rel_preds = self.model.decode(s_arc, s_sib, s_rel, mask, self.args.tree, self.args.mbr, self.args.proj)
+        lens = lens.tolist()
+        batch.arcs = [i.tolist() for i in arc_preds[mask].split(lens)]
+        batch.rels = [self.REL.vocab[i.tolist()] for i in rel_preds[mask].split(lens)]
+        if self.args.prob:
+            arc_probs = s_arc if self.args.mbr else s_arc.softmax(-1)
+            batch.probs = [prob[1:i+1, :i+1].cpu() for i, prob in zip(lens, arc_probs.unbind())]
+        return batch
 
     @classmethod
     def build(cls, path, min_freq=2, fix_len=20, **kwargs):
@@ -245,7 +212,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         if os.path.exists(path) and not args.build:
             parser = cls.load(**args)
             parser.model = cls.MODEL(**parser.args)
-            parser.model.load_pretrained(parser.WORD.embed).to(parser.device)
+            parser.model.load_pretrained(parser.transform.FORM[0].embed).to(parser.device)
             return parser
 
         logger.info("Building the fields")

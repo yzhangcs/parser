@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import torch
-import torch.nn as nn
 from supar.models.sdp.biaffine.parser import BiaffineSemanticDependencyParser
 from supar.models.sdp.vi.model import VISemanticDependencyModel
 from supar.utils import Config
-from supar.utils.logging import get_logger, progress_bar
+from supar.utils.logging import get_logger
 from supar.utils.metric import ChartMetric
-from supar.utils.parallel import parallel, sync
-from supar.utils.transform import CoNLL
+from supar.utils.parallel import parallel
+from supar.utils.transform import Batch, CoNLL
 
 logger = get_logger(__name__)
 
@@ -118,63 +117,40 @@ class VISemanticDependencyParser(BiaffineSemanticDependencyParser):
         return super().predict(**Config().update(locals()))
 
     @parallel()
-    def _train(self, loader):
-        bar, metric = progress_bar(loader), ChartMetric()
+    def train_step(self, batch: Batch) -> torch.Tensor:
 
-        for i, batch in enumerate(bar, 1):
-            words, *feats, labels = batch
-            mask = batch.mask
-            mask = mask.unsqueeze(1) & mask.unsqueeze(2)
-            mask[:, 0] = 0
-            with sync(self.model, i % self.args.update_steps == 0):
-                with torch.autocast(self.device, enabled=self.args.amp):
-                    s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-                    loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
-                self.backward(loss)
-            if i % self.args.update_steps == 0:
-                self.scaler.unscale_(self.optimizer)
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.args.clip)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.scheduler.step()
-                self.optimizer.zero_grad(True)
-
-            label_preds = self.model.decode(s_edge, s_label)
-            metric + ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
-            bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - {metric}")
-        logger.info(f"{bar.postfix}")
+        words, *feats, labels = batch
+        mask = batch.mask
+        mask = mask.unsqueeze(1) & mask.unsqueeze(2)
+        mask[:, 0] = 0
+        s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+        loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
+        return loss
 
     @parallel(training=False)
-    def _evaluate(self, loader):
-        metric = ChartMetric()
+    def eval_step(self, batch: Batch) -> ChartMetric:
 
-        for batch in progress_bar(loader):
-            words, *feats, labels = batch
-            mask = batch.mask
-            mask = mask.unsqueeze(1) & mask.unsqueeze(2)
-            mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-                loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
-            label_preds = self.model.decode(s_edge, s_label)
-            metric += ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
-
-        return metric
+        words, *feats, labels = batch
+        mask = batch.mask
+        mask = mask.unsqueeze(1) & mask.unsqueeze(2)
+        mask[:, 0] = 0
+        s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+        loss, s_edge = self.model.loss(s_edge, s_sib, s_cop, s_grd, s_label, labels, mask)
+        label_preds = self.model.decode(s_edge, s_label)
+        return ChartMetric(loss, label_preds.masked_fill(~mask, -1), labels.masked_fill(~mask, -1))
 
     @parallel(training=False, op=None)
-    def _predict(self, loader):
-        for batch in progress_bar(loader):
-            words, *feats = batch
-            mask, lens = batch.mask, (batch.lens - 1).tolist()
-            mask = mask.unsqueeze(1) & mask.unsqueeze(2)
-            mask[:, 0] = 0
-            with torch.autocast(self.device, enabled=self.args.amp):
-                s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
-                s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
-            label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
-            batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
-                                                   for row in chart[1:i, :i].tolist()])
-                            for i, chart in zip(lens, label_preds)]
-            if self.args.prob:
-                batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())]
-            yield from batch.sentences
+    def pred_step(self, batch: Batch) -> Batch:
+        words, *feats = batch
+        mask, lens = batch.mask, (batch.lens - 1).tolist()
+        mask = mask.unsqueeze(1) & mask.unsqueeze(2)
+        mask[:, 0] = 0
+        s_edge, s_sib, s_cop, s_grd, s_label = self.model(words, feats)
+        s_edge = self.model.inference((s_edge, s_sib, s_cop, s_grd), mask)
+        label_preds = self.model.decode(s_edge, s_label).masked_fill(~mask, -1)
+        batch.labels = [CoNLL.build_relations([[self.LABEL.vocab[i] if i >= 0 else None for i in row]
+                                               for row in chart[1:i, :i].tolist()])
+                        for i, chart in zip(lens, label_preds)]
+        if self.args.prob:
+            batch.probs = [prob[1:i, :i].cpu() for i, prob in zip(lens, s_edge.unbind())]
+        return batch

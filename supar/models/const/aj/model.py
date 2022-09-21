@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from typing import List, Tuple
+
 import torch
 import torch.nn as nn
 from supar.model import Model
@@ -78,13 +80,11 @@ class AttachJuxtaposeConstituencyModel(Model):
         n_encoder_layers (int):
             The number of encoder layers. Default: 3.
         encoder_dropout (float):
-            The dropout ratio of encoder layer. Default: .33.
-        n_span_mlp (int):
-            Span MLP size. Default: 500.
-        n_label_mlp  (int):
-            Label MLP size. Default: 100.
-        mlp_dropout (float):
-            The dropout ratio of MLP layers. Default: .33.
+            The dropout ratio of encoder layers. Default: .33.
+        n_gnn_layers (int):
+            The number of GNN layers. Default: 3.
+        gnn_dropout (float):
+            The dropout ratio of GNN layers. Default: .33.
         pad_index (int):
             The index of the padding token in the word vocabulary. Default: 0.
         unk_index (int):
@@ -120,9 +120,8 @@ class AttachJuxtaposeConstituencyModel(Model):
                  n_encoder_hidden=800,
                  n_encoder_layers=3,
                  encoder_dropout=.33,
-                 n_span_mlp=500,
-                 n_label_mlp=100,
-                 mlp_dropout=.33,
+                 n_gnn_layers=3,
+                 gnn_dropout=.33,
                  pad_index=0,
                  unk_index=1,
                  **kwargs):
@@ -148,7 +147,11 @@ class AttachJuxtaposeConstituencyModel(Model):
         )
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, words, feats=None):
+    def forward(
+        self,
+        words: torch.LongTensor,
+        feats: List[torch.LongTensor] = None
+    ) -> torch.Tensor:
         r"""
         Args:
             words (~torch.LongTensor): ``[batch_size, seq_len]``.
@@ -166,7 +169,14 @@ class AttachJuxtaposeConstituencyModel(Model):
 
         return self.encode(words, feats)
 
-    def loss(self, x, nodes, parents, news, mask):
+    def loss(
+        self,
+        x: torch.Tensor,
+        nodes: torch.LongTensor,
+        parents: torch.LongTensor,
+        news: torch.LongTensor,
+        mask: torch.BoolTensor
+    ) -> torch.Tensor:
         r"""
         Args:
             x (~torch.Tensor): ``[batch_size, seq_len, n_model]``.
@@ -239,13 +249,20 @@ class AttachJuxtaposeConstituencyModel(Model):
         label_loss = self.criterion(s_parent[mask], parents[mask]) + self.criterion(s_new[mask], news[mask])
         return node_loss + label_loss
 
-    def decode(self, x, mask):
+    def decode(
+        self,
+        x: torch.Tensor,
+        mask: torch.BoolTensor,
+        beam_size: int = 1
+    ) -> List[List[Tuple]]:
         r"""
         Args:
             x (~torch.Tensor): ``[batch_size, seq_len, n_model]``.
                 Contextualized output hidden states.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 The mask for covering the unpadded tokens in each chart.
+            beam_size (int):
+                Beam size for decoding. Default: 1.
 
         Returns:
             List[List[Tuple]]:
@@ -254,7 +271,7 @@ class AttachJuxtaposeConstituencyModel(Model):
 
         spans = None
         batch_size, *_ = x.shape
-        beam_size, n_labels = self.args.beam_size, self.args.n_labels
+        n_labels = self.args.n_labels
         # [batch_size * beam_size, ...]
         x = x.unsqueeze(1).repeat(1, beam_size, 1, 1).view(-1, *x.shape[1:])
         mask = mask.unsqueeze(1).repeat(1, beam_size, 1).view(-1, *mask.shape[1:])
