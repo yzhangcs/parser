@@ -44,8 +44,8 @@ class TransformerTokenizer:
         return self.vocab_size
 
     def __call__(self, text: str) -> List[str]:
-        from transformers import GPT2Tokenizer, GPT2TokenizerFast
-        if isinstance(self.tokenizer, (GPT2Tokenizer, GPT2TokenizerFast)):
+        from tokenizers.pre_tokenizers import ByteLevel
+        if isinstance(self.tokenizer.backend_tokenizer.pre_tokenizer, ByteLevel):
             text = ' ' + text
         return self.tokenizer.tokenize(text)
 
@@ -141,8 +141,7 @@ class BPETokenizer:
             from argparse import Namespace
 
             from subword_nmt.apply_bpe import BPE, read_vocabulary
-            from subword_nmt.learn_joint_bpe_and_vocab import \
-                learn_joint_bpe_and_vocab
+            from subword_nmt.learn_joint_bpe_and_vocab import learn_joint_bpe_and_vocab
             fmerge = os.path.join(path, 'merge.txt')
             fvocab = os.path.join(path, 'vocab.txt')
             separator = '@@'
