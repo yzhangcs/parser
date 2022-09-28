@@ -5,21 +5,11 @@ from __future__ import annotations
 import functools
 import os
 import re
-import sys
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import Any, Iterable
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-
-if sys.version < '3.7':
-    from contextlib import suppress as nullcontext
-else:
-    from contextlib import nullcontext
-
-if TYPE_CHECKING:
-    from supar.parser import Parser
 
 
 class DistributedDataParallel(nn.parallel.DistributedDataParallel):
@@ -34,55 +24,6 @@ class DistributedDataParallel(nn.parallel.DistributedDataParallel):
         return super().__getattr__(name)
 
 
-class parallel(object):
-
-    def __init__(self, training=True, op='sum'):
-        self.training = training
-        self.op = op
-
-    def __enter__(self):
-        self.prev = torch.is_grad_enabled()
-        torch.set_grad_enabled(self.training)
-        return self
-
-    def __exit__(self, *exc):
-        torch.set_grad_enabled(self.prev)
-
-    def __call__(self, fn):
-        @functools.wraps(fn)
-        def wrapper(parser: Parser, *args, **kwargs):
-            with self:
-                parser.model.train(self.training)
-                if not dist.is_initialized():
-                    return fn(parser, *args, **kwargs)
-                if self.training:
-                    with parser.model.join():
-                        results = fn(parser, *args, **kwargs)
-                else:
-                    dist_model = parser.model
-                    # https://github.com/pytorch/pytorch/issues/54059
-                    if hasattr(parser.model, 'module'):
-                        parser.model = parser.model.module
-                    results = fn(parser, *args, **kwargs)
-                    parser.model = dist_model
-                    dist.barrier()
-                if results is None:
-                    return results
-                if self.op is None:
-                    return results
-                elif self.op == 'sum':
-                    return functools.reduce(lambda x, y: x + y, gather(results))
-                else:
-                    raise NotImplementedError(f"Op {self.op} not supported yet")
-        return wrapper
-
-
-def sync(model: DistributedDataParallel, sync: bool = False) -> contextmanager:
-    if dist.is_initialized() and not sync:
-        return model.no_sync()
-    return nullcontext()
-
-
 def wait(fn) -> Any:
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
@@ -94,6 +35,26 @@ def wait(fn) -> Any:
             value = gather(value)[0]
         return value
     return wrapper
+
+
+def gather(obj: Any) -> Iterable[Any]:
+    objs = [None] * dist.get_world_size()
+    dist.all_gather_object(objs, obj)
+    return objs
+
+
+def reduce(obj: Any, reduction: str = 'sum') -> Any:
+    objs = gather(obj)
+    if reduction == 'sum':
+        return functools.reduce(lambda x, y: x + y, objs)
+    elif reduction == 'mean':
+        return functools.reduce(lambda x, y: x + y, objs) / len(objs)
+    elif reduction == 'min':
+        return min(objs)
+    elif reduction == 'max':
+        return max(objs)
+    else:
+        raise NotImplementedError(f"Unsupported reduction {reduction}")
 
 
 def is_master():
@@ -113,9 +74,3 @@ def get_device_count():
     if 'CUDA_VISIBLE_DEVICES' in os.environ:
         return len(re.findall(r'\d+', os.environ['CUDA_VISIBLE_DEVICES']))
     return torch.cuda.device_count()
-
-
-def gather(obj: Any) -> Iterable[Any]:
-    objs = [None] * dist.get_world_size()
-    dist.all_gather_object(objs, obj)
-    return objs

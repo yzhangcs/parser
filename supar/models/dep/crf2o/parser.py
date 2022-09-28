@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+from typing import Iterable, Union
 
 import torch
 from supar.models.dep.biaffine.parser import BiaffineDependencyParser
@@ -12,7 +13,6 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger
 from supar.utils.metric import AttachmentMetric
-from supar.utils.parallel import parallel
 from supar.utils.tokenizer import TransformerTokenizer
 from supar.utils.transform import Batch, CoNLL
 
@@ -30,123 +30,66 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, train, dev, test, buckets=32, workers=0, batch_size=5000, update_steps=1, amp=False, cache=False,
-              punct=False, mbr=True, tree=False, proj=False, partial=False, verbose=True, **kwargs):
-        r"""
-        Args:
-            train/dev/test (Union[str, Iterable]):
-                Filenames of the train/dev/test datasets.
-            buckets (int):
-                The number of buckets that sentences are assigned to. Default: 32.
-            workers (int):
-                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
-            batch_size (int):
-                The number of tokens in each batch. Default: 5000.
-            update_steps (int):
-                Gradient accumulation steps. Default: 1.
-            amp (bool):
-                Specifies whether to use automatic mixed precision. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
-            punct (bool):
-                If ``False``, ignores the punctuation during evaluation. Default: ``False``.
-            mbr (bool):
-                If ``True``, performs MBR decoding. Default: ``True``.
-            tree (bool):
-                If ``True``, ensures to output well-formed trees. Default: ``False``.
-            proj (bool):
-                If ``True``, ensures to output projective trees. Default: ``False``.
-            partial (bool):
-                ``True`` denotes the trees are partially annotated. Default: ``False``.
-            verbose (bool):
-                If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (Dict):
-                A dict holding unconsumed arguments for updating training configs.
-        """
-
+    def train(
+        self,
+        train: Union[str, Iterable],
+        dev: Union[str, Iterable],
+        test: Union[str, Iterable],
+        epochs: int = 1000,
+        patience: int = 100,
+        batch_size: int = 5000,
+        update_steps: int = 1,
+        buckets: int = 32,
+        workers: int = 0,
+        amp: bool = False,
+        cache: bool = False,
+        punct: bool = False,
+        mbr: bool = True,
+        tree: bool = False,
+        proj: bool = False,
+        partial: bool = False,
+        verbose: bool = True,
+        **kwargs
+    ):
         return super().train(**Config().update(locals()))
 
-    def evaluate(self, data, buckets=8, workers=0, batch_size=5000, amp=False, cache=False,
-                 punct=False, mbr=True, tree=True, proj=True, partial=False, verbose=True, **kwargs):
-        r"""
-        Args:
-            data (Union[str, Iterable]):
-                The data for evaluation. Both a filename and a list of instances are allowed.
-            buckets (int):
-                The number of buckets that sentences are assigned to. Default: 8.
-            workers (int):
-                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
-            batch_size (int):
-                The number of tokens in each batch. Default: 5000.
-            amp (bool):
-                Specifies whether to use automatic mixed precision. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
-            punct (bool):
-                If ``False``, ignores the punctuation during evaluation. Default: ``False``.
-            mbr (bool):
-                If ``True``, performs MBR decoding. Default: ``True``.
-            tree (bool):
-                If ``True``, ensures to output well-formed trees. Default: ``False``.
-            proj (bool):
-                If ``True``, ensures to output projective trees. Default: ``False``.
-            partial (bool):
-                ``True`` denotes the trees are partially annotated. Default: ``False``.
-            verbose (bool):
-                If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (Dict):
-                A dict holding unconsumed arguments for updating evaluation configs.
-
-        Returns:
-            The loss scalar and evaluation results.
-        """
-
+    def evaluate(
+        self,
+        data: Union[str, Iterable],
+        batch_size: int = 5000,
+        buckets: int = 8,
+        workers: int = 0,
+        amp: bool = False,
+        cache: bool = False,
+        punct: bool = False,
+        mbr: bool = True,
+        tree: bool = True,
+        proj: bool = True,
+        partial: bool = False,
+        verbose: bool = True,
+        **kwargs
+    ):
         return super().evaluate(**Config().update(locals()))
 
-    def predict(self, data, pred=None, lang=None, buckets=8, workers=0, batch_size=5000, amp=False, cache=False, prob=False,
-                mbr=True, tree=True, proj=True, verbose=True, **kwargs):
-        r"""
-        Args:
-            data (Union[str, Iterable]):
-                The data for prediction.
-                - a filename. If ends with `.txt`, the parser will seek to make predictions line by line from plain texts.
-                - a list of instances.
-            pred (str):
-                If specified, the predicted results will be saved to the file. Default: ``None``.
-            lang (str):
-                Language code (e.g., ``en``) or language name (e.g., ``English``) for the text to tokenize.
-                ``None`` if tokenization is not required.
-                Default: ``None``.
-            buckets (int):
-                The number of buckets that sentences are assigned to. Default: 8.
-            workers (int):
-                The number of subprocesses used for data loading. 0 means only the main process. Default: 0.
-            batch_size (int):
-                The number of tokens in each batch. Default: 5000.
-            amp (bool):
-                Specifies whether to use automatic mixed precision. Default: ``False``.
-            cache (bool):
-                If ``True``, caches the data first, suggested for huge files (e.g., > 1M sentences). Default: ``False``.
-            prob (bool):
-                If ``True``, outputs the probabilities. Default: ``False``.
-            mbr (bool):
-                If ``True``, performs MBR decoding. Default: ``True``.
-            tree (bool):
-                If ``True``, ensures to output well-formed trees. Default: ``False``.
-            proj (bool):
-                If ``True``, ensures to output projective trees. Default: ``False``.
-            verbose (bool):
-                If ``True``, increases the output verbosity. Default: ``True``.
-            kwargs (Dict):
-                A dict holding unconsumed arguments for updating prediction configs.
-
-        Returns:
-            A :class:`~supar.utils.Dataset` object containing all predictions if ``cache=False``, otherwise ``None``.
-        """
-
+    def predict(
+        self,
+        data: Union[str, Iterable],
+        pred: str = None,
+        lang: str = None,
+        prob: bool = False,
+        batch_size: int = 5000,
+        buckets: int = 8,
+        workers: int = 0,
+        amp: bool = False,
+        cache: bool = False,
+        mbr: bool = True,
+        tree: bool = True,
+        proj: bool = True,
+        verbose: bool = True,
+        **kwargs
+    ):
         return super().predict(**Config().update(locals()))
 
-    @parallel()
     def train_step(self, batch: Batch) -> torch.Tensor:
         words, _, *feats, arcs, sibs, rels = batch
         mask = batch.mask
@@ -156,7 +99,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
         loss, *_ = self.model.loss(s_arc, s_sib, s_rel, arcs, sibs, rels, mask, self.args.mbr, self.args.partial)
         return loss
 
-    @parallel(training=False)
+    @torch.no_grad()
     def eval_step(self, batch: Batch) -> AttachmentMetric:
         words, _, *feats, arcs, sibs, rels = batch
         mask = batch.mask
@@ -172,7 +115,7 @@ class CRF2oDependencyParser(BiaffineDependencyParser):
             mask.masked_scatter_(mask, ~mask.new_tensor([ispunct(w) for s in batch.sentences for w in s.words]))
         return AttachmentMetric(loss, (arc_preds, rel_preds), (arcs, rels), mask)
 
-    @parallel(training=False, op=None)
+    @torch.no_grad()
     def pred_step(self, batch: Batch) -> Batch:
         words, _, *feats = batch
         mask, lens = batch.mask, batch.lens - 1
