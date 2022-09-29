@@ -129,6 +129,8 @@ class Parser(object):
         if dist.is_initialized():
             batch_size = batch_size // dist.get_world_size()
         logger.info("Loading the data")
+        if args.cache:
+            args.bin = os.path.join(os.path.dirname(args.path), 'bin')
         train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized(), workers)
         dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
         logger.info(f"{'train:':6} {train}")
@@ -280,6 +282,8 @@ class Parser(object):
 
         self.transform.train()
         logger.info("Loading the data")
+        if args.cache:
+            args.bin = os.path.join(os.path.dirname(args.path), 'bin')
         data = Dataset(self.transform, **args)
         data.build(batch_size, buckets, False, dist.is_initialized(), workers)
         logger.info(f"\n{data}")
@@ -346,6 +350,8 @@ class Parser(object):
             self.transform.append(Field('probs'))
 
         logger.info("Loading the data")
+        if args.cache:
+            args.bin = os.path.join(os.path.dirname(args.path), 'bin')
         data = Dataset(self.transform, **args)
         data.build(batch_size, buckets, False, dist.is_initialized(), workers)
         logger.info(f"\n{data}")

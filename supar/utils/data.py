@@ -42,6 +42,8 @@ class Dataset(torch.utils.data.Dataset):
             Default: ``False``.
         binarize (bool):
             If ``True``, binarizes the dataset once building it. Only works if ``cache=True``. Default: ``False``.
+        bin (str):
+            Path for saving binarized files, required if ``cache=True``. Default: ``None``.
         max_len (int):
             Sentences exceeding the length will be discarded. Default: ``None``.
         kwargs (Dict):
@@ -62,6 +64,7 @@ class Dataset(torch.utils.data.Dataset):
         data: Union[str, Iterable],
         cache: bool = False,
         binarize: bool = False,
+        bin: str = None,
         max_len: int = None,
         **kwargs
     ) -> Dataset:
@@ -71,13 +74,18 @@ class Dataset(torch.utils.data.Dataset):
         self.data = data
         self.cache = cache
         self.binarize = binarize
+        self.bin = bin
         self.max_len = max_len or INF
         self.kwargs = kwargs
 
         if cache:
             if not isinstance(data, str) or not os.path.exists(data):
                 raise FileNotFoundError("Only files are allowed for binarization, but not found")
-            self.fbin = data + '.pt'
+            if self.bin is None:
+                self.fbin = data + '.pt'
+            else:
+                os.makedirs(self.bin, exist_ok=True)
+                self.fbin = os.path.join(self.bin, os.path.split(data)[1]) + '.pt'
             if not self.binarize and os.path.exists(self.fbin):
                 try:
                     self.sentences = debinarize(self.fbin, meta=True)['sentences']
@@ -94,6 +102,10 @@ class Dataset(torch.utils.data.Dataset):
             s += f", n_batches={len(self.loader)}"
         if hasattr(self, 'buckets'):
             s += f", n_buckets={len(self.buckets)}"
+        if self.cache:
+            s += f", cache={self.cache}"
+        if self.binarize:
+            s += f", binarize={self.binarize}"
         if self.max_len < INF:
             s += f", max_len={self.max_len}"
         s += ")"
