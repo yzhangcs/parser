@@ -1304,15 +1304,15 @@ class Sentence(object):
     def __getstate__(self):
         state = vars(self)
         if 'fields' in state:
-            state['fields'] = {name: ((value.tolist(),) if isinstance(value, torch.torch.Tensor) else value)
+            state['fields'] = {name: (('tensor', value.tolist()) if isinstance(value, torch.Tensor) else value)
                                for name, value in state['fields'].items()}
         return state
 
     def __setstate__(self, state):
         if 'fields' in state:
-            state['fields'] = {name: (torch.tensor(value[0]) if isinstance(value, tuple) else value)
+            state['fields'] = {name: (torch.tensor(value[1]) if isinstance(value, tuple) and value[0] == 'tensor' else value)
                                for name, value in state['fields'].items()}
-        self.__dict__.update(state)
+            self.__dict__.update(state)
 
     def __len__(self):
         try:
