@@ -51,6 +51,33 @@ class Parser(object):
     def sync_grad(self):
         return self.step % self.args.update_steps == 0 or self.step % self.n_batches == 0
 
+    @contextmanager
+    def sync(self):
+        context = getattr(contextlib, 'suppress' if sys.version < '3.7' else 'nullcontext')
+        if dist.is_initialized() and not self.sync_grad:
+            context = self.model.no_sync
+        with context():
+            yield
+
+    @contextmanager
+    def join(self):
+        context = getattr(contextlib, 'suppress' if sys.version < '3.7' else 'nullcontext')
+        if not dist.is_initialized():
+            with context():
+                yield
+        elif self.model.training:
+            with self.model.join():
+                yield
+        else:
+            try:
+                dist_model = self.model
+                # https://github.com/pytorch/pytorch/issues/54059
+                if hasattr(self.model, 'module'):
+                    self.model = self.model.module
+                yield
+            finally:
+                self.model = dist_model
+
     def train(
         self,
         train: Union[str, Iterable],
@@ -166,7 +193,7 @@ class Parser(object):
                     with self.sync():
                         with torch.autocast(self.device, enabled=self.args.amp):
                             loss = self.train_step(batch)
-                        loss.backward()
+                        self.backward(loss)
                     if self.sync_grad:
                         self.clip_grad_norm_(self.model.parameters(), self.args.clip)
                         self.scaler.step(self.optimizer)
@@ -382,33 +409,6 @@ class Parser(object):
     ) -> None:
         self.scaler.unscale_(self.optimizer)
         return nn.utils.clip_grad_value_(params, clip_value)
-
-    @contextmanager
-    def sync(self):
-        context = getattr(contextlib, 'suppress' if sys.version < '3.7' else 'nullcontext')
-        if dist.is_initialized() and not self.sync_grad:
-            context = self.model.no_sync
-        with context():
-            yield
-
-    @contextmanager
-    def join(self):
-        context = getattr(contextlib, 'suppress' if sys.version < '3.7' else 'nullcontext')
-        if not dist.is_initialized():
-            with context():
-                yield
-        elif self.model.training:
-            with self.model.join():
-                yield
-        else:
-            try:
-                dist_model = self.model
-                # https://github.com/pytorch/pytorch/issues/54059
-                if hasattr(self.model, 'module'):
-                    self.model = self.model.module
-                yield
-            finally:
-                self.model = dist_model
 
     def reduce(self, obj: Any) -> Any:
         if not dist.is_initialized():
