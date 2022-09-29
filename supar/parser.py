@@ -189,6 +189,8 @@ class Parser(object):
             logger.info(f"Epoch {epoch} / {args.epochs}:")
             self.model.train()
             with self.join():
+                # we should zero `step` as the number of batches in different processes is not necessarily equal
+                self.step = 0
                 for batch in bar:
                     with self.sync():
                         with torch.autocast(self.device, enabled=self.args.amp):
