@@ -366,7 +366,7 @@ class Parser(object):
             for batch in progress_bar(data.loader):
                 batch = self.pred_step(batch)
                 if args.cache:
-                    for s in batch:
+                    for s in batch.sentences:
                         with open(os.path.join(t, f"{s.index}"), 'w') as f:
                             f.write(str(s) + '\n')
             elapsed = datetime.now() - start
