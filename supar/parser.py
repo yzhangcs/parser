@@ -232,17 +232,18 @@ class Parser(object):
         if dist.is_initialized():
             dist.barrier()
 
-        parser = self.load(**args)
+        best = self.load(**args)
         # only allow the master device to save models
         if is_master():
-            parser.save(args.path)
+            best.save(args.path)
 
         logger.info(f"Epoch {self.best_e} saved")
         logger.info(f"{'dev:':5} {self.best_metric}")
         if args.test:
-            with self.join():
-                test_metric = sum([self.eval_step(i) for i in progress_bar(test.loader)], Metric())
-                logger.info(f"{'test:':5} {self.reduce(test_metric)}")
+            best.model.eval()
+            with best.join():
+                test_metric = sum([best.eval_step(i) for i in progress_bar(test.loader)], Metric())
+                logger.info(f"{'test:':5} {best.reduce(test_metric)}")
         logger.info(f"{self.elapsed}s elapsed, {self.elapsed / epoch}s/epoch")
 
     def evaluate(
