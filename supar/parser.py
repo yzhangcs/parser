@@ -182,7 +182,7 @@ class Parser(object):
                     setattr(self, k, v)
                 train.loader.batch_sampler.epoch = self.epoch
             except AttributeError:
-                logger.warning("No checkpoint found. Try re-launching the traing procedure instead")
+                logger.warning("No checkpoint found. Try re-launching the training procedure instead")
 
         for epoch in range(self.epoch, args.epochs + 1):
             start = datetime.now()
