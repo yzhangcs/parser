@@ -16,7 +16,7 @@ import torch.distributed as dist
 from supar.utils.common import INF
 from supar.utils.fn import binarize, debinarize, kmeans
 from supar.utils.logging import get_logger, progress_bar
-from supar.utils.parallel import is_master
+from supar.utils.parallel import is_dist, is_master
 from supar.utils.transform import Batch, Transform
 from torch.distributions.utils import lazy_property
 
@@ -184,7 +184,7 @@ class Dataset(torch.utils.data.Dataset):
                     with cache(self.transform.load(self.data, **self.kwargs)) as chunks, mp.Pool(32) as pool:
                         results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
                         self.sentences = binarize((r.get() for r in results), self.fbin, merge=True)[1]['sentences']
-                if dist.is_initialized():
+                if is_dist():
                     dist.barrier()
                 if not is_master():
                     self.sentences = debinarize(self.fbin, meta=True)['sentences']
@@ -257,6 +257,9 @@ class Sampler(torch.utils.data.Sampler):
     def __len__(self):
         return self.n_samples
 
+    def set_epoch(self, epoch: int) -> None:
+        self.epoch = epoch
+
 
 class DataLoader(torch.utils.data.DataLoader):
 
@@ -304,7 +307,7 @@ class PrefetchGenerator(threading.Thread):
     def run(self):
         # `torch.cuda.current_device` is thread local
         # see https://github.com/pytorch/pytorch/issues/56588
-        if dist.is_initialized() and torch.cuda.is_available():
+        if is_dist() and torch.cuda.is_available():
             torch.cuda.set_device(dist.get_rank())
         if hasattr(self, 'stream'):
             with torch.cuda.stream(self.stream):

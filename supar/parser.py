@@ -27,7 +27,7 @@ from supar.utils.logging import get_logger, init_logger, progress_bar
 from supar.utils.metric import Metric
 from supar.utils.optim import InverseSquareRootLR, LinearLR
 from supar.utils.parallel import DistributedDataParallel as DDP
-from supar.utils.parallel import gather, is_master, reduce
+from supar.utils.parallel import gather, is_dist, is_master, reduce
 from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
@@ -54,7 +54,7 @@ class Parser(object):
     @contextmanager
     def sync(self):
         context = getattr(contextlib, 'suppress' if sys.version < '3.7' else 'nullcontext')
-        if dist.is_initialized() and not self.sync_grad:
+        if is_dist() and not self.sync_grad:
             context = self.model.no_sync
         with context():
             yield
@@ -62,7 +62,7 @@ class Parser(object):
     @contextmanager
     def join(self):
         context = getattr(contextlib, 'suppress' if sys.version < '3.7' else 'nullcontext')
-        if not dist.is_initialized():
+        if not is_dist():
             with context():
                 yield
         elif self.model.training:
@@ -126,20 +126,21 @@ class Parser(object):
 
         self.transform.train()
         batch_size = batch_size // update_steps
-        if dist.is_initialized():
+        if is_dist():
             batch_size = batch_size // dist.get_world_size()
         logger.info("Loading the data")
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
-        train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, dist.is_initialized(), workers)
-        dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
+        train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, is_dist(), workers)
+        dev = Dataset(self.transform, args.dev, **args).build(batch_size, buckets, False, is_dist(), workers)
         logger.info(f"{'train:':6} {train}")
         if not args.test:
             logger.info(f"{'dev:':6} {dev}\n")
         else:
-            test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, dist.is_initialized(), workers)
+            test = Dataset(self.transform, args.test, **args).build(batch_size, buckets, False, is_dist(), workers)
             logger.info(f"{'dev:':6} {dev}")
             logger.info(f"{'test:':6} {test}\n")
+        loader, sampler = train.loader, train.loader.batch_sampler
 
         if args.encoder == 'lstm':
             self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
@@ -170,7 +171,8 @@ class Parser(object):
                 from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
                 self.model.register_comm_hook(dist.group.WORLD, fp16_compress_hook)
 
-        self.step, self.epoch, self.best_e, self.patience, self.n_batches = 1, 1, 1, patience, len(train.loader)
+        self.step, self.epoch, self.best_e, self.patience, self.n_batches = 1, 1, 1, patience, len(loader)
+        self.total_steps = self.n_batches * epochs // args.update_steps
         self.best_metric, self.elapsed = Metric(), timedelta()
         if self.args.checkpoint:
             try:
@@ -180,13 +182,13 @@ class Parser(object):
                 set_rng_state(self.checkpoint_state_dict.pop('rng_state'))
                 for k, v in self.checkpoint_state_dict.items():
                     setattr(self, k, v)
-                train.loader.batch_sampler.epoch = self.epoch
+                sampler.set_epoch(self.epoch)
             except AttributeError:
                 logger.warning("No checkpoint found. Try re-launching the training procedure instead")
 
         for epoch in range(self.epoch, args.epochs + 1):
             start = datetime.now()
-            bar, metric = progress_bar(train.loader), Metric()
+            bar, metric = progress_bar(loader), Metric()
 
             logger.info(f"Epoch {epoch} / {args.epochs}:")
             self.model.train()
@@ -229,7 +231,7 @@ class Parser(object):
                 logger.info(f"{t}s elapsed\n")
             if self.patience < 1:
                 break
-        if dist.is_initialized():
+        if is_dist():
             dist.barrier()
 
         best = self.load(**args)
@@ -286,7 +288,7 @@ class Parser(object):
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
         data = Dataset(self.transform, **args)
-        data.build(batch_size, buckets, False, dist.is_initialized(), workers)
+        data.build(batch_size, buckets, False, is_dist(), workers)
         logger.info(f"\n{data}")
 
         logger.info("Evaluating the data")
@@ -354,7 +356,7 @@ class Parser(object):
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
         data = Dataset(self.transform, **args)
-        data.build(batch_size, buckets, False, dist.is_initialized(), workers)
+        data.build(batch_size, buckets, False, is_dist(), workers)
         logger.info(f"\n{data}")
 
         logger.info("Making predictions on the data")
@@ -371,10 +373,10 @@ class Parser(object):
                             f.write(str(s) + '\n')
             elapsed = datetime.now() - start
 
-            if dist.is_initialized():
+            if is_dist():
                 dist.barrier()
             if args.cache:
-                tdirs = gather(t) if dist.is_initialized() else (t,)
+                tdirs = gather(t) if is_dist() else (t,)
             if pred is not None and is_master():
                 logger.info(f"Saving predicted results to {pred}")
                 with open(pred, 'w') as f:
@@ -388,7 +390,7 @@ class Parser(object):
                         for s in progress_bar(data):
                             f.write(str(s) + '\n')
             # exit util all files have been merged
-            if dist.is_initialized():
+            if is_dist():
                 dist.barrier()
         logger.info(f"{elapsed}s elapsed, {len(data) / elapsed.total_seconds():.2f} Sents/s")
 
@@ -420,7 +422,7 @@ class Parser(object):
         return nn.utils.clip_grad_value_(params, clip_value)
 
     def reduce(self, obj: Any) -> Any:
-        if not dist.is_initialized():
+        if not is_dist():
             return obj
         return reduce(obj)
 

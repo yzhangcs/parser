@@ -9,7 +9,7 @@ from collections import Counter, defaultdict
 from typing import Any, Dict, List, Optional, Union
 
 import torch.distributed as dist
-from supar.utils.parallel import is_master
+from supar.utils.parallel import is_dist, is_master
 from supar.utils.vocab import Vocab
 
 
@@ -131,7 +131,7 @@ class BPETokenizer:
                                                         special_tokens=self.special_tokens,
                                                         end_of_word_suffix='</w>'))
                 self.tokenizer.save(path)
-            if dist.is_initialized():
+            if is_dist():
                 dist.barrier()
             self.tokenizer = Tokenizer.from_file(path)
             self.vocab = self.tokenizer.get_vocab()
@@ -161,7 +161,7 @@ class BPETokenizer:
                                                         total_symbols=False,
                                                         verbose=False,
                                                         num_workers=32))
-            if dist.is_initialized():
+            if is_dist():
                 dist.barrier()
             self.tokenizer = BPE(codes=open(fmerge), separator=separator, vocab=read_vocabulary(open(fvocab), None))
             self.vocab = Vocab(counter=Counter(self.tokenizer.vocab),

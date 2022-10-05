@@ -30,7 +30,7 @@ def wait(fn) -> Any:
         value = None
         if is_master():
             value = fn(*args, **kwargs)
-        if dist.is_initialized():
+        if is_dist():
             dist.barrier()
             value = gather(value)[0]
         return value
@@ -57,8 +57,12 @@ def reduce(obj: Any, reduction: str = 'sum') -> Any:
         raise NotImplementedError(f"Unsupported reduction {reduction}")
 
 
+def is_dist():
+    return dist.is_available() and dist.is_initialized()
+
+
 def is_master():
-    return not dist.is_available() or not dist.is_initialized() or dist.get_rank() == 0
+    return not is_dist() or dist.get_rank() == 0
 
 
 def get_free_port():
