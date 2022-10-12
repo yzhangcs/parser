@@ -248,7 +248,7 @@ class Field(RawField):
                 seq = [self.bos_index] + seq
             if self.eos:
                 seq = seq + [self.eos_index]
-            yield torch.tensor(seq)
+            yield torch.tensor(seq, dtype=torch.long)
 
     def compose(self, batch: Iterable[torch.Tensor]) -> torch.Tensor:
         r"""
@@ -352,7 +352,7 @@ class SubwordField(Field):
                 seq = seq + [[self.eos_index]]
             if self.fix_len > 0:
                 seq = [ids[:self.fix_len] for ids in seq]
-            yield pad([torch.tensor(ids) for ids in seq], self.pad_index)
+            yield pad([torch.tensor(ids, dtype=torch.long) for ids in seq], self.pad_index)
 
 
 class ChartField(Field):
@@ -401,4 +401,4 @@ class ChartField(Field):
                 chart = [[self.bos_index]*len(chart[0])] + chart
             if self.eos:
                 chart = chart + [[self.eos_index]*len(chart[0])]
-            yield torch.tensor(chart)
+            yield torch.tensor(chart, dtype=torch.long)
