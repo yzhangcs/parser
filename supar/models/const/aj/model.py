@@ -198,48 +198,19 @@ class AttachJuxtaposeConstituencyModel(Model):
         spans, s_node, x_node = None, [], []
         actions = torch.stack((nodes, parents, news))
         for t, action in enumerate(actions.unbind(-1)):
-            x_p, x_t, mask_p, mask_t = x[:, :t], x[:, t], mask[:, :t], mask[:, t]
-            lens = mask_p.sum(-1)
             if t == 0:
-                x_span = self.label_embed(lens.new_full((x.shape[0], 1), self.args.n_labels))
-                span_mask = mask_t.unsqueeze(1)
+                x_span = self.label_embed(actions.new_full((x.shape[0], 1), self.args.n_labels))
+                span_mask = mask[:, :1]
             else:
-                span_mask = spans[:, :-1, 1:].ge(0)
-                span_lens = span_mask.sum((-1, -2))
-                span_indices = torch.where(span_mask)
-                span_labels = spans[:, :-1, 1:][span_indices]
-                x_span = self.label_embed(span_labels)
-                x_span += x[span_indices[0], span_indices[1]] + x[span_indices[0], span_indices[2]]
-                node_lens = lens + span_lens
-                adj_mask = node_lens.unsqueeze(-1).gt(x.new_tensor(range(node_lens.max())))
-                x_mask = lens.unsqueeze(-1).gt(x.new_tensor(range(adj_mask.shape[-1])))
-                span_mask = ~x_mask & adj_mask
-                # concatenate terminals and spans
-                x_tree = x.new_zeros(*adj_mask.shape, x.shape[-1]).masked_scatter_(x_mask.unsqueeze(-1), x_p[mask_p])
-                x_tree = x_tree.masked_scatter_(span_mask.unsqueeze(-1), x_span)
-                adj = mask.new_zeros(*x_tree.shape[:-1], x_tree.shape[1])
-                adj_spans = lens.new_tensor(range(x_tree.shape[1])).view(1, 1, -1).repeat(2, x.shape[0], 1)
-                adj_spans = adj_spans.masked_scatter_(span_mask.unsqueeze(0), torch.stack(span_indices[1:]))
-                adj_l, adj_r, adj_w = *adj_spans.unbind(), adj_spans[1] - adj_spans[0]
-                adj_parent = adj_l.unsqueeze(-1).ge(adj_l.unsqueeze(-2)) & adj_r.unsqueeze(-1).le(adj_r.unsqueeze(-2))
-                # set the parent of root as itself
-                adj_parent.diagonal(0, 1, 2).copy_(adj_w.eq(t - 1))
-                adj_parent = adj_parent & span_mask.unsqueeze(1)
-                # closet ancestor spans as parents
-                adj_parent = (adj_w.unsqueeze(-2) - adj_w.unsqueeze(-1)).masked_fill_(~adj_parent, t).argmin(-1)
-                adj.scatter_(-1, adj_parent.unsqueeze(-1), 1)
-                adj = (adj | adj.transpose(-1, -2)).float()
-                x_tree = self.gnn_layers(x_tree, adj, adj_mask)
-                span_mask = span_mask.masked_scatter(span_mask, span_indices[2].eq(t-1))
-                span_lens = span_mask.sum(-1)
-                x_tree, span_mask = x_tree[span_mask], span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
-                x_span = x.new_zeros(*span_mask.shape, x.shape[-1]).masked_scatter_(span_mask.unsqueeze(-1), x_tree)
-            x_rightmost = torch.cat((x_span, x_t.unsqueeze(1).expand_as(x_span)), -1)
+                x_span = self.get_span_reprs(x, spans, mask, t)
+                span_lens = spans[:, :-1, -1].ge(0).sum(-1)
+                span_mask = span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
+            x_rightmost = torch.cat((x_span, x[:, t].unsqueeze(1).expand_as(x_span)), -1)
             s_node.append(self.node_classifier(x_rightmost).squeeze(-1))
             # we found softmax is slightly better than sigmoid in the original paper
             s_node[-1] = s_node[-1].masked_fill_(~span_mask, -INF).masked_fill(~span_mask.any(-1).unsqueeze(-1), 0)
             x_node.append(torch.bmm(s_node[-1].softmax(-1).unsqueeze(1), x_span).squeeze(1))
-            spans = AttachJuxtaposeTree.action2span(action, spans, self.args.nul_index, mask_t)
+            spans = AttachJuxtaposeTree.action2span(action, spans, self.args.nul_index, mask[:, t])
         attach_mask = x.new_tensor(range(self.args.n_labels)).eq(self.args.nul_index)
         s_node, x_node = pad(s_node, padding_value=-INF).transpose(0, 1), torch.stack(x_node, 1)
         s_parent, s_new = self.label_classifier(torch.cat((x, x_node), -1)).chunk(2, -1)
@@ -280,47 +251,18 @@ class AttachJuxtaposeConstituencyModel(Model):
         # accumulated scores
         scores = x.new_full((batch_size, beam_size), -INF).index_fill_(-1, x.new_tensor(0).long(), 0).view(-1)
         for t in range(x.shape[1]):
-            x_p, x_t, mask_p, mask_t = x[:, :t], x[:, t], mask[:, :t], mask[:, t]
-            lens = mask_p.sum(-1)
             if t == 0:
-                x_span = self.label_embed(lens.new_full((x.shape[0], 1), n_labels))
-                span_mask = mask_t.unsqueeze(1)
+                x_span = self.label_embed(batches.new_full((x.shape[0], 1), n_labels))
+                span_mask = mask[:, :1]
             else:
-                span_mask = spans[:, :-1, 1:].ge(0)
-                span_lens = span_mask.sum((-1, -2))
-                span_indices = torch.where(span_mask)
-                span_labels = spans[:, :-1, 1:][span_indices]
-                x_span = self.label_embed(span_labels)
-                x_span += x[span_indices[0], span_indices[1]] + x[span_indices[0], span_indices[2]]
-                node_lens = lens + span_lens
-                adj_mask = node_lens.unsqueeze(-1).gt(x.new_tensor(range(node_lens.max())))
-                x_mask = lens.unsqueeze(-1).gt(x.new_tensor(range(adj_mask.shape[-1])))
-                span_mask = ~x_mask & adj_mask
-                # concatenate terminals and spans
-                x_tree = x.new_zeros(*adj_mask.shape, x.shape[-1]).masked_scatter_(x_mask.unsqueeze(-1), x_p[mask_p])
-                x_tree = x_tree.masked_scatter_(span_mask.unsqueeze(-1), x_span)
-                adj = mask.new_zeros(*x_tree.shape[:-1], x_tree.shape[1])
-                adj_spans = lens.new_tensor(range(x_tree.shape[1])).view(1, 1, -1).repeat(2, x.shape[0], 1)
-                adj_spans = adj_spans.masked_scatter_(span_mask.unsqueeze(0), torch.stack(span_indices[1:]))
-                adj_l, adj_r, adj_w = *adj_spans.unbind(), adj_spans[1] - adj_spans[0]
-                adj_parent = adj_l.unsqueeze(-1).ge(adj_l.unsqueeze(-2)) & adj_r.unsqueeze(-1).le(adj_r.unsqueeze(-2))
-                # set the parent of root as itself
-                adj_parent.diagonal(0, 1, 2).copy_(adj_w.eq(t - 1))
-                adj_parent = adj_parent & span_mask.unsqueeze(1)
-                # closet ancestor spans as parents
-                adj_parent = (adj_w.unsqueeze(-2) - adj_w.unsqueeze(-1)).masked_fill_(~adj_parent, t).argmin(-1)
-                adj.scatter_(-1, adj_parent.unsqueeze(-1), 1)
-                adj = (adj | adj.transpose(-1, -2)).float()
-                x_tree = self.gnn_layers(x_tree, adj, adj_mask)
-                span_mask = span_mask.masked_scatter(span_mask, span_indices[2].eq(t-1))
-                span_lens = span_mask.sum(-1)
-                x_tree, span_mask = x_tree[span_mask], span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
-                x_span = x.new_zeros(*span_mask.shape, x.shape[-1]).masked_scatter_(span_mask.unsqueeze(-1), x_tree)
-            s_node = self.node_classifier(torch.cat((x_span, x_t.unsqueeze(1).expand_as(x_span)), -1)).squeeze(-1)
+                x_span = self.get_span_reprs(x, spans, mask, t)
+                span_lens = spans[:, :-1, -1].ge(0).sum(-1)
+                span_mask = span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
+            s_node = self.node_classifier(torch.cat((x_span, x[:, t].unsqueeze(1).expand_as(x_span)), -1)).squeeze(-1)
             s_node = s_node.masked_fill_(~span_mask, -INF).masked_fill(~span_mask.any(-1).unsqueeze(-1), 0).log_softmax(-1)
             # we found softmax is slightly better than sigmoid in the original paper
             x_node = torch.bmm(s_node.exp().unsqueeze(1), x_span).squeeze(1)
-            s_parent, s_new = self.label_classifier(torch.cat((x_t, x_node), -1)).chunk(2, -1)
+            s_parent, s_new = self.label_classifier(torch.cat((x[:, t], x_node), -1)).chunk(2, -1)
             s_parent, s_new = s_parent.log_softmax(-1), s_new.log_softmax(-1)
             if t == 0:
                 s_parent[:, self.args.nul_index] = -INF
@@ -344,7 +286,7 @@ class AttachJuxtaposeConstituencyModel(Model):
             news = news[indices].view(batch_size, -1).gather(-1, cands % k_parent)
             action = torch.stack((nodes, parents, news)).view(3, -1)
             spans = spans[indices] if spans is not None else None
-            spans = AttachJuxtaposeTree.action2span(action, spans, self.args.nul_index, mask_t)
+            spans = AttachJuxtaposeTree.action2span(action, spans, self.args.nul_index, mask[:, t])
         mask = mask.view(batch_size, beam_size, -1)[:, 0]
         # select an 1-best tree for each sentence
         spans = spans[batches + scores.view(batch_size, -1).argmax(-1)]
@@ -356,3 +298,44 @@ class AttachJuxtaposeConstituencyModel(Model):
         for i, *span in zip(*[s.tolist() for s in span_indices], span_labels.tolist()):
             chart_preds[i].append(span)
         return chart_preds
+
+    def get_span_reprs(
+        self,
+        x: torch.Tensor,
+        spans: torch.LongTensor,
+        mask: torch.BoolTensor,
+        t: int
+    ) -> torch.Tensor:
+        x_p, mask_p = x[:, :t], mask[:, :t]
+        lens = mask_p.sum(-1)
+        span_mask = spans[:, :-1, 1:].ge(0)
+        span_lens = span_mask.sum((-1, -2))
+        span_indices = torch.where(span_mask)
+        span_labels = spans[:, :-1, 1:][span_indices]
+        x_span = self.label_embed(span_labels)
+        x_span += x[span_indices[0], span_indices[1]] + x[span_indices[0], span_indices[2]]
+        node_lens = lens + span_lens
+        adj_mask = node_lens.unsqueeze(-1).gt(x.new_tensor(range(node_lens.max())))
+        x_mask = lens.unsqueeze(-1).gt(x.new_tensor(range(adj_mask.shape[-1])))
+        span_mask = ~x_mask & adj_mask
+        # concatenate terminals and spans
+        x_tree = x.new_zeros(*adj_mask.shape, x.shape[-1]).masked_scatter_(x_mask.unsqueeze(-1), x_p[mask_p])
+        x_tree = x_tree.masked_scatter_(span_mask.unsqueeze(-1), x_span)
+        adj = mask.new_zeros(*x_tree.shape[:-1], x_tree.shape[1])
+        adj_spans = lens.new_tensor(range(x_tree.shape[1])).view(1, 1, -1).repeat(2, x.shape[0], 1)
+        adj_spans = adj_spans.masked_scatter_(span_mask.unsqueeze(0), torch.stack(span_indices[1:]))
+        adj_l, adj_r, adj_w = *adj_spans.unbind(), adj_spans[1] - adj_spans[0]
+        adj_parent = adj_l.unsqueeze(-1).ge(adj_l.unsqueeze(-2)) & adj_r.unsqueeze(-1).le(adj_r.unsqueeze(-2))
+        # set the parent of root as itself
+        adj_parent.diagonal(0, 1, 2).copy_(adj_w.eq(t - 1))
+        adj_parent = adj_parent & span_mask.unsqueeze(1)
+        # closet ancestor spans as parents
+        adj_parent = (adj_w.unsqueeze(-2) - adj_w.unsqueeze(-1)).masked_fill_(~adj_parent, t).argmin(-1)
+        adj.scatter_(-1, adj_parent.unsqueeze(-1), 1)
+        adj = (adj | adj.transpose(-1, -2)).float()
+        x_tree = self.gnn_layers(x_tree, adj, adj_mask)
+        span_mask = span_mask.masked_scatter(span_mask, span_indices[2].eq(t - 1))
+        span_lens = span_mask.sum(-1)
+        x_tree, span_mask = x_tree[span_mask], span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
+        x_span = x.new_zeros(*span_mask.shape, x.shape[-1]).masked_scatter_(span_mask.unsqueeze(-1), x_tree)
+        return x_span
