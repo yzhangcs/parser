@@ -621,14 +621,14 @@ class Tree(Transform):
         Args:
             tree (nltk.tree.Tree):
                 The tree to be factorized.
-            delete_labels (Set[str]):
+            delete_labels (Optional[Set[str]]):
                 A set of labels to be ignored. This is used for evaluation.
                 If it is a pre-terminal label, delete the word along with the brackets.
                 If it is a non-terminal label, just delete the brackets (don't delete children).
                 In `EVALB`_, the default set is:
                 {'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''}
                 Default: ``None``.
-            equal_labels (Dict[str, str]):
+            equal_labels (Optional[Dict[str, str]]):
                 The key-val pairs in the dict are considered equivalent (non-directional). This is used for evaluation.
                 The default dict defined in `EVALB`_ is: {'ADVP': 'PRT'}
                 Default: ``None``.
@@ -676,6 +676,7 @@ class Tree(Transform):
         cls,
         tree: nltk.Tree,
         sequence: List[Tuple],
+        delete_labels: Optional[Set[str]] = None,
         mark: Union[str, Tuple[str]] = ('*', '|<>'),
         join: str = '::',
         postorder: bool = True
@@ -690,6 +691,8 @@ class Tree(Transform):
             sequence (List[Tuple]):
                 A list of tuples used for generating a tree.
                 Each tuple consits of the indices of left/right boundaries and label of the constituent.
+            delete_labels (Optional[Set[str]]):
+                A set of labels to be ignored. Default: ``None``.
             mark (Union[str, List[str]]):
                 A string used to mark newly inserted nodes. Non-terminals containing this will be removed.
                 Default: ``('*', '|<>')``.
@@ -752,6 +755,8 @@ class Tree(Transform):
         start, stack = 0, []
         for node in sequence:
             i, j, label = node
+            if delete_labels is not None and label in delete_labels:
+                continue
             stack.extend([(n, n + 1, leaf) for n, leaf in enumerate(leaves[start:i], start)])
             children = []
             while len(stack) > 0 and i <= stack[-1][0]:
@@ -1090,9 +1095,10 @@ class AttachJuxtaposeTree(Tree):
         Examples:
             >>> from collections import Counter
             >>> from supar.utils import AttachJuxtaposeTree, Vocab
-            >>> nodes, parents, news = zip(*[(0, 'NP', '<nul>'), (0, 'VP', 'S'), (1, 'NP', '<nul>'),
-                                             (2, 'PP', 'NP'), (3, 'NP', '<nul>'), (4, '<nul>', '<nul>'),
-                                             (0, '<nul>', '<nul>')])
+            >>> from supar.utils.common import NUL
+            >>> nodes, parents, news = zip(*[(0, 'NP', NUL), (0, 'VP', 'S'), (1, 'NP', NUL),
+                                             (2, 'PP', 'NP'), (3, 'NP', NUL), (4, NUL, NUL),
+                                             (0, NUL, NUL)])
             >>> vocab = Vocab(Counter(sorted(set([*parents, *news]))))
             >>> actions = torch.tensor([nodes, vocab[parents], vocab[news]]).unsqueeze(1)
             >>> spans = None
@@ -1105,10 +1111,10 @@ class AttachJuxtaposeTree(Tree):
                      [-1, -1, -1,  1, -1, -1,  1, -1],
                      [-1, -1, -1, -1, -1, -1,  2, -1],
                      [-1, -1, -1, -1, -1, -1,  1, -1],
-                     [-1, -1, -1, -1, -1, -1,  0, -1],
-                     [-1, -1, -1, -1, -1, -1, -1,  0],
+                     [-1, -1, -1, -1, -1, -1, -1, -1],
+                     [-1, -1, -1, -1, -1, -1, -1, -1],
                      [-1, -1, -1, -1, -1, -1, -1, -1]]])
-            >>> sequence = torch.where(spans.ge(0) & spans.ne(vocab[NUL]))
+            >>> sequence = torch.where(spans.ge(0))
             >>> sequence = list(zip(sequence[1].tolist(), sequence[2].tolist(), vocab[spans[sequence]]))
             >>> sequence
             [(0, 1, 'NP'), (0, 7, 'S'), (1, 6, 'VP'), (2, 3, 'NP'), (2, 6, 'NP'), (3, 6, 'PP'), (4, 6, 'NP')]
@@ -1151,8 +1157,8 @@ class AttachJuxtaposeTree(Tree):
         # the right boundaries of ancestor nodes should be aligned with the new generated terminals
         spans = torch.cat((spans, torch.where(ancestor_mask, spans[..., -1], -1).unsqueeze(-1)), -1)
         spans[..., -2].masked_fill_(ancestor_mask, -1)
-        spans[juxtapose_mask, target_pos, -1] = new[juxtapose_mask]
-        spans[mask, -1, -1] = parent[mask]
+        spans[juxtapose_mask, target_pos, -1] = new.masked_fill_(new.eq(nul_index), -1)[juxtapose_mask]
+        spans[mask, -1, -1] = parent.masked_fill_(parent.eq(nul_index), -1)[mask]
         # [batch_size, seq_len+1, seq_len+1]
         spans = torch.cat((spans, torch.full_like(spans[:, :1], -1)), 1)
         return spans

@@ -101,8 +101,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
         x = self.model(words, feats)[:, 1:-1]
         loss = self.model.loss(x, nodes, parents, news, mask)
         chart_preds = self.model.decode(x, mask, self.args.beam_size)
-        preds = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart
-                                                  if self.NEW.vocab[label] != NUL])
+        preds = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart], {UNK, NUL})
                  for tree, chart in zip(trees, chart_preds)]
         return SpanMetric(loss,
                           [AttachJuxtaposeTree.factorize(tree, self.args.delete, self.args.equal) for tree in preds],
@@ -114,8 +113,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
         mask = batch.mask[:, 2:]
         x = self.model(words, feats)[:, 1:-1]
         chart_preds = self.model.decode(x, mask, self.args.beam_size)
-        batch.trees = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart
-                                                        if self.NEW.vocab[label] != NUL])
+        batch.trees = [AttachJuxtaposeTree.build(tree, [(i, j, self.NEW.vocab[label]) for i, j, label in chart], {UNK, NUL})
                        for tree, chart in zip(trees, chart_preds)]
         if self.args.prob:
             raise NotImplementedError("Returning action probs are currently not supported yet.")
@@ -168,7 +166,7 @@ class AttachJuxtaposeConstituencyParser(Parser):
                 BERT = SubwordField('bert', pad=t.pad, unk=t.unk, bos=t.bos, eos=t.eos, fix_len=args.fix_len, tokenize=t)
                 BERT.vocab = t.vocab
         TREE = RawField('trees')
-        NODE, PARENT, NEW = Field('node', use_vocab=False), Field('parent'), Field('new')
+        NODE, PARENT, NEW = Field('node', use_vocab=False), Field('parent', unk=UNK), Field('new', unk=UNK)
         transform = AttachJuxtaposeTree(WORD=(WORD, CHAR, ELMO, BERT), POS=TAG, TREE=TREE, NODE=NODE, PARENT=PARENT, NEW=NEW)
 
         train = Dataset(transform, args.train, **args)

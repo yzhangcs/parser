@@ -291,7 +291,6 @@ class AttachJuxtaposeConstituencyModel(Model):
         # select an 1-best tree for each sentence
         spans = spans[batches + scores.view(batch_size, -1).argmax(-1)]
         span_mask = spans.ge(0)
-        span_mask[:, :-1, 1:] &= mask.unsqueeze(1) & mask.unsqueeze(2)
         span_indices = torch.where(span_mask)
         span_labels = spans[span_indices]
         chart_preds = [[] for _ in range(x.shape[0])]
