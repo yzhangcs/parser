@@ -1157,8 +1157,8 @@ class AttachJuxtaposeTree(Tree):
         # the right boundaries of ancestor nodes should be aligned with the new generated terminals
         spans = torch.cat((spans, torch.where(ancestor_mask, spans[..., -1], -1).unsqueeze(-1)), -1)
         spans[..., -2].masked_fill_(ancestor_mask, -1)
-        spans[juxtapose_mask, target_pos, -1] = new.masked_fill_(new.eq(nul_index), -1)[juxtapose_mask]
-        spans[mask, -1, -1] = parent.masked_fill_(parent.eq(nul_index), -1)[mask]
+        spans[juxtapose_mask, target_pos, -1] = new.masked_fill(new.eq(nul_index), -1)[juxtapose_mask]
+        spans[mask, -1, -1] = parent.masked_fill(parent.eq(nul_index), -1)[mask]
         # [batch_size, seq_len+1, seq_len+1]
         spans = torch.cat((spans, torch.full_like(spans[:, :1], -1)), 1)
         return spans
