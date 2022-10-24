@@ -1,10 +1,10 @@
 # SuPar
 
-[![build](https://github.com/yzhangcs/parser/workflows/build/badge.svg)](https://github.com/yzhangcs/parser/actions)
-[![docs](https://readthedocs.org/projects/parser/badge/?version=latest)](https://parser.readthedocs.io/en/latest)
-[![release](https://img.shields.io/github/v/release/yzhangcs/parser)](https://github.com/yzhangcs/parser/releases)
-[![downloads](https://img.shields.io/github/downloads/yzhangcs/parser/total)](https://pypistats.org/packages/supar)
-[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
+[![build](https://img.shields.io/github/workflow/status/yzhangcs/parser/build?style=flat-square)](https://github.com/yzhangcs/parser/actions)
+[![docs](https://readthedocs.org/projects/parser/badge/?version=latest&style=flat-square)](https://parser.readthedocs.io/en/latest)
+[![release](https://img.shields.io/github/v/release/yzhangcs/parser?style=flat-square)](https://github.com/yzhangcs/parser/releases)
+[![downloads](https://img.shields.io/github/downloads/yzhangcs/parser/total?style=flat-square)](https://pypistats.org/packages/supar)
+[![LICENSE](https://img.shields.io/github/license/yzhangcs/parser?style=flat-square)](https://github.com/yzhangcs/parser/blob/master/LICENSE)
 
 A Python package designed for structured prediction, including reproductions of many state-of-the-art syntactic/semantic parsers (with pretrained models for more than 19 languages),
 
