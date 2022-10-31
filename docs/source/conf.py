@@ -27,7 +27,6 @@ version = supar.__version__
 # The full version, including alpha/beta/rc tags
 release = supar.__version__
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -41,15 +40,15 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.todo',
               'sphinx.ext.viewcode',
               'sphinxcontrib.bibtex',
-              'sphinx_astrorefs']
+              'sphinx_astrorefs',
+              'myst_parser']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
-# # You can specify multiple suffix as a list of string:
+# You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
 source_suffix = ['.rst', '.md']
 
 # The master toctree document.
@@ -74,17 +73,18 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
 html_theme = 'sphinx_book_theme'
 html_theme_options = {
-    "theme_dev_mode": True,
-    "path_to_docs": "docs",
-    "repository_url": "https://github.com/yzhangcs/parser",
-    "use_edit_page_button": True,
-    "use_issues_button": True,
-    "use_repository_button": True,
-    "use_download_button": True
+    'path_to_docs': 'docs',
+    'repository_url': 'https://github.com/yzhangcs/parser',
+    'use_edit_page_button': True,
+    'use_issues_button': True,
+    'use_repository_button': True,
+    'use_download_button': True
 }
+html_title = 'SuPar'
+html_favicon = 'https://yzhang.site/assets/img/favicon.png'
+html_copy_source = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

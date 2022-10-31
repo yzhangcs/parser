@@ -424,8 +424,7 @@ class Tree(Transform):
         normalize: Dict[str, str] = {'(': '-LRB-', ')': '-RRB-'}
     ) -> nltk.Tree:
         r"""
-        Converts a list of tokens to a :class:`nltk.tree.Tree`.
-        Missing fields are filled with underscores.
+        Converts a list of tokens to a :class:`nltk.tree.Tree`, with missing fields filled in with underscores.
 
         Args:
             tokens (List[Union[str, Tuple]]):
@@ -439,24 +438,17 @@ class Tree(Transform):
             A :class:`nltk.tree.Tree` object.
 
         Examples:
-            >>> Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP').pretty_print()
-                         TOP
-              ____________|____________
-
-             |    |       |      |     |
-             _    _       _      _     _
-             |    |       |      |     |
-            She enjoys playing tennis  .
-
-            >>> Tree.totree(['(', 'If', 'You', 'Let', 'It', ')'], 'TOP').pretty_print()
-                      TOP
-               ________|____________
-
-              |    |   |   |   |    |
-              _    _   _   _   _    _
-              |    |   |   |   |    |
-            -LRB-  If You Let  It -RRB-
-
+            >>> from supar.utils import Tree
+            >>> Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP').pprint()
+            (TOP ( (_ She)) ( (_ enjoys)) ( (_ playing)) ( (_ tennis)) ( (_ .)))
+            >>> Tree.totree(['(', 'If', 'You', 'Let', 'It', ')'], 'TOP').pprint()
+            (TOP
+              ( (_ -LRB-))
+              ( (_ If))
+              ( (_ You))
+              ( (_ Let))
+              ( (_ It))
+              ( (_ -RRB-)))
         """
 
         normalize = str.maketrans(normalize)
