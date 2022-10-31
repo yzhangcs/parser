@@ -21,7 +21,7 @@ setup(
         'Topic :: Text Processing :: Linguistic'
     ],
     setup_requires=[
-        'setuptools>=56.0',
+        'setuptools',
     ],
     install_requires=[
         'numpy>1.21.6',
