@@ -45,6 +45,7 @@ jobs:
         pip install -U -r docs/requirements.txt
         cd docs
         sphinx-build -T -E -b html -d build/doctrees source build/html
+        chmod -R 0777 build/html
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v1
       with:
