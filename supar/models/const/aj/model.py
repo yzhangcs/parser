@@ -202,7 +202,7 @@ class AttachJuxtaposeConstituencyModel(Model):
                 x_span = self.label_embed(actions.new_full((x.shape[0], 1), self.args.n_labels))
                 span_mask = mask[:, :1]
             else:
-                x_span = self.get_span_reprs(x, spans, mask, t)
+                x_span = self.rightmost_chain(x, spans, mask, t)
                 span_lens = spans[:, :-1, -1].ge(0).sum(-1)
                 span_mask = span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
             x_rightmost = torch.cat((x_span, x[:, t].unsqueeze(1).expand_as(x_span)), -1)
@@ -212,7 +212,7 @@ class AttachJuxtaposeConstituencyModel(Model):
             x_node.append(torch.bmm(s_node[-1].softmax(-1).unsqueeze(1), x_span).squeeze(1))
             spans = AttachJuxtaposeTree.action2span(action, spans, self.args.nul_index, mask[:, t])
         attach_mask = x.new_tensor(range(self.args.n_labels)).eq(self.args.nul_index)
-        s_node, x_node = pad(s_node, padding_value=-INF).transpose(0, 1), torch.stack(x_node, 1)
+        s_node, x_node = pad(s_node, -INF).transpose(0, 1), torch.stack(x_node, 1)
         s_parent, s_new = self.label_classifier(torch.cat((x, x_node), -1)).chunk(2, -1)
         s_parent = torch.cat((s_parent[:, :1].masked_fill(attach_mask, -INF), s_parent[:, 1:]), 1)
         s_new = torch.cat((s_new[:, :1].masked_fill(~attach_mask, -INF), s_new[:, 1:]), 1)
@@ -255,7 +255,7 @@ class AttachJuxtaposeConstituencyModel(Model):
                 x_span = self.label_embed(batches.new_full((x.shape[0], 1), n_labels))
                 span_mask = mask[:, :1]
             else:
-                x_span = self.get_span_reprs(x, spans, mask, t)
+                x_span = self.rightmost_chain(x, spans, mask, t)
                 span_lens = spans[:, :-1, -1].ge(0).sum(-1)
                 span_mask = span_lens.unsqueeze(-1).gt(x.new_tensor(range(span_lens.max())))
             s_node = self.node_classifier(torch.cat((x_span, x[:, t].unsqueeze(1).expand_as(x_span)), -1)).squeeze(-1)
@@ -298,7 +298,7 @@ class AttachJuxtaposeConstituencyModel(Model):
             chart_preds[i].append(span)
         return chart_preds
 
-    def get_span_reprs(
+    def rightmost_chain(
         self,
         x: torch.Tensor,
         spans: torch.LongTensor,
