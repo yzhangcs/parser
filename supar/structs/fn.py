@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from typing import List, Tuple, Union
+import operator
+from typing import Iterable, Tuple, Union
 
 import torch
-from supar.utils.common import MIN
+from supar.utils.common import INF, MIN
 from supar.utils.fn import pad
 from torch.autograd import Function
 
 
-def tarjan(sequence: List[int]) -> List[int]:
+def tarjan(sequence: Iterable[int]) -> Iterable[int]:
     r"""
     Tarjan algorithm for finding Strongly Connected Components (SCCs) of a graph.
 
@@ -213,6 +214,73 @@ def mst(scores: torch.Tensor, mask: torch.BoolTensor, multiroot: bool = False) -
         preds.append(tree)
 
     return pad(preds, total_length=seq_len).to(mask.device)
+
+
+def levenshtein(x: Iterable, y: Iterable, align: bool = False) -> int:
+    """
+    Calculates the Levenshtein edit-distance between two sequences.
+    The edit distance is the number of characters that need to be
+    substituted, inserted, or deleted, to transform `x` into `y`.
+
+    For example, transforming "rain" to "shine" requires three steps,
+    consisting of two substitutions and one insertion:
+    "rain" -> "sain" -> "shin" -> "shine".
+    These operations could have been done in other orders, but at least three steps are needed.
+
+    Allows specifying the cost of substitution edits (e.g., "a" -> "b"),
+    because sometimes it makes sense to assign greater penalties to substitutions.
+
+    The code is revised from `nltk`_ and `wiki`_'s implementations.
+
+    Args:
+        x/y (Iterable):
+            The sequences to be analysed.
+        align (bool):
+            Whether to return the alignments based on the minimum Levenshtein edit-distance. Default: ``False``.
+
+    Examples:
+        >>> from supar.structs.utils.fn import levenshtein
+        >>> levenshtein('intention', 'execution', align=True)
+        (5, [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
+
+    .. _nltk:
+        https://github.com/nltk/nltk/blob/develop/nltk/metrics/distance.py
+    .. _wiki:
+        https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
+    """
+
+    # set up a 2-D array
+    len1, len2 = len(x), len(y)
+    lev = [list(range(len2 + 1))] + [[i] + [0] * len2 for i in range(1, len1 + 1)]
+
+    # iterate over the array
+    # i and j start from 1 and not 0 to stay close to the wikipedia pseudo-code
+    # see https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
+    for i in range(1, len1 + 1):
+        for j in range(1, len2 + 1):
+            # substitution
+            s = lev[i - 1][j - 1] + (x[i - 1] != y[j - 1])
+            # deletion
+            a = lev[i - 1][j] + 1
+            # insertion
+            b = lev[i][j - 1] + 1
+
+            lev[i][j] = min(s, a, b)
+    distance = lev[-1][-1]
+    if align:
+        i, j = len1, len2
+        alignments = [(i, j)]
+        while (i, j) != (0, 0):
+            directions = [
+                (i - 1, j - 1),  # substitution
+                (i - 1, j),  # deletion
+                (i, j - 1),  # insertion
+            ]
+            direction_costs = ((lev[i][j] if (i >= 0 and j >= 0) else INF, (i, j)) for i, j in directions)
+            _, (i, j) = min(direction_costs, key=operator.itemgetter(0))
+            alignments.append((i, j))
+        alignments = list(reversed(alignments))
+    return (distance, alignments) if align else distance
 
 
 class Logsumexp(Function):
