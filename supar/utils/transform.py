@@ -9,11 +9,12 @@ from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
 
 import nltk
 import torch
+from torch.distributions.utils import lazy_property
+
 from supar.utils.common import NUL
 from supar.utils.fn import debinarize
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.tokenizer import Tokenizer
-from torch.distributions.utils import lazy_property
 
 if TYPE_CHECKING:
     from supar.utils import Field
@@ -606,7 +607,7 @@ class Tree(Transform):
         tree: nltk.Tree,
         delete_labels: Optional[Set[str]] = None,
         equal_labels: Optional[Dict[str, str]] = None
-    ) -> List[Tuple]:
+    ) -> Iterable[Tuple]:
         r"""
         Factorizes the tree into a sequence traversed in post-order.
 
@@ -666,28 +667,30 @@ class Tree(Transform):
     @classmethod
     def build(
         cls,
-        tree: nltk.Tree,
-        sequence: List[Tuple],
+        sentence: Union[nltk.Tree, Iterable],
+        spans: Iterable[Tuple],
         delete_labels: Optional[Set[str]] = None,
         mark: Union[str, Tuple[str]] = ('*', '|<>'),
+        root: str = '',
         join: str = '::',
         postorder: bool = True
     ) -> nltk.Tree:
         r"""
-        Builds a constituency tree from the sequence generated in post-order.
-        During building, the sequence is recovered to the original format, i.e., de-binarized.
+        Builds a constituency tree from a span sequence.
+        During building, the sequence is recovered, i.e., de-binarized to the original format.
 
         Args:
-            tree (nltk.tree.Tree):
-                An empty tree that provides a base for building a result tree.
-            sequence (List[Tuple]):
-                A list of tuples used for generating a tree.
-                Each tuple consits of the indices of left/right boundaries and label of the constituent.
+            sentence (Union[nltk.tree.Tree, Iterable]):
+                Sentence to provide a base for building a result tree, both `nltk.tree.Tree` and tokens are allowed.
+            spans (Iterable[Tuple]):
+                A list of spans, each consisting of the indices of left/right boundaries and label of the constituent.
             delete_labels (Optional[Set[str]]):
                 A set of labels to be ignored. Default: ``None``.
             mark (Union[str, List[str]]):
                 A string used to mark newly inserted nodes. Non-terminals containing this will be removed.
                 Default: ``('*', '|<>')``.
+            root (str):
+                The root label of the tree, needed if input a list of tokens. Default: ''.
             join (str):
                 A string used to connect collapsed node labels. Non-terminals containing this will be expanded to unary chains.
                 Default: ``'::'``.
@@ -699,10 +702,10 @@ class Tree(Transform):
 
         Examples:
             >>> from supar.utils import Tree
-            >>> tree = Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP')
-            >>> Tree.build(tree,
+            >>> Tree.build(['She', 'enjoys', 'playing', 'tennis', '.'],
                            [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
-                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')]).pretty_print()
+                            (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')],
+                           root='TOP').pretty_print()
                          TOP
                           |
                           S
@@ -719,8 +722,9 @@ class Tree(Transform):
              |    |       |          |     |
             She enjoys playing     tennis  .
 
-            >>> Tree.build(tree,
-                           [(0, 1, 'NP'), (3, 4, 'NP'), (2, 4, 'VP'), (2, 4, 'S'), (1, 4, 'VP'), (0, 5, 'S')]).pretty_print()
+            >>> Tree.build(['She', 'enjoys', 'playing', 'tennis', '.'],
+                           [(0, 1, 'NP'), (3, 4, 'NP'), (2, 4, 'VP'), (2, 4, 'S'), (1, 4, 'VP'), (0, 5, 'S')],
+                           root='TOP').pretty_print()
                          TOP
                           |
                           S
@@ -739,14 +743,15 @@ class Tree(Transform):
 
         """
 
-        root = tree.label()
+        tree = sentence if isinstance(sentence, nltk.Tree) else Tree.totree(sentence, root)
         leaves = [subtree for subtree in tree.subtrees() if not isinstance(subtree[0], nltk.Tree)]
         if postorder:
-            sequence = sorted(sequence, key=lambda x: (x[1], x[1] - x[0]))
+            spans = sorted(spans, key=lambda x: (x[1], x[1] - x[0]))
 
+        root = tree.label()
         start, stack = 0, []
-        for node in sequence:
-            i, j, label = node
+        for span in spans:
+            i, j, label = span
             if delete_labels is not None and label in delete_labels:
                 continue
             stack.extend([(n, n + 1, leaf) for n, leaf in enumerate(leaves[start:i], start)])
