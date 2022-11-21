@@ -10,7 +10,7 @@ import torch
 
 class Metric(object):
 
-    def __init__(self, reverse=False, eps: float = 1e-12) -> Metric:
+    def __init__(self, reverse: Optional[bool] = None, eps: float = 1e-12) -> Metric:
         super().__init__()
 
         self.n = 0.0
@@ -67,9 +67,10 @@ class AttachmentMetric(Metric):
         preds: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         golds: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         mask: Optional[torch.BoolTensor] = None,
-        eps: float = 1e-12,
+        reverse: bool = False,
+        eps: float = 1e-12
     ) -> AttachmentMetric:
-        super().__init__(eps=eps)
+        super().__init__(reverse=reverse, eps=eps)
 
         self.n_ucm = 0.0
         self.n_lcm = 0.0
@@ -119,6 +120,7 @@ class AttachmentMetric(Metric):
         metric.total = self.total + other.total
         metric.correct_arcs = self.correct_arcs + other.correct_arcs
         metric.correct_rels = self.correct_rels + other.correct_rels
+        metric.reverse = self.reverse or other.reverse
         return metric
 
     @property
@@ -149,9 +151,10 @@ class SpanMetric(Metric):
         loss: Optional[float] = None,
         preds: Optional[List[List[Tuple]]] = None,
         golds: Optional[List[List[Tuple]]] = None,
+        reverse: bool = False,
         eps: float = 1e-12
     ) -> SpanMetric:
-        super().__init__(eps=eps)
+        super().__init__(reverse=reverse, eps=eps)
 
         self.n_ucm = 0.0
         self.n_lcm = 0.0
@@ -202,6 +205,7 @@ class SpanMetric(Metric):
         metric.ltp = self.ltp + other.ltp
         metric.pred = self.pred + other.pred
         metric.gold = self.gold + other.gold
+        metric.reverse = self.reverse or other.reverse
         return metric
 
     @property
@@ -248,9 +252,10 @@ class ChartMetric(Metric):
         loss: Optional[float] = None,
         preds: Optional[torch.Tensor] = None,
         golds: Optional[torch.Tensor] = None,
+        reverse: bool = False,
         eps: float = 1e-12
     ) -> ChartMetric:
-        super().__init__(eps=eps)
+        super().__init__(reverse=reverse, eps=eps)
 
         self.tp = 0.0
         self.utp = 0.0
@@ -292,6 +297,7 @@ class ChartMetric(Metric):
         metric.utp = self.utp + other.utp
         metric.pred = self.pred + other.pred
         metric.gold = self.gold + other.gold
+        metric.reverse = self.reverse or other.reverse
         return metric
 
     @property
