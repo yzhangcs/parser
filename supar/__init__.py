@@ -11,7 +11,7 @@ from .structs import (BiLexicalizedConstituencyCRF, ConstituencyCRF,
                       ConstituencyLBP, ConstituencyMFVI, Dependency2oCRF,
                       DependencyCRF, DependencyLBP, DependencyMFVI,
                       LinearChainCRF, MatrixTree, SemanticDependencyLBP,
-                      SemanticDependencyMFVI)
+                      SemanticDependencyMFVI, SemiMarkovCRF)
 
 __all__ = ['Parser',
            'BiaffineDependencyParser',
@@ -24,6 +24,7 @@ __all__ = ['Parser',
            'BiaffineSemanticDependencyParser',
            'VISemanticDependencyParser',
            'LinearChainCRF',
+           'SemiMarkovCRF',
            'MatrixTree',
            'DependencyCRF',
            'Dependency2oCRF',

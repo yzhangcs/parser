@@ -4,7 +4,7 @@ import itertools
 
 import torch
 from supar.structs import (ConstituencyCRF, Dependency2oCRF, DependencyCRF,
-                           LinearChainCRF)
+                           LinearChainCRF, SemiMarkovCRF)
 from supar.structs.semiring import LogSemiring, MaxSemiring, Semiring
 from supar.utils.transform import CoNLL
 from torch.distributions.distribution import Distribution
@@ -151,6 +151,35 @@ class BruteForceLinearChainCRF(BruteForceStructuredDistribution):
         return [torch.stack(seq) for seq in seqs]
 
 
+class BruteForceSemiMarkovCRF(BruteForceStructuredDistribution):
+
+    def __init__(self, scores, trans=None, lens=None):
+        super().__init__(scores, lens=lens)
+
+        batch_size, seq_len, _, self.n_tags = scores.shape[:4]
+        self.lens = scores.new_full((batch_size,), seq_len).long() if lens is None else lens
+        self.mask = self.lens.unsqueeze(-1).gt(self.lens.new_tensor(range(seq_len)))
+
+        self.trans = self.scores.new_full((self.n_tags, self.n_tags), LogSemiring.one) if trans is None else trans
+
+    def enumerate(self, semiring):
+        seqs = []
+        for i, length in enumerate(self.lens.tolist()):
+            seqs.append([])
+            scores = self.scores[i]
+            for seg in self.segment(length):
+                l, r = zip(*seg)
+                for t in itertools.product(range(self.n_tags), repeat=len(seg)):
+                    seqs[-1].append(semiring.prod(torch.cat((scores[l, r, t], self.trans[t[:-1], t[1:]])), -1))
+        return [torch.stack(seq) for seq in seqs]
+
+    @classmethod
+    def segment(cls, length):
+        if length == 1:
+            return [[(0, 0)]]
+        return [s + [(i, length - 1)] for i in range(1, length) for s in cls.segment(i)] + [[(0, length - 1)]]
+
+
 def test_struct():
     torch.manual_seed(1)
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -184,6 +213,14 @@ def test_struct():
                BruteForceLinearChainCRF(s1, lens=lens), BruteForceLinearChainCRF(s2, lens=lens))
         yield (LinearChainCRF(s1, t1, lens=lens), LinearChainCRF(s2, t2, lens=lens),
                BruteForceLinearChainCRF(s1, t1, lens=lens), BruteForceLinearChainCRF(s2, t2, lens=lens))
+        s1 = torch.randn(batch_size, seq_len, seq_len, n_tags).to(device)
+        s2 = torch.randn(batch_size, seq_len, seq_len, n_tags).to(device)
+        t1 = torch.randn(n_tags, n_tags).to(device)
+        t2 = torch.randn(n_tags, n_tags).to(device)
+        yield (SemiMarkovCRF(s1, lens=lens), SemiMarkovCRF(s2, lens=lens),
+               BruteForceSemiMarkovCRF(s1, lens=lens), BruteForceSemiMarkovCRF(s2, lens=lens))
+        yield (SemiMarkovCRF(s1, t1, lens=lens), SemiMarkovCRF(s2, t2, lens=lens),
+               BruteForceSemiMarkovCRF(s1, t1, lens=lens), BruteForceSemiMarkovCRF(s2, t2, lens=lens))
 
     for _ in range(5):
         for struct1, struct2, brute1, brute2 in enumerate():
