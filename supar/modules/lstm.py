@@ -85,7 +85,7 @@ class CharLSTM(nn.Module):
         x = pack_padded_sequence(x, lens[char_mask].tolist(), True, False)
         x, (h, _) = self.lstm(x)
         # [n, fix_len, n_hidden]
-        h = self.dropout(h.movedim(0, -1))
+        h = self.dropout(torch.cat(torch.unbind(h), -1))
         # [n, fix_len, n_out]
         h = self.projection(h)
         # [batch_size, seq_len, n_out]
