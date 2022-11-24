@@ -194,7 +194,7 @@ class CRFConstituencyModel(Model):
 
         span_mask = charts.ge(0) & mask
         span_dist = ConstituencyCRF(s_span, mask[:, 0].sum(-1))
-        span_loss = -span_dist.log_prob(span_mask).sum() / mask[:, 0].sum()
+        span_loss = -span_dist.log_prob(charts).sum() / mask[:, 0].sum()
         span_probs = span_dist.marginals if mbr else s_span
         label_loss = self.criterion(s_label[span_mask], charts[span_mask])
         loss = span_loss + label_loss

@@ -108,16 +108,17 @@ class BruteForceDependency2oCRF(BruteForceStructuredDistribution):
 
 class BruteForceConstituencyCRF(BruteForceStructuredDistribution):
 
-    def __init__(self, scores, lens=None):
+    def __init__(self, scores, lens=None, label=False):
         super().__init__(scores)
 
         batch_size, seq_len = scores.shape[:2]
         self.lens = scores.new_full((batch_size,), seq_len-1).long() if lens is None else lens
         self.mask = (self.lens.unsqueeze(-1) + 1).gt(self.lens.new_tensor(range(seq_len)))
         self.mask = self.mask.unsqueeze(1) & scores.new_ones(scores.shape[:3]).bool().triu_(1)
+        self.label = label
 
     def enumerate(self, semiring):
-        scores = self.scores.unsqueeze(-1)
+        scores = self.scores if self.label else self.scores.unsqueeze(-1)
 
         def enumerate(s, i, j):
             if i + 1 == j:
@@ -183,7 +184,7 @@ class BruteForceSemiMarkovCRF(BruteForceStructuredDistribution):
 def test_struct():
     torch.manual_seed(1)
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    batch_size, seq_len, n_tags, k = 2, 6, 4, 3
+    batch_size, seq_len, n_tags, k = 2, 6, 3, 3
     lens = torch.randint(3, seq_len-1, (batch_size,)).to(device)
 
     def enumerate():
@@ -201,10 +202,10 @@ def test_struct():
                BruteForceDependency2oCRF(s1, lens), BruteForceDependency2oCRF(s2, lens))
         yield (Dependency2oCRF(s1, lens, multiroot=True), Dependency2oCRF(s2, lens, multiroot=True),
                BruteForceDependency2oCRF(s1, lens, multiroot=True), BruteForceDependency2oCRF(s2, lens, multiroot=True))
-        s1 = torch.randn(batch_size, seq_len, seq_len).to(device)
-        s2 = torch.randn(batch_size, seq_len, seq_len).to(device)
-        yield (ConstituencyCRF(s1, lens), ConstituencyCRF(s2, lens),
-               BruteForceConstituencyCRF(s1, lens), BruteForceConstituencyCRF(s2, lens))
+        s1 = torch.randn(batch_size, seq_len, seq_len, n_tags).to(device)
+        s2 = torch.randn(batch_size, seq_len, seq_len, n_tags).to(device)
+        yield (ConstituencyCRF(s1, lens, True), ConstituencyCRF(s2, lens, True),
+               BruteForceConstituencyCRF(s1, lens, True), BruteForceConstituencyCRF(s2, lens, True))
         s1 = torch.randn(batch_size, seq_len, n_tags).to(device)
         s2 = torch.randn(batch_size, seq_len, n_tags).to(device)
         t1 = torch.randn(n_tags+1, n_tags+1).to(device)
