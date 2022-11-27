@@ -33,6 +33,8 @@ class Biaffine(nn.Module):
             If ``True``, adds a bias term for tensor :math:`x`. Default: ``True``.
         bias_y (bool):
             If ``True``, adds a bias term for tensor :math:`y`. Default: ``True``.
+        decompose (bool):
+            If ``True``, represents the weight as the product of 2 independent matrices. Default: ``False``.
         init (Callable):
             Callable initialization method. Default: `nn.init.zeros_`.
     """
@@ -46,6 +48,7 @@ class Biaffine(nn.Module):
         scale: int = 0,
         bias_x: bool = True,
         bias_y: bool = True,
+        decompose: bool = False,
         init: Callable = nn.init.zeros_
     ) -> Biaffine:
         super().__init__()
@@ -57,12 +60,17 @@ class Biaffine(nn.Module):
         self.scale = scale
         self.bias_x = bias_x
         self.bias_y = bias_y
+        self.decompose = decompose
         self.init = init
 
         if n_proj is not None:
             self.mlp_x, self.mlp_y = MLP(n_in, n_proj, dropout), MLP(n_in, n_proj, dropout)
         self.n_model = n_proj or n_in
-        self.weight = nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x, self.n_model + bias_y))
+        if not decompose:
+            self.weight = nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x, self.n_model + bias_y))
+        else:
+            self.weight = nn.ParameterList((nn.Parameter(torch.Tensor(n_out, self.n_model + bias_x)),
+                                            nn.Parameter(torch.Tensor(n_out, self.n_model + bias_y))))
 
         self.reset_parameters()
 
@@ -80,11 +88,16 @@ class Biaffine(nn.Module):
             s += f", bias_x={self.bias_x}"
         if self.bias_y:
             s += f", bias_y={self.bias_y}"
-
+        if self.decompose:
+            s += f", decompose={self.decompose}"
         return f"{self.__class__.__name__}({s})"
 
     def reset_parameters(self):
-        self.init(self.weight)
+        if self.decompose:
+            for i in self.weight:
+                self.init(i)
+        else:
+            self.init(self.weight)
 
     def forward(
         self,
@@ -109,11 +122,13 @@ class Biaffine(nn.Module):
         if self.bias_y:
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
         # [batch_size, n_out, seq_len, seq_len]
-        s = torch.einsum('bxi,oij,byj->boxy', x, self.weight, y)
-        # remove dim 1 if n_out == 1
-        s = s.squeeze(1) / self.n_in ** self.scale
-
-        return s
+        if self.decompose:
+            wx = torch.einsum('bxi,oi->box', x, self.weight[0])
+            wy = torch.einsum('byj,oj->boy', y, self.weight[1])
+            s = torch.einsum('box,boy->boxy', wx, wy)
+        else:
+            s = torch.einsum('bxi,oij,byj->boxy', x, self.weight, y)
+        return s.squeeze(1) / self.n_in ** self.scale
 
 
 class Triaffine(nn.Module):
@@ -200,7 +215,6 @@ class Triaffine(nn.Module):
             s += f", bias_y={self.bias_y}"
         if self.decompose:
             s += f", decompose={self.decompose}"
-
         return f"{self.__class__.__name__}({s})"
 
     def reset_parameters(self):
@@ -234,17 +248,13 @@ class Triaffine(nn.Module):
             x = torch.cat((x, torch.ones_like(x[..., :1])), -1)
         if self.bias_y:
             y = torch.cat((y, torch.ones_like(y[..., :1])), -1)
+        # [batch_size, n_out, seq_len, seq_len, seq_len]
         if self.decompose:
             wx = torch.einsum('bxi,oi->box', x, self.weight[0])
             wz = torch.einsum('bzk,ok->boz', z, self.weight[1])
             wy = torch.einsum('byj,oj->boy', y, self.weight[2])
-            # [batch_size, n_out, seq_len, seq_len, seq_len]
             s = torch.einsum('box,boz,boy->bozxy', wx, wz, wy)
         else:
             w = torch.einsum('bzk,oikj->bozij', z, self.weight)
-            # [batch_size, n_out, seq_len, seq_len, seq_len]
             s = torch.einsum('bxi,bozij,byj->bozxy', x, w, y)
-        # remove dim 1 if n_out == 1
-        s = s.squeeze(1) / self.n_in ** self.scale
-
-        return s
+        return s.squeeze(1) / self.n_in ** self.scale
