@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
@@ -33,6 +33,8 @@ class Biaffine(nn.Module):
             If ``True``, adds a bias term for tensor :math:`x`. Default: ``True``.
         bias_y (bool):
             If ``True``, adds a bias term for tensor :math:`y`. Default: ``True``.
+        init (Callable):
+            Callable initialization method. Default: `nn.init.zeros_`.
     """
 
     def __init__(
@@ -43,7 +45,8 @@ class Biaffine(nn.Module):
         dropout: Optional[float] = 0,
         scale: int = 0,
         bias_x: bool = True,
-        bias_y: bool = True
+        bias_y: bool = True,
+        init: Callable = nn.init.zeros_
     ) -> Biaffine:
         super().__init__()
 
@@ -54,6 +57,7 @@ class Biaffine(nn.Module):
         self.scale = scale
         self.bias_x = bias_x
         self.bias_y = bias_y
+        self.init = init
 
         if n_proj is not None:
             self.mlp_x, self.mlp_y = MLP(n_in, n_proj, dropout), MLP(n_in, n_proj, dropout)
@@ -80,7 +84,7 @@ class Biaffine(nn.Module):
         return f"{self.__class__.__name__}({s})"
 
     def reset_parameters(self):
-        nn.init.zeros_(self.weight)
+        self.init(self.weight)
 
     def forward(
         self,
@@ -138,6 +142,8 @@ class Triaffine(nn.Module):
             If ``True``, adds a bias term for tensor :math:`y`. Default: ``False``.
         decompose (bool):
             If ``True``, represents the weight as the product of 3 independent matrices. Default: ``False``.
+        init (Callable):
+            Callable initialization method. Default: `nn.init.zeros_`.
     """
 
     def __init__(
@@ -149,7 +155,8 @@ class Triaffine(nn.Module):
         scale: int = 0,
         bias_x: bool = False,
         bias_y: bool = False,
-        decompose: bool = False
+        decompose: bool = False,
+        init: Callable = nn.init.zeros_
     ) -> Triaffine:
         super().__init__()
 
@@ -161,6 +168,7 @@ class Triaffine(nn.Module):
         self.bias_x = bias_x
         self.bias_y = bias_y
         self.decompose = decompose
+        self.init = init
 
         if n_proj is not None:
             self.mlp_x = MLP(n_in, n_proj, dropout)
@@ -198,9 +206,9 @@ class Triaffine(nn.Module):
     def reset_parameters(self):
         if self.decompose:
             for i in self.weight:
-                nn.init.zeros_(i)
+                self.init(i)
         else:
-            nn.init.zeros_(self.weight)
+            self.init(self.weight)
 
     def forward(
         self,
