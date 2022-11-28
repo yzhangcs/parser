@@ -342,7 +342,7 @@ class SampledLogsumexp(Function):
     @torch.cuda.amp.custom_bwd
     def backward(ctx, g: torch.Tensor) -> Union[torch.Tensor, None]:
         from torch.distributions import OneHotCategorical
-        x, dim = ctx.saved_tensors, ctx.dim
+        (x, ), dim = ctx.saved_tensors, ctx.dim
         return g.unsqueeze(dim).mul(OneHotCategorical(logits=x.movedim(dim, -1)).sample().movedim(-1, dim)), None
 
 
