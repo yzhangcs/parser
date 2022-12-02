@@ -126,9 +126,10 @@ class Parser(object):
 
         self.transform.train()
         batch_size = batch_size // update_steps
+        eval_batch_size = args.get('eval_batch_size', batch_size)
         if is_dist():
             batch_size = batch_size // dist.get_world_size()
-        eval_batch_size = args.get('eval_batch_size', batch_size)
+            eval_batch_size = eval_batch_size // dist.get_world_size()
         logger.info("Loading the data")
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
@@ -289,6 +290,8 @@ class Parser(object):
         logger.info("Loading the data")
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
+        if is_dist():
+            batch_size = batch_size // dist.get_world_size()
         data = Dataset(self.transform, **args)
         data.build(batch_size, buckets, False, is_dist(), workers)
         logger.info(f"\n{data}")
@@ -357,6 +360,8 @@ class Parser(object):
         logger.info("Loading the data")
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
+        if is_dist():
+            batch_size = batch_size // dist.get_world_size()
         data = Dataset(self.transform, **args)
         data.build(batch_size, buckets, False, is_dist(), workers)
         logger.info(f"\n{data}")
