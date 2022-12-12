@@ -300,7 +300,11 @@ class Parser(object):
         start = datetime.now()
         self.model.eval()
         with self.join():
-            metric = self.reduce(sum([self.eval_step(i) for i in progress_bar(data.loader)], Metric()))
+            bar, metric = progress_bar(data.loader), Metric()
+            for batch in bar:
+                metric += self.eval_step(batch)
+                bar.set_postfix_str(metric)
+            metric = self.reduce(metric)
         elapsed = datetime.now() - start
         logger.info(f"{metric}")
         logger.info(f"{elapsed}s elapsed, {len(data)/elapsed.total_seconds():.2f} Sents/s")
