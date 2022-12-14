@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import itertools
 from functools import reduce
 from typing import Iterable
 
 import torch
-from supar.utils.common import MIN
 from supar.structs.fn import sampled_logsumexp, sparsemax
+from supar.utils.common import MIN
 
 
 class Semiring(object):
@@ -22,24 +23,32 @@ class Semiring(object):
     one = 1
 
     @classmethod
-    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return x.sum(dim)
-
-    @classmethod
     def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return cls.sum(torch.stack((x, y)), 0)
+        return x + y
 
     @classmethod
     def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x * y
 
     @classmethod
-    def dot(cls, x: torch.Tensor, y: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return cls.sum(cls.mul(x, y), dim)
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.sum(dim)
 
     @classmethod
     def prod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.prod(dim)
+
+    @classmethod
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.cumsum(dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.cumprod(dim)
+
+    @classmethod
+    def dot(cls, x: torch.Tensor, y: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return cls.sum(cls.mul(x, y), dim)
 
     @classmethod
     def times(cls, *x: Iterable[torch.Tensor]) -> torch.Tensor:
@@ -95,16 +104,28 @@ class LogSemiring(Semiring):
     one = 0
 
     @classmethod
-    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        return x.logsumexp(dim)
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return x.logaddexp(y)
 
     @classmethod
     def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return x + y
 
     @classmethod
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.logsumexp(dim)
+
+    @classmethod
     def prod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.sum(dim)
+
+    @classmethod
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.logcumsumexp(dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.cumsum(dim)
 
 
 class MaxSemiring(LogSemiring):
@@ -113,8 +134,16 @@ class MaxSemiring(LogSemiring):
     """
 
     @classmethod
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return x.max(y)
+
+    @classmethod
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return x.max(dim)[0]
+
+    @classmethod
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.cummax(dim)
 
 
 def KMaxSemiring(k):
@@ -125,22 +154,34 @@ def KMaxSemiring(k):
     class KMaxSemiring(LogSemiring):
 
         @classmethod
-        def convert(cls, x: torch.Tensor) -> torch.Tensor:
-            return torch.cat((x.unsqueeze(-1), cls.zero_(x.new_empty(*x.shape, k - 1))), -1)
-
-        @classmethod
-        def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-            return x.movedim(dim, -1).flatten(-2).topk(k, -1)[0]
+        def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+            return x.unsqueeze(-1).max(y.unsqueeze(-2)).flatten(-2).topk(k, -1)[0]
 
         @classmethod
         def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
             return (x.unsqueeze(-1) + y.unsqueeze(-2)).flatten(-2).topk(k, -1)[0]
 
         @classmethod
+        def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+            return x.movedim(dim, -1).flatten(-2).topk(k, -1)[0]
+
+        @classmethod
+        def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+            return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+        @classmethod
+        def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+            return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+
+        @classmethod
         def one_(cls, x: torch.Tensor) -> torch.Tensor:
             x[..., :1].fill_(cls.one)
             x[..., 1:].fill_(cls.zero)
             return x
+
+        @classmethod
+        def convert(cls, x: torch.Tensor) -> torch.Tensor:
+            return torch.cat((x.unsqueeze(-1), cls.zero_(x.new_empty(*x.shape, k - 1))), -1)
 
     return KMaxSemiring
 
@@ -153,12 +194,8 @@ class EntropySemiring(LogSemiring):
     """
 
     @classmethod
-    def convert(cls, x: torch.Tensor) -> torch.Tensor:
-        return torch.stack((x, cls.ones_like(x)), -1)
-
-    @classmethod
-    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
-        return x[..., -1]
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return cls.sum(torch.stack((x, y)), 0)
 
     @classmethod
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
@@ -168,8 +205,12 @@ class EntropySemiring(LogSemiring):
         return torch.stack((p, r), -1)
 
     @classmethod
-    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return x + y
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -180,6 +221,14 @@ class EntropySemiring(LogSemiring):
     @classmethod
     def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
+
+    @classmethod
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
+        return torch.stack((x, cls.ones_like(x)), -1)
+
+    @classmethod
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
+        return x[..., -1]
 
 
 class CrossEntropySemiring(LogSemiring):
@@ -190,12 +239,8 @@ class CrossEntropySemiring(LogSemiring):
     """
 
     @classmethod
-    def convert(cls, x: torch.Tensor) -> torch.Tensor:
-        return torch.cat((x, cls.one_(torch.empty_like(x[..., :1]))), -1)
-
-    @classmethod
-    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
-        return x[..., -1]
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return cls.sum(torch.stack((x, y)), 0)
 
     @classmethod
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
@@ -205,8 +250,12 @@ class CrossEntropySemiring(LogSemiring):
         return torch.cat((p, r.unsqueeze(-1)), -1)
 
     @classmethod
-    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return x + y
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -217,6 +266,14 @@ class CrossEntropySemiring(LogSemiring):
     @classmethod
     def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
+
+    @classmethod
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
+        return torch.cat((x, cls.one_(torch.empty_like(x[..., :1]))), -1)
+
+    @classmethod
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
+        return x[..., -1]
 
 
 class KLDivergenceSemiring(LogSemiring):
@@ -227,12 +284,8 @@ class KLDivergenceSemiring(LogSemiring):
     """
 
     @classmethod
-    def convert(cls, x: torch.Tensor) -> torch.Tensor:
-        return torch.cat((x, cls.one_(torch.empty_like(x[..., :1]))), -1)
-
-    @classmethod
-    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
-        return x[..., -1]
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return cls.sum(torch.stack((x, y)), 0)
 
     @classmethod
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
@@ -242,8 +295,12 @@ class KLDivergenceSemiring(LogSemiring):
         return torch.cat((p, r.unsqueeze(-1)), -1)
 
     @classmethod
-    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return x + y
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
@@ -255,6 +312,14 @@ class KLDivergenceSemiring(LogSemiring):
     def one_(cls, x: torch.Tensor) -> torch.Tensor:
         return x.fill_(cls.one)
 
+    @classmethod
+    def convert(cls, x: torch.Tensor) -> torch.Tensor:
+        return torch.cat((x, cls.one_(torch.empty_like(x[..., :1]))), -1)
+
+    @classmethod
+    def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
+        return x[..., -1]
+
 
 class SampledSemiring(LogSemiring):
     r"""
@@ -263,8 +328,20 @@ class SampledSemiring(LogSemiring):
     """
 
     @classmethod
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return cls.sum(torch.stack((x, y)), 0)
+
+    @classmethod
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         return sampled_logsumexp(x, dim)
+
+    @classmethod
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
 
 
 class SparsemaxSemiring(LogSemiring):
@@ -273,7 +350,19 @@ class SparsemaxSemiring(LogSemiring):
     :cite:`martins-etal-2016-sparsemax,mensch-etal-2018-dp,correia-etal-2020-efficient`.
     """
 
+    @classmethod
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return cls.sum(torch.stack((x, y)), 0)
+
     @staticmethod
     def sum(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         p = sparsemax(x, dim)
         return x.mul(p).sum(dim) - p.norm(p=2, dim=dim)
+
+    @classmethod
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
