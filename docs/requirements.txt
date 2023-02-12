@@ -3,3 +3,4 @@ sphinx-astrorefs
 sphinx-book-theme
 sphinxcontrib-bibtex
 myst-parser
+Jinja2<3.1
