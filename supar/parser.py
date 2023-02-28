@@ -378,7 +378,7 @@ class Parser(object):
             # so the order of the yielded sentences can't be guaranteed
             for batch in progress_bar(data.loader):
                 batch = self.pred_step(batch)
-                if args.cache:
+                if is_dist() or args.cache:
                     for s in batch.sentences:
                         with open(os.path.join(t, f"{s.index}"), 'w') as f:
                             f.write(str(s) + '\n')
@@ -386,13 +386,12 @@ class Parser(object):
 
             if is_dist():
                 dist.barrier()
-            if args.cache:
-                tdirs = gather(t) if is_dist() else (t,)
+            tdirs = gather(t) if is_dist() else (t,)
             if pred is not None and is_master():
                 logger.info(f"Saving predicted results to {pred}")
                 with open(pred, 'w') as f:
                     # merge all predictions into one single file
-                    if args.cache:
+                    if is_dist() or args.cache:
                         sentences = (os.path.join(i, s) for i in tdirs for s in os.listdir(i))
                         for i in progress_bar(sorted(sentences, key=lambda x: int(os.path.basename(x)))):
                             with open(i) as s:
