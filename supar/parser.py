@@ -174,7 +174,9 @@ class Parser(object):
                 from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
                 self.model.register_comm_hook(dist.group.WORLD, fp16_compress_hook)
 
-        self.step, self.epoch, self.best_e, self.patience, self.n_batches = 1, 1, 1, patience, len(loader)
+        self.step, self.epoch, self.best_e, self.patience = 1, 1, 1, patience
+        # uneven batches are excluded
+        self.n_batches = min(gather(len(loader))) if is_dist() else len(loader)
         self.total_steps = self.n_batches * epochs // args.update_steps
         self.best_metric, self.elapsed = Metric(), timedelta()
         if self.args.checkpoint:
@@ -196,8 +198,8 @@ class Parser(object):
             logger.info(f"Epoch {epoch} / {args.epochs}:")
             self.model.train()
             with self.join():
-                # we should zero `step` as the number of batches in different processes is not necessarily equal
-                self.step = 0
+                # we should reset `step` as the number of batches in different processes is not necessarily equal
+                self.step = 1
                 for batch in bar:
                     with self.sync():
                         with torch.autocast(self.device, enabled=self.args.amp):
