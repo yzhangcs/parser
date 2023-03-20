@@ -230,11 +230,11 @@ class Sampler(torch.utils.data.Sampler):
         # number of batches in each bucket, clipped by range [1, len(bucket)]
         self.n_batches = [min(len(bucket), max(round(size * len(bucket) / batch_size), 1))
                           for size, bucket in zip(self.sizes, self.buckets)]
-        self.rank, self.n_replicas, self.n_samples = 0, 1, sum(self.n_batches)
+        self.rank, self.n_replicas, self.n_samples = 0, 1, self.n_total_samples
         if distributed:
             self.rank = dist.get_rank()
             self.n_replicas = dist.get_world_size()
-            self.n_samples = sum(self.n_batches) // self.n_replicas + int(self.rank < sum(self.n_batches) % self.n_replicas)
+            self.n_samples = self.n_total_samples // self.n_replicas + int(self.rank < self.n_total_samples % self.n_replicas)
         self.epoch = 1
 
     def __iter__(self):
@@ -256,6 +256,10 @@ class Sampler(torch.utils.data.Sampler):
 
     def __len__(self):
         return self.n_samples
+
+    @property
+    def n_total_samples(self):
+        return sum(self.n_batches)
 
     def set_epoch(self, epoch: int) -> None:
         self.epoch = epoch
