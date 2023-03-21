@@ -309,7 +309,9 @@ class Parser(object):
             metric = self.reduce(metric)
         elapsed = datetime.now() - start
         logger.info(f"{metric}")
-        logger.info(f"{elapsed}s elapsed, {len(data)/elapsed.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, "
+                    f"{sum(data.sizes)/elapsed.total_seconds():.2f} Tokens/s, "
+                    f"{len(data)/elapsed.total_seconds():.2f} Sents/s")
 
         return metric
 
@@ -405,7 +407,9 @@ class Parser(object):
             # exit util all files have been merged
             if is_dist():
                 dist.barrier()
-        logger.info(f"{elapsed}s elapsed, {len(data) / elapsed.total_seconds():.2f} Sents/s")
+        logger.info(f"{elapsed}s elapsed, "
+                    f"{sum(data.sizes)/elapsed.total_seconds():.2f} Tokens/s, "
+                    f"{len(data)/elapsed.total_seconds():.2f} Sents/s")
 
         if not cache:
             return data
