@@ -16,8 +16,8 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 from torch.cuda.amp import GradScaler
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim import Adam, Optimizer
+from torch.optim.lr_scheduler import ExponentialLR, _LRScheduler
 
 import supar
 from supar.utils import Config, Dataset
@@ -143,30 +143,14 @@ class Parser(object):
             logger.info(f"{'dev:':6} {dev}")
             logger.info(f"{'test:':6} {test}\n")
         loader, sampler = train.loader, train.loader.batch_sampler
+        args.steps = len(loader) * epochs // args.update_steps
 
-        if args.encoder == 'lstm':
-            self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
-            self.scheduler = ExponentialLR(self.optimizer, args.decay**(1/args.decay_steps))
-        elif args.encoder == 'transformer':
-            self.optimizer = Adam(self.model.parameters(), args.lr, (args.mu, args.nu), args.eps, args.weight_decay)
-            self.scheduler = InverseSquareRootLR(self.optimizer, args.warmup_steps)
-        else:
-            # we found that Huggingface's AdamW is more robust and empirically better than the native implementation
-            from transformers import AdamW
-            steps = len(train.loader) * epochs // args.update_steps
-            self.optimizer = AdamW(
-                [{'params': p, 'lr': args.lr * (1 if n.startswith('encoder') else args.lr_rate)}
-                 for n, p in self.model.named_parameters()],
-                args.lr,
-                (args.mu, args.nu),
-                args.eps,
-                args.weight_decay
-            )
-            self.scheduler = LinearLR(self.optimizer, int(steps*args.warmup), steps)
+        self.optimizer = self.init_optimizer()
+        self.scheduler = self.init_scheduler()
         self.scaler = GradScaler(enabled=args.amp)
 
         if dist.is_initialized():
-            self.model = DDP(self.model,
+            self.model = DDP(module=self.model,
                              device_ids=[args.local_rank],
                              find_unused_parameters=args.get('find_unused_parameters', True),
                              static_graph=args.get('static_graph', False))
@@ -177,7 +161,6 @@ class Parser(object):
         self.step, self.epoch, self.best_e, self.patience = 1, 1, 1, patience
         # uneven batches are excluded
         self.n_batches = min(gather(len(loader))) if is_dist() else len(loader)
-        self.total_steps = self.n_batches * epochs // args.update_steps
         self.best_metric, self.elapsed = Metric(), timedelta()
         if self.args.checkpoint:
             try:
@@ -453,6 +436,37 @@ class Parser(object):
     @torch.no_grad()
     def pred_step(self, batch: Batch) -> Batch:
         ...
+
+    def init_optimizer(self) -> Optimizer:
+        if self.args.encoder in ('lstm', 'transformer'):
+            optimizer = Adam(params=self.model.parameters(),
+                             lr=self.args.lr,
+                             betas=(self.args.get('mu', 0.9), self.args.get('nu', 0.999)),
+                             eps=self.args.get('eps', 1e-8),
+                             weight_decay=self.args.get('weight_decay', 0))
+        else:
+            # we found that Huggingface's AdamW is more robust and empirically better than the native implementation
+            from transformers import AdamW
+            optimizer = AdamW(params=[{'params': p, 'lr': self.args.lr * (1 if n.startswith('encoder') else self.args.lr_rate)}
+                                      for n, p in self.model.named_parameters()],
+                              lr=self.args.lr,
+                              betas=(self.args.get('mu', 0.9), self.args.get('nu', 0.999)),
+                              eps=self.args.get('eps', 1e-8),
+                              weight_decay=self.args.get('weight_decay', 0))
+        return optimizer
+
+    def init_scheduler(self) -> _LRScheduler:
+        if self.args.encoder == 'lstm':
+            scheduler = ExponentialLR(optimizer=self.optimizer,
+                                      gamma=self.args.decay**(1/self.args.decay_steps))
+        elif self.args.encoder == 'transformer':
+            scheduler = InverseSquareRootLR(optimizer=self.optimizer,
+                                            warmup_steps=self.args.warmup_steps)
+        else:
+            scheduler = LinearLR(optimizer=self.optimizer,
+                                 warmup_steps=self.args.get('warmup_steps', int(self.args.steps*self.args.get('warmup', 0))),
+                                 steps=self.args.steps)
+        return scheduler
 
     @classmethod
     def build(cls, path, **kwargs):
