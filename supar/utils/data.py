@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import os
 import queue
 import shutil
@@ -91,7 +92,7 @@ class Dataset(torch.utils.data.Dataset):
                     self.sentences = debinarize(self.fbin, meta=True)['sentences']
                 except Exception:
                     raise RuntimeError(f"Error found while debinarizing {self.fbin}, which may have been corrupted. "
-                                       "Try re-binarizing it first")
+                                       "Try re-binarizing it first!")
         else:
             self.sentences = list(transform.load(data, **kwargs))
 
@@ -146,6 +147,7 @@ class Dataset(torch.utils.data.Dataset):
         n_buckets: int = 1,
         shuffle: bool = False,
         distributed: bool = False,
+        even: bool = True,
         n_workers: int = 0,
         pin_memory: bool = True,
         chunk_size: int = 1000,
@@ -192,7 +194,7 @@ class Dataset(torch.utils.data.Dataset):
         self.buckets = dict(zip(*kmeans(self.sizes, n_buckets)))
         self.loader = DataLoader(transform=self.transform,
                                  dataset=self,
-                                 batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed),
+                                 batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed, even),
                                  num_workers=n_workers,
                                  collate_fn=collate_fn,
                                  pin_memory=pin_memory)
@@ -215,6 +217,9 @@ class Sampler(torch.utils.data.Sampler):
             If ``True``, the sampler will be used in conjunction with :class:`torch.nn.parallel.DistributedDataParallel`
             that restricts data loading to a subset of the dataset.
             Default: ``False``.
+        even (bool):
+            If ``True``, the sampler will add extra indices to make the data evenly divisible across the replicas.
+            Default: ``True``.
     """
 
     def __init__(
@@ -222,10 +227,13 @@ class Sampler(torch.utils.data.Sampler):
         buckets: Dict[float, List],
         batch_size: int,
         shuffle: bool = False,
-        distributed: bool = False
+        distributed: bool = False,
+        even: bool = True
     ) -> Sampler:
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.distributed = distributed
+        self.even = even
         self.sizes, self.buckets = zip(*[(size, bucket) for size, bucket in buckets.items()])
         # number of batches in each bucket, clipped by range [1, len(bucket)]
         self.n_batches = [min(len(bucket), max(round(size * len(bucket) / batch_size), 1))
@@ -234,25 +242,30 @@ class Sampler(torch.utils.data.Sampler):
         if distributed:
             self.rank = dist.get_rank()
             self.n_replicas = dist.get_world_size()
-            self.n_samples = self.n_total_samples // self.n_replicas + int(self.rank < self.n_total_samples % self.n_replicas)
+            self.n_samples = self.n_total_samples // self.n_replicas
+            if self.n_total_samples % self.n_replicas != 0:
+                self.n_samples += 1 if even else int(self.rank < self.n_total_samples % self.n_replicas)
         self.epoch = 1
 
     def __iter__(self):
         g = torch.Generator()
         g.manual_seed(self.epoch)
+        self.epoch += 1
+
         total, batches = 0, []
         # if `shuffle=True`, shuffle both the buckets and samples in each bucket
         # for distributed training, make sure each process generates the same random sequence at each epoch
         range_fn = torch.arange if not self.shuffle else lambda x: torch.randperm(x, generator=g)
-        for i, bucket in enumerate(self.buckets):
+        for i in itertools.cycle(range(len(self.buckets))):
+            bucket = self.buckets[i]
             split_sizes = [(len(bucket) - j - 1) // self.n_batches[i] + 1 for j in range(self.n_batches[i])]
             # DON'T use `torch.chunk` which may return wrong number of batches
             for batch in range_fn(len(bucket)).split(split_sizes):
                 if total % self.n_replicas == self.rank:
                     batches.append([bucket[j] for j in batch.tolist()])
+                if len(batches) == self.n_samples:
+                    return iter(batches[i] for i in range_fn(self.n_samples).tolist())
                 total += 1
-        self.epoch += 1
-        return iter(batches[i] for i in range_fn(len(batches)).tolist())
 
     def __len__(self):
         return self.n_samples

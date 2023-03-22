@@ -133,13 +133,29 @@ class Parser(object):
         logger.info("Loading the data")
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
-        train = Dataset(self.transform, args.train, **args).build(batch_size, buckets, True, is_dist(), workers)
-        dev = Dataset(self.transform, args.dev, **args).build(eval_batch_size, buckets, False, is_dist(), workers)
+        args.even = args.get('even', is_dist())
+        train = Dataset(self.transform, args.train, **args).build(batch_size=batch_size,
+                                                                  n_buckets=buckets,
+                                                                  shuffle=True,
+                                                                  distributed=is_dist(),
+                                                                  even=args.even,
+                                                                  n_workers=workers)
+        dev = Dataset(self.transform, args.dev, **args).build(batch_size=eval_batch_size,
+                                                              n_buckets=buckets,
+                                                              shuffle=False,
+                                                              distributed=is_dist(),
+                                                              even=False,
+                                                              n_workers=workers)
         logger.info(f"{'train:':6} {train}")
         if not args.test:
             logger.info(f"{'dev:':6} {dev}\n")
         else:
-            test = Dataset(self.transform, args.test, **args).build(eval_batch_size, buckets, False, is_dist(), workers)
+            test = Dataset(self.transform, args.test, **args).build(batch_size=eval_batch_size,
+                                                                    n_buckets=buckets,
+                                                                    shuffle=False,
+                                                                    distributed=is_dist(),
+                                                                    even=False,
+                                                                    n_workers=workers)
             logger.info(f"{'dev:':6} {dev}")
             logger.info(f"{'test:':6} {test}\n")
         loader, sampler = train.loader, train.loader.batch_sampler
@@ -278,7 +294,12 @@ class Parser(object):
         if is_dist():
             batch_size = batch_size // dist.get_world_size()
         data = Dataset(self.transform, **args)
-        data.build(batch_size, buckets, False, is_dist(), workers)
+        data.build(batch_size=batch_size,
+                   n_buckets=buckets,
+                   shuffle=False,
+                   distributed=is_dist(),
+                   even=False,
+                   n_workers=workers)
         logger.info(f"\n{data}")
 
         logger.info("Evaluating the data")
@@ -355,7 +376,12 @@ class Parser(object):
         if is_dist():
             batch_size = batch_size // dist.get_world_size()
         data = Dataset(self.transform, **args)
-        data.build(batch_size, buckets, False, is_dist(), workers)
+        data.build(batch_size=batch_size,
+                   n_buckets=buckets,
+                   shuffle=False,
+                   distributed=is_dist(),
+                   even=False,
+                   n_workers=workers)
         logger.info(f"\n{data}")
 
         logger.info("Making predictions on the data")
