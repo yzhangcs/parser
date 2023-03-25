@@ -160,6 +160,7 @@ class Parser(object):
             logger.info(f"{'test:':6} {test}\n")
         loader, sampler = train.loader, train.loader.batch_sampler
         args.steps = len(loader) * epochs // args.update_steps
+        args.save(f"{args.path}.yaml")
 
         self.optimizer = self.init_optimizer()
         self.scheduler = self.init_scheduler()
@@ -178,7 +179,7 @@ class Parser(object):
         # uneven batches are excluded
         self.n_batches = min(gather(len(loader))) if is_dist() else len(loader)
         self.best_metric, self.elapsed = Metric(), timedelta()
-        if self.args.checkpoint:
+        if args.checkpoint:
             try:
                 self.optimizer.load_state_dict(self.checkpoint_state_dict.pop('optimizer_state_dict'))
                 self.scheduler.load_state_dict(self.checkpoint_state_dict.pop('scheduler_state_dict'))
@@ -201,11 +202,11 @@ class Parser(object):
                 self.step = 1
                 for batch in bar:
                     with self.sync():
-                        with torch.autocast(self.device, enabled=self.args.amp):
+                        with torch.autocast(self.device, enabled=args.amp):
                             loss = self.train_step(batch)
                         self.backward(loss)
                     if self.sync_grad:
-                        self.clip_grad_norm_(self.model.parameters(), self.args.clip)
+                        self.clip_grad_norm_(self.model.parameters(), args.clip)
                         self.scaler.step(self.optimizer)
                         self.scaler.update()
                         self.scheduler.step()
@@ -214,7 +215,7 @@ class Parser(object):
                     self.step += 1
                 logger.info(f"{bar.postfix}")
             self.model.eval()
-            with self.join(), torch.autocast(self.device, enabled=self.args.amp):
+            with self.join(), torch.autocast(self.device, enabled=args.amp):
                 metric = self.reduce(sum([self.eval_step(i) for i in progress_bar(dev.loader)], Metric()))
                 logger.info(f"{'dev:':5} {metric}")
                 if args.test:
