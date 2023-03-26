@@ -20,6 +20,7 @@ def init(parser):
     parser.add_argument('--cache', action='store_true', help='cache the data for fast loading')
     parser.add_argument('--binarize', action='store_true', help='binarize the data first')
     parser.add_argument('--amp', action='store_true', help='use automatic mixed precision for parsing')
+    parser.add_argument('--dist', choices=['ddp', 'fsdp'], default='ddp', help='distributed training types')
     args, unknown = parser.parse_known_args()
     args, unknown = parser.parse_known_args(unknown, args)
     args = Config.load(**vars(args), unknown=unknown)
@@ -48,6 +49,7 @@ def parse(local_rank, args):
     logger.info('\n' + str(args))
 
     args.local_rank = local_rank
+    os.environ['RANK'] = os.environ['LOCAL_RANK'] = f'{local_rank}'
     if args.mode == 'train':
         parser = Parser.load(**args) if args.checkpoint else Parser.build(**args)
         parser.train(**args)
