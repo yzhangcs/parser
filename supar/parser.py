@@ -174,7 +174,13 @@ class Parser(object):
             if args.amp:
                 from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
                 self.model.register_comm_hook(dist.group.WORLD, fp16_compress_hook)
-
+        if args.wandb and is_master():
+            import wandb
+            # start a new wandb run to track this script
+            wandb.init(config={**args},
+                       project=args.get('project', self.NAME),
+                       name=args.get('name', args.path),
+                       resume=self.args.checkpoint)
         self.step, self.epoch, self.best_e, self.patience = 1, 1, 1, patience
         # uneven batches are excluded
         self.n_batches = min(gather(len(loader))) if is_dist() else len(loader)
@@ -212,15 +218,22 @@ class Parser(object):
                         self.scheduler.step()
                         self.optimizer.zero_grad(True)
                     bar.set_postfix_str(f"lr: {self.scheduler.get_last_lr()[0]:.4e} - loss: {loss:.4f}")
+                    # log metrics to wandb
+                    if args.wandb and is_master():
+                        wandb.log({'lr': self.scheduler.get_last_lr()[0], 'loss': loss})
                     self.step += 1
                 logger.info(f"{bar.postfix}")
             self.model.eval()
             with self.join(), torch.autocast(self.device, enabled=args.amp):
                 metric = self.reduce(sum([self.eval_step(i) for i in progress_bar(dev.loader)], Metric()))
                 logger.info(f"{'dev:':5} {metric}")
+                if args.wandb and is_master():
+                    wandb.log({'dev': metric.values})
                 if args.test:
                     test_metric = sum([self.eval_step(i) for i in progress_bar(test.loader)], Metric())
                     logger.info(f"{'test:':5} {self.reduce(test_metric)}")
+                    if args.wandb and is_master():
+                        wandb.log({'test': test_metric.values})
 
             t = datetime.now() - start
             self.epoch += 1
@@ -252,6 +265,8 @@ class Parser(object):
                 test_metric = sum([best.eval_step(i) for i in progress_bar(test.loader)], Metric())
                 logger.info(f"{'test:':5} {best.reduce(test_metric)}")
         logger.info(f"{self.elapsed}s elapsed, {self.elapsed / epoch}s/epoch")
+        if args.wandb and is_master():
+            wandb.finish()
 
     def evaluate(
         self,

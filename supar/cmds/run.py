@@ -21,6 +21,7 @@ def init(parser):
     parser.add_argument('--binarize', action='store_true', help='binarize the data first')
     parser.add_argument('--amp', action='store_true', help='use automatic mixed precision for parsing')
     parser.add_argument('--dist', choices=['ddp', 'fsdp'], default='ddp', help='distributed training types')
+    parser.add_argument('--wandb', action='store_true', help='wandb for tracking experiments')
     args, unknown = parser.parse_known_args()
     args, unknown = parser.parse_known_args(unknown, args)
     args = Config.load(**vars(args), unknown=unknown)

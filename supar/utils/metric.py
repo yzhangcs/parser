@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 
@@ -18,6 +18,9 @@ class Metric(object):
         self.total_loss = 0.0
         self.reverse = reverse
         self.eps = eps
+
+    def __repr__(self):
+        return f"loss: {self.loss:.4f} - " + ' '.join([f"{key}: {val:6.2%}" for key, val in self.values.items()])
 
     def __lt__(self, other: Metric) -> bool:
         if not hasattr(self, 'score'):
@@ -58,6 +61,10 @@ class Metric(object):
     def loss(self):
         return self.total_loss / (self.count + self.eps)
 
+    @property
+    def values(self):
+        raise AttributeError
+
 
 class AttachmentMetric(Metric):
 
@@ -80,11 +87,6 @@ class AttachmentMetric(Metric):
 
         if loss is not None:
             self(loss, preds, golds, mask)
-
-    def __repr__(self):
-        s = f"loss: {self.loss:.4f} - "
-        s += f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} UAS: {self.uas:6.2%} LAS: {self.las:6.2%}"
-        return s
 
     def __call__(
         self,
@@ -143,6 +145,13 @@ class AttachmentMetric(Metric):
     def las(self):
         return self.correct_rels / (self.total + self.eps)
 
+    @property
+    def values(self) -> Dict:
+        return {'UCM': self.ucm,
+                'LCM': self.lcm,
+                'UAS': self.uas,
+                'LAS': self.las}
+
 
 class SpanMetric(Metric):
 
@@ -165,13 +174,6 @@ class SpanMetric(Metric):
 
         if loss is not None:
             self(loss, preds, golds)
-
-    def __repr__(self):
-        s = f"loss: {self.loss:.4f} - "
-        s += f"UCM: {self.ucm:6.2%} LCM: {self.lcm:6.2%} "
-        s += f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} "
-        s += f"LP: {self.lp:6.2%} LR: {self.lr:6.2%} LF: {self.lf:6.2%}"
-        return s
 
     def __call__(
         self,
@@ -244,6 +246,17 @@ class SpanMetric(Metric):
     def lf(self):
         return 2 * self.ltp / (self.pred + self.gold + self.eps)
 
+    @property
+    def values(self) -> Dict:
+        return {'UCM': self.ucm,
+                'LCM': self.lcm,
+                'UP': self.up,
+                'UR': self.ur,
+                'UF': self.uf,
+                'LP': self.lp,
+                'LR': self.lr,
+                'LF': self.lf}
+
 
 class ChartMetric(Metric):
 
@@ -264,11 +277,6 @@ class ChartMetric(Metric):
 
         if loss is not None:
             self(loss, preds, golds)
-
-    def __repr__(self):
-        s = f"loss: {self.loss:.4f} - "
-        s += f"UP: {self.up:6.2%} UR: {self.ur:6.2%} UF: {self.uf:6.2%} P: {self.p:6.2%} R: {self.r:6.2%} F: {self.f:6.2%}"
-        return s
 
     def __call__(
         self,
@@ -327,3 +335,12 @@ class ChartMetric(Metric):
     @property
     def f(self):
         return 2 * self.tp / (self.pred + self.gold + self.eps)
+
+    @property
+    def values(self) -> Dict:
+        return {'UP': self.up,
+                'UR': self.ur,
+                'UF': self.uf,
+                'P': self.p,
+                'R': self.r,
+                'F': self.f}
