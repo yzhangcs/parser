@@ -15,6 +15,7 @@ dist
 # experimental results
 exp
 results
+wandb
 
 # log and config files
 log.*
