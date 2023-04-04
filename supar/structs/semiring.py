@@ -186,6 +186,44 @@ def KMaxSemiring(k):
     return KMaxSemiring
 
 
+class ExpectationSemiring(Semiring):
+    r"""
+    Expectation semiring :math:`<\oplus, +, [0, 0], [1, 0]>` :cite:`li-eisner-2009-first`.
+
+    Practical Applications: :math:`H(p) = \log Z - \frac{1}{Z}\sum_{d \in D} p(d) r(d)`.
+    """
+
+    @classmethod
+    def add(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return x + y
+
+    @classmethod
+    def mul(cls, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.stack((x[..., 0] * y[..., 0], x[..., 0] * y[..., 1] + x[..., 1] * y[..., 0]), -1)
+
+    @classmethod
+    def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return x.sum(dim)
+
+    @classmethod
+    def cumsum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.add(x, y))), dim)
+
+    @classmethod
+    def cumprod(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+        return torch.stack(list(itertools.accumulate(x.unbind(dim), lambda x, y: cls.mul(x, y))), dim)
+
+    @classmethod
+    def zero_(cls, x: torch.Tensor) -> torch.Tensor:
+        return x.fill_(cls.zero)
+
+    @classmethod
+    def one_(cls, x: torch.Tensor) -> torch.Tensor:
+        x[..., 0].fill_(cls.one)
+        x[..., 1].fill_(cls.zero)
+        return x
+
+
 class EntropySemiring(LogSemiring):
     r"""
     Entropy expectation semiring :math:`<\oplus, +, [-\infty, 0], [0, 0]>`,
@@ -201,7 +239,7 @@ class EntropySemiring(LogSemiring):
     def sum(cls, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
         p = x[..., 0].logsumexp(dim)
         r = x[..., 0] - p.unsqueeze(dim)
-        r = r.exp().mul((x[..., -1] - r)).sum(dim)
+        r = r.exp().mul((x[..., 1] - r)).sum(dim)
         return torch.stack((p, r), -1)
 
     @classmethod
@@ -214,8 +252,8 @@ class EntropySemiring(LogSemiring):
 
     @classmethod
     def zero_(cls, x: torch.Tensor) -> torch.Tensor:
-        x[..., :-1].fill_(cls.zero)
-        x[..., -1].fill_(cls.one)
+        x[..., 0].fill_(cls.zero)
+        x[..., 1].fill_(cls.one)
         return x
 
     @classmethod
@@ -228,7 +266,7 @@ class EntropySemiring(LogSemiring):
 
     @classmethod
     def unconvert(cls, x: torch.Tensor) -> torch.Tensor:
-        return x[..., -1]
+        return x[..., 1]
 
 
 class CrossEntropySemiring(LogSemiring):

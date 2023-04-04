@@ -23,6 +23,11 @@ KMaxSemiring
 .. autoclass:: KMaxSemiring
     :members:
 
+ExpectationSemiring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: ExpectationSemiring
+    :members:
+
 EntropySemiring
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: EntropySemiring
