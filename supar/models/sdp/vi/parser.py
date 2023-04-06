@@ -3,12 +3,14 @@
 from typing import Iterable, Union
 
 import torch
+
+from supar.models.dep.biaffine.transform import CoNLL
 from supar.models.sdp.biaffine.parser import BiaffineSemanticDependencyParser
 from supar.models.sdp.vi.model import VISemanticDependencyModel
 from supar.utils import Config
 from supar.utils.logging import get_logger
 from supar.utils.metric import ChartMetric
-from supar.utils.transform import Batch, CoNLL
+from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
 

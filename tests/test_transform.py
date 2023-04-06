@@ -3,7 +3,9 @@
 import itertools
 
 import nltk
-from supar.utils import CoNLL, Tree
+
+from supar.models.const.crf.transform import Tree
+from supar.models.dep.biaffine.transform import CoNLL
 
 
 class TestCoNLL:

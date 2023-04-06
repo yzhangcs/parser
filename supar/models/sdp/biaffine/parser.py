@@ -4,6 +4,8 @@ import os
 from typing import Iterable, Union
 
 import torch
+
+from supar.models.dep.biaffine.transform import CoNLL
 from supar.models.sdp.biaffine import BiaffineSemanticDependencyModel
 from supar.parser import Parser
 from supar.utils import Config, Dataset, Embedding
@@ -12,7 +14,7 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger
 from supar.utils.metric import ChartMetric
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import Batch, CoNLL
+from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
 

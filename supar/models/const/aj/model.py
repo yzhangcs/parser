@@ -5,8 +5,9 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 from supar.model import Model
+from supar.models.const.aj.transform import AttachJuxtaposeTree
 from supar.modules import GraphConvolutionalNetwork
-from supar.utils import AttachJuxtaposeTree, Config
+from supar.utils import Config
 from supar.utils.common import INF
 from supar.utils.fn import pad
 

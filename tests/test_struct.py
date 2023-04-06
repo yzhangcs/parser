@@ -3,10 +3,10 @@
 import itertools
 
 import torch
+from supar.models.dep.biaffine.transform import CoNLL
 from supar.structs import (ConstituencyCRF, Dependency2oCRF, DependencyCRF,
                            LinearChainCRF, SemiMarkovCRF)
 from supar.structs.semiring import LogSemiring, MaxSemiring, Semiring
-from supar.utils.transform import CoNLL
 from torch.distributions.distribution import Distribution
 from torch.distributions.utils import lazy_property
 

@@ -4,7 +4,9 @@ import os
 from typing import Dict, Iterable, Set, Union
 
 import torch
+
 from supar.models.const.aj.model import AttachJuxtaposeConstituencyModel
+from supar.models.const.aj.transform import AttachJuxtaposeTree
 from supar.parser import Parser
 from supar.utils import Config, Dataset, Embedding
 from supar.utils.common import BOS, EOS, NUL, PAD, UNK
@@ -12,7 +14,7 @@ from supar.utils.field import Field, RawField, SubwordField
 from supar.utils.logging import get_logger
 from supar.utils.metric import SpanMetric
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import AttachJuxtaposeTree, Batch
+from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
 

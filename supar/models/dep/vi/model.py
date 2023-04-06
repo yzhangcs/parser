@@ -3,12 +3,12 @@
 import torch
 import torch.nn as nn
 from supar.models.dep.biaffine.model import BiaffineDependencyModel
+from supar.models.dep.biaffine.transform import CoNLL
 from supar.modules import MLP, Biaffine, Triaffine
 from supar.structs import (DependencyCRF, DependencyLBP, DependencyMFVI,
                            MatrixTree)
 from supar.utils import Config
 from supar.utils.common import MIN
-from supar.utils.transform import CoNLL
 
 
 class VIDependencyModel(BiaffineDependencyModel):

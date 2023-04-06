@@ -4,7 +4,9 @@ import os
 from typing import Dict, Iterable, Set, Union
 
 import torch
+
 from supar.models.const.crf.model import CRFConstituencyModel
+from supar.models.const.crf.transform import Tree
 from supar.parser import Parser
 from supar.structs import ConstituencyCRF
 from supar.utils import Config, Dataset, Embedding
@@ -13,7 +15,7 @@ from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger
 from supar.utils.metric import SpanMetric
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import Batch, Tree
+from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
 

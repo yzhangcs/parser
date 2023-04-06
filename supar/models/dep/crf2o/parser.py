@@ -4,7 +4,9 @@ import os
 from typing import Iterable, Union
 
 import torch
+
 from supar.models.dep.biaffine.parser import BiaffineDependencyParser
+from supar.models.dep.biaffine.transform import CoNLL
 from supar.models.dep.crf2o.model import CRF2oDependencyModel
 from supar.structs import Dependency2oCRF
 from supar.utils import Config, Dataset, Embedding
@@ -14,7 +16,7 @@ from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger
 from supar.utils.metric import AttachmentMetric
 from supar.utils.tokenizer import TransformerTokenizer
-from supar.utils.transform import Batch, CoNLL
+from supar.utils.transform import Batch
 
 logger = get_logger(__name__)
 

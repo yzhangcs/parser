@@ -3,6 +3,7 @@
 from typing import Iterable, Union
 
 import torch
+
 from supar.models.dep.biaffine.parser import BiaffineDependencyParser
 from supar.models.dep.crf.model import CRFDependencyModel
 from supar.structs import DependencyCRF, MatrixTree
