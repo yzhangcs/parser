@@ -228,12 +228,12 @@ class Parser(object):
                 metric = self.reduce(sum([self.eval_step(i) for i in progress_bar(dev.loader)], Metric()))
                 logger.info(f"{'dev:':5} {metric}")
                 if args.wandb and is_master():
-                    wandb.log({'dev': metric.values})
+                    wandb.log({'dev': metric.values, 'epochs': epoch})
                 if args.test:
                     test_metric = sum([self.eval_step(i) for i in progress_bar(test.loader)], Metric())
                     logger.info(f"{'test:':5} {self.reduce(test_metric)}")
                     if args.wandb and is_master():
-                        wandb.log({'test': test_metric.values})
+                        wandb.log({'test': test_metric.values, 'epochs': epoch})
 
             t = datetime.now() - start
             self.epoch += 1
