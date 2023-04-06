@@ -73,3 +73,16 @@ NAME = {
 }
 MODEL = {src: {n: f"{link}/v1.1.0/{m}.zip" for n, m in NAME.items()} for src, link in SRC.items()}
 CONFIG = {src: {n: f"{link}/v1.1.0/{m}.ini" for n, m in NAME.items()} for src, link in SRC.items()}
+
+
+def compatible():
+    import sys
+    supar = sys.modules[__name__]
+    if supar.__version__ < '1.2':
+        sys.modules['supar.utils.transform'].CoNLL = supar.models.dep.biaffine.transform.CoNLL
+        sys.modules['supar.utils.transform'].Tree = supar.models.const.crf.transform.Tree
+        sys.modules['supar.parsers'] = supar.models
+        sys.modules['supar.parsers.con'] = supar.models.const
+
+
+compatible()
