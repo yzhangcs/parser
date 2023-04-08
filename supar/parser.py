@@ -177,7 +177,7 @@ class Parser(object):
         if args.wandb and is_master():
             import wandb
             # start a new wandb run to track this script
-            wandb.init(config={**args},
+            wandb.init(config=args.primitive_config,
                        project=args.get('project', self.NAME),
                        name=args.get('name', args.path),
                        resume=self.args.checkpoint)

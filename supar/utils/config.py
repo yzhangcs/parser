@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import yaml
 import os
 from ast import literal_eval
 from configparser import ConfigParser
@@ -21,7 +22,7 @@ class Config(object):
         self.update(kwargs)
 
     def __repr__(self) -> str:
-        return OmegaConf.to_yaml(self.__dict__)
+        return yaml.dump(self.__dict__)
 
     def __getitem__(self, key: str) -> Any:
         return getattr(self, key)
@@ -35,10 +36,17 @@ class Config(object):
     def __setstate__(self, state: Dict[str, Any]) -> None:
         self.__dict__.update(state)
 
-    def keys(self) -> Dict[str, Any]:
+    @property
+    def primitive_config(self) -> Dict[str, Any]:
+        from enum import Enum
+        from pathlib import Path
+        primitive_types = (int, float, bool, str, bytes, Enum, Path)
+        return {name: value for name, value in self.__dict__.items() if type(value) in primitive_types}
+
+    def keys(self) -> Any:
         return self.__dict__.keys()
 
-    def items(self) -> Dict[str, Any]:
+    def items(self) -> Any:
         return self.__dict__.items()
 
     def update(self, kwargs: Dict[str, Any]) -> Config:
@@ -57,7 +65,7 @@ class Config(object):
 
     def save(self, path):
         with open(path, 'w') as f:
-            f.write(OmegaConf.to_yaml(self.__dict__))
+            f.write(str(self))
 
     @classmethod
     def load(cls, conf: str = '', unknown: Optional[Sequence[str]] = None, **kwargs: Any) -> Config:
