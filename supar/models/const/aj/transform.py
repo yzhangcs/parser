@@ -78,7 +78,7 @@ class AttachJuxtaposeTree(Tree):
             A sequence of AttachJuxtapose actions.
 
         Examples:
-            >>> from supar.utils import AttachJuxtaposeTree
+            >>> from supar.models.const.aj.transform import AttachJuxtaposeTree
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -189,7 +189,7 @@ class AttachJuxtaposeTree(Tree):
             A result constituency tree.
 
         Examples:
-            >>> from supar.utils import AttachJuxtaposeTree
+            >>> from supar.models.const.aj.transform import AttachJuxtaposeTree
             >>> tree = AttachJuxtaposeTree.totree(['Arthur', 'is', 'King', 'of', 'the', 'Britons', '.'], 'TOP')
             >>> AttachJuxtaposeTree.action2tree(tree,
                                                 [(0, 'NP', '<nul>'), (0, 'VP', 'S'), (1, 'NP', '<nul>'),
@@ -292,7 +292,7 @@ class AttachJuxtaposeTree(Tree):
 
         Examples:
             >>> from collections import Counter
-            >>> from supar.utils import AttachJuxtaposeTree, Vocab
+            >>> from supar.models.const.aj.transform import AttachJuxtaposeTree, Vocab
             >>> from supar.utils.common import NUL
             >>> nodes, parents, news = zip(*[(0, 'NP', NUL), (0, 'VP', 'S'), (1, 'NP', NUL),
                                              (2, 'PP', 'NP'), (3, 'NP', NUL), (4, NUL, NUL),

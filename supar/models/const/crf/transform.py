@@ -81,7 +81,7 @@ class Tree(Transform):
             A :class:`nltk.tree.Tree` object.
 
         Examples:
-            >>> from supar.utils import Tree
+            >>> from supar.models.const.crf.transform import Tree
             >>> Tree.totree(['She', 'enjoys', 'playing', 'tennis', '.'], 'TOP').pprint()
             (TOP ( (_ She)) ( (_ enjoys)) ( (_ playing)) ( (_ tennis)) ( (_ .)))
             >>> Tree.totree(['(', 'If', 'You', 'Let', 'It', ')'], 'TOP').pprint()
@@ -131,7 +131,7 @@ class Tree(Transform):
             The binarized tree.
 
         Examples:
-            >>> from supar.utils import Tree
+            >>> from supar.models.const.crf.transform import Tree
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -272,7 +272,7 @@ class Tree(Transform):
             The sequence of the factorized tree.
 
         Examples:
-            >>> from supar.utils import Tree
+            >>> from supar.models.const.crf.transform import Tree
             >>> tree = nltk.Tree.fromstring('''
                                             (TOP
                                               (S
@@ -343,7 +343,7 @@ class Tree(Transform):
             A result constituency tree.
 
         Examples:
-            >>> from supar.utils import Tree
+            >>> from supar.models.const.crf.transform import Tree
             >>> Tree.build(['She', 'enjoys', 'playing', 'tennis', '.'],
                            [(0, 5, 'S'), (0, 4, 'S*'), (0, 1, 'NP'), (1, 4, 'VP'), (1, 2, 'VP*'),
                             (2, 4, 'S::VP'), (2, 3, 'VP*'), (3, 4, 'NP'), (4, 5, 'S*')],
