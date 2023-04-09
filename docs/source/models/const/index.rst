@@ -6,6 +6,7 @@ Constituency Parsing
 .. toctree::
    :maxdepth: 2
 
-   crf
    aj
+   crf
+   tt
    vi

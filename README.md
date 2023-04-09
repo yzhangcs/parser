@@ -14,6 +14,7 @@ A Python package designed for structured prediction, including reproductions of 
 * Constituency Parser
   * CRF ([Zhang et al., 2020b](https://www.ijcai.org/Proceedings/2020/560/))
   * AttachJuxtapose ([Yang and Deng, 2020](https://papers.nips.cc/paper/2020/hash/f7177163c833dff4b38fc8d2872f1ec6-Abstract.html))
+  * TetraTagging ([Kitaev and Klein, 2020](https://aclanthology.org/2020.acl-main.557))
 * Semantic Dependency Parser
   * Biaffine ([Dozat and Manning, 2018](https://aclanthology.org/P18-2077))
   * MFVI/LBP ([Wang et al, 2019](https://aclanthology.org/P18-2077))
