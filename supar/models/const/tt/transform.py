@@ -133,6 +133,7 @@ class TetraTaggingTree(Tree):
         cls,
         tree: nltk.Tree,
         actions: Tuple[Sequence, Sequence],
+        mark: Union[str, Tuple[str]] = ('*', '|<>'),
         join: str = '::',
     ) -> nltk.Tree:
         r"""
@@ -143,6 +144,9 @@ class TetraTaggingTree(Tree):
                 An empty tree that provides a base for building a result tree.
             actions (Tuple[Sequence, Sequence]):
                 Tetra-tagging actions.
+            mark (Union[str, List[str]]):
+                A string used to mark newly inserted nodes. Non-terminals containing this will be removed.
+                Default: ``('*', '|<>')``.
             join (str):
                 A string used to connect collapsed node labels. Non-terminals containing this will be expanded to unary chains.
                 Default: ``'::'``.
@@ -173,41 +177,44 @@ class TetraTaggingTree(Tree):
 
         """
 
-        def expand(tree, label):
-            last, labels = None, [label] if label != '' else []
-            if join in label:
-                labels = label.split(join)
-            for i, label in enumerate(reversed(labels)):
-                tree = nltk.Tree(label, [tree])
-                if i == 0:
-                    last = tree
-            return tree, last
-
         stack = []
         leaves = [nltk.Tree(pos, [token]) for token, pos in tree.pos()]
         for i, (al, an) in enumerate(zip(*actions)):
-            leaf = expand(leaves[i], al.split('/', 1)[1])[0]
+            leaf = nltk.Tree(al.split('/', 1)[1], [leaves[i]])
             if al.startswith('l'):
                 stack.append([leaf, None])
             else:
                 slot = stack[-1][1]
                 slot.append(leaf)
             if an.startswith('L'):
-                node, last = expand(stack[-1][0], an.split('/', 1)[1])
+                node = nltk.Tree(an.split('/', 1)[1], [stack[-1][0]])
                 stack[-1][0] = node
             else:
-                node, last = expand(stack.pop()[0], an.split('/', 1)[1])
+                node = nltk.Tree(an.split('/', 1)[1], [stack.pop()[0]])
                 slot = stack[-1][1]
                 slot.append(node)
-            if last is not None:
-                stack[-1][1] = last
+            stack[-1][1] = node
         # the last leaf must be leftward
-        leaf = expand(leaves[-1], actions[0][-1].split('/', 1)[1])[0]
+        leaf = nltk.Tree(actions[0][-1].split('/', 1)[1], [leaves[-1]])
         if len(stack) > 0:
             stack[-1][1].append(leaf)
         else:
             stack.append([leaf, None])
-        return nltk.Tree(tree.label(), [stack[0][0]])
+
+        def debinarize(tree):
+            if len(tree) == 1 and not isinstance(tree[0], nltk.Tree):
+                return [tree]
+            label, children = tree.label(), []
+            for child in tree:
+                children.extend(debinarize(child))
+            if not label or label.endswith(mark):
+                return children
+            labels = label.split(join) if join in label else [label]
+            tree = nltk.Tree(labels[-1], children)
+            for label in reversed(labels[:-1]):
+                tree = nltk.Tree(label, [tree])
+            return [tree]
+        return debinarize(nltk.Tree(tree.label(), [stack[0][0]]))[0]
 
     def load(
         self,
