@@ -162,7 +162,7 @@ class TetraTaggingConstituencyModel(Model):
         Args:
             s_leaf (~torch.Tensor): ``[batch_size, seq_len, n_leaves]``.
                 Leaf scores.
-            s_node (~torch.Tensor): ``[batch_size, seq_len, n_leaves]``.
+            s_node (~torch.Tensor): ``[batch_size, seq_len, n_nodes]``.
                 Non-terminal scores.
             leaves (~torch.LongTensor): ``[batch_size, seq_len]``.
                 Actions for leaves.
@@ -193,7 +193,7 @@ class TetraTaggingConstituencyModel(Model):
         Args:
             s_leaf (~torch.Tensor): ``[batch_size, seq_len, n_leaves]``.
                 Leaf scores.
-            s_node (~torch.Tensor): ``[batch_size, seq_len, n_leaves]``.
+            s_node (~torch.Tensor): ``[batch_size, seq_len, n_nodes]``.
                 Non-terminal scores.
             mask (~torch.BoolTensor): ``[batch_size, seq_len]``.
                 The mask for covering the unpadded tokens in each chart.
@@ -210,9 +210,7 @@ class TetraTaggingConstituencyModel(Model):
 
         lens = mask.sum(-1)
         batch_size, seq_len, n_leaves = s_leaf.shape
-        end_mask = (lens - 1).unsqueeze(-1).eq(lens.new_tensor(range(seq_len)))
         leaf_left_mask, node_left_mask = left_mask[:n_leaves], left_mask[n_leaves:]
-        s_leaf = s_leaf.masked_fill_(end_mask.unsqueeze(-1) & leaf_left_mask, -INF)
         # [n_leaves], [n_nodes]
         changes = (torch.where(leaf_left_mask, 1, 0), torch.where(node_left_mask, 0, -1))
         # [batch_size, depth]
