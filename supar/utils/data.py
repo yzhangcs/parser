@@ -120,7 +120,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getattr__(self, name):
         if name not in {f.name for f in self.transform.flattened_fields}:
-            raise AttributeError
+            raise AttributeError(f"Property {name} unavailable!")
         if self.cache:
             if os.path.exists(self.fbin) and not self.binarize:
                 sentences = self
