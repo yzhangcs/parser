@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Union
 import torch.distributed as dist
 from supar.utils.parallel import is_dist, is_master
 from supar.utils.vocab import Vocab
-from torch.distributions.utils import lazy_property
 
 
 class Tokenizer:
@@ -59,11 +58,12 @@ class TransformerTokenizer:
     def __setstate__(self, state: Dict):
         self.__dict__.update(state)
 
-    @lazy_property
+    @property
     def vocab(self):
-        return defaultdict(lambda: self.tokenizer.vocab[self.unk], self.tokenizer.get_vocab())
+        return defaultdict(lambda: self.tokenizer.vocab[self.unk],
+                           self.tokenizer.get_vocab() | self.tokenizer.get_added_vocab())
 
-    @lazy_property
+    @property
     def tokens(self):
         return sorted(self.vocab, key=lambda x: self.vocab[x])
 
@@ -203,7 +203,7 @@ class BPETokenizer:
                 text = text.split()
             return self.tokenizer.segment_tokens(text, dropout=self.dropout)
 
-    @lazy_property
+    @property
     def tokens(self):
         return sorted(self.vocab, key=lambda x: self.vocab[x])
 
