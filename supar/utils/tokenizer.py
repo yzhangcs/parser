@@ -6,7 +6,7 @@ import os
 import re
 import tempfile
 from collections import Counter, defaultdict
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Iterable
 
 import torch.distributed as dist
 from supar.utils.parallel import is_dist, is_master
@@ -89,6 +89,11 @@ class TransformerTokenizer:
 
     def decode(self, text: List) -> str:
         return self.tokenizer.decode(text, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+
+    def extend(self, data: Iterable[str], length: int = 32000) -> TransformerTokenizer:
+        t = self.tokenizer.train_new_from_iterator(data, length)
+        self.tokenizer.add_tokens(list(t.get_vocab().keys()))
+        return self
 
 
 class BPETokenizer:
