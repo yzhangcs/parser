@@ -47,7 +47,7 @@ class TransformerTokenizer:
         from tokenizers.pre_tokenizers import ByteLevel
         if isinstance(self.tokenizer.backend_tokenizer.pre_tokenizer, ByteLevel):
             text = ' ' + text
-        return self.tokenizer.tokenize(text)
+        return tuple(i.strip() for i in self.tokenizer.tokenize(text))
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.tokenizer, name)
