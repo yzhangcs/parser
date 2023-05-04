@@ -1,4 +1,4 @@
-# SuPar
+# :rocket: SuPar
 
 [![build](https://img.shields.io/github/actions/workflow/status/yzhangcs/parser/build.yml?branch=main&style=flat-square)](https://github.com/yzhangcs/parser/actions)
 [![docs](https://img.shields.io/github/actions/workflow/status/yzhangcs/parser/pages.yml?branch=main&label=docs&style=flat-square)](https://parser.yzhang.site)
@@ -32,16 +32,16 @@ and highly-parallelized implementations of several well-known structured predict
 
 ## Installation
 
-`SuPar` can be installed via pip:
+You can install `SuPar` via pip:
 ```sh
 $ pip install -U supar
 ```
-Or installing from source is also permitted:
+or from source directly:
 ```sh
 $ pip install -U git+https://github.com/yzhangcs/parser
 ```
 
-As a prerequisite, the following requirements should be satisfied:
+The following requirements should be satisfied:
 * `python`: >= 3.8
 * [`pytorch`](https://github.com/pytorch/pytorch): >= 1.8
 * [`transformers`](https://github.com/huggingface/transformers): >= 4.0
