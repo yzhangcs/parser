@@ -92,7 +92,7 @@ class TransformerTokenizer:
 
     def extend(self, data: Iterable[str], length: int = 32000) -> TransformerTokenizer:
         t = self.tokenizer.train_new_from_iterator(data, length)
-        self.tokenizer.add_tokens(list(t.get_vocab().keys()))
+        self.tokenizer.add_tokens(list(set(t.get_vocab()) - set(self.vocab)))
         return self
 
 
