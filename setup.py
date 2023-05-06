@@ -8,7 +8,7 @@ setup(
     author='Yu Zhang',
     author_email='yzhang.cs@outlook.com',
     license='MIT',
-    description='Syntactic/Semantic Parsing Models',
+    description='State-of-the-art parsers for natural language',
     long_description=open('README.md', 'r').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/yzhangcs/parser',
@@ -32,7 +32,9 @@ setup(
         'stanza',
         'omegaconf',
         'dill',
-        'pathos'],
+        'pathos',
+        'opt_einsum'
+    ],
     extras_require={
         'elmo': ['allennlp'],
         'bpe': ['subword-nmt']
