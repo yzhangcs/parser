@@ -61,7 +61,7 @@ class TransformerTokenizer:
     @property
     def vocab(self):
         return defaultdict(lambda: self.tokenizer.vocab[self.unk],
-                           self.tokenizer.get_vocab() | self.tokenizer.get_added_vocab())
+                           {**self.tokenizer.get_vocab(), **self.tokenizer.get_added_vocab()})
 
     @property
     def tokens(self):
