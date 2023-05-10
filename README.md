@@ -23,6 +23,7 @@ and highly-parallelized implementations of several well-known structured predict
 
 * Chain:
   * LinearChainCRF ([Lafferty et al., 2001](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2001/crf.pdf))
+  * SemiMarkovCRF ([Sarawagi et al., 2004](https://proceedings.neurips.cc/paper/2004/hash/eb06b9db06012a7a4179b8f3cb5384d3-Abstract.html))
 * Tree
   * MatrixTree ([Koo et al., 2007](https://www.aclweb.org/anthology/D07-1015); [Ma and Hovy, 2017](https://aclanthology.org/I17-1007))
   * DependencyCRF ([Eisner et al., 2000](https://www.cs.jhu.edu/~jason/papers/eisner.iwptbook00.pdf); [Zhang et al., 2020](https://aclanthology.org/2020.acl-main.302))
@@ -53,7 +54,7 @@ You can download the pretrained model and parse sentences with just a few lines 
 >>> from supar import Parser
 # if the gpu device is available
 # >>> torch.cuda.set_device('cuda:0')  
->>> parser = Parser.load('biaffine-dep-en')
+>>> parser = Parser.load('dep-biaffine-en')
 >>> dataset = parser.predict('I saw Sarah with a telescope.', lang='en', prob=True, verbose=False)
 ```
 By default, we use [`stanza`](https://github.com/stanfordnlp/stanza) internally to tokenize plain texts for parsing.
@@ -88,7 +89,7 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 >>> import tempfile
 # if the gpu device is available
 # >>> torch.cuda.set_device('cuda:0')  
->>> dep = Parser.load('biaffine-dep-en')
+>>> dep = Parser.load('dep-biaffine-en')
 >>> dep.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0]
 1       I       _       _       _       _       2       nsubj   _       _
 2       saw     _       _       _       _       0       root    _       _
@@ -133,7 +134,7 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 11      kind    _       _       _       _       6       conj    _       _
 12      .       _       _       _       _       3       punct   _       _
 
->>> con = Parser.load('crf-con-en')
+>>> con = Parser.load('con-crf-en')
 >>> con.predict(['I', 'saw', 'Sarah', 'with', 'a', 'telescope', '.'], verbose=False)[0].pretty_print()
               TOP                       
                |                         
@@ -149,7 +150,7 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
  |   |    |    |    |          |      |  
  I  saw Sarah with  a      telescope  . 
 
->>> sdp = Parser.load('biaffine-sdp-en')
+>>> sdp = Parser.load('sdp-biaffine-en')
 >>> sdp.predict([[('I','I','PRP'), ('saw','see','VBD'), ('Sarah','Sarah','NNP'), ('with','with','IN'),
                   ('a','a','DT'), ('telescope','telescope','NN'), ('.','_','.')]],
                 verbose=False)[0]
@@ -168,18 +169,18 @@ For BiLSTM-based semantic dependency parsing models, lemmas and POS tags are nee
 To train a model from scratch, it is preferred to use the command-line option, which is more flexible and customizable.
 Below is an example of training Biaffine Dependency Parser:
 ```sh
-$ python -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-en -p model -f char
+$ python -m supar.cmds.dep.biaffine train -b -d 0 -c dep-biaffine-en -p model -f char
 ```
 
 Alternatively, `SuPar` provides some equivalent command entry points registered in [`setup.py`](setup.py):
-`biaffine-dep`, `crf2o-dep`, `crf-con` and `biaffine-sdp`, etc.
+`dep-biaffine`, `dep-crf2o`, `con-crf` and `sdp-biaffine`, etc.
 ```sh
-$ biaffine-dep train -b -d 0 -c biaffine-dep-en -p model -f char
+$ dep-biaffine train -b -d 0 -c dep-biaffine-en -p model -f char
 ```
 
 To accommodate large models, distributed training is also supported:
 ```sh
-$ python -m supar.cmds.biaffine_dep train -b -c biaffine-dep-en -d 0,1,2,3 -p model -f char
+$ python -m supar.cmds.dep.biaffine train -b -c dep-biaffine-en -d 0,1,2,3 -p model -f char
 ```
 You can consult the PyTorch [documentation](https://pytorch.org/docs/stable/notes/ddp.html) and [tutorials](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) for more details.
 
@@ -189,7 +190,7 @@ The evaluation process resembles prediction:
 ```py
 # if the gpu device is available
 # >>> torch.cuda.set_device('cuda:0')  
->>> Parser.load('biaffine-dep-en').evaluate('ptb/test.conllx', verbose=False)
+>>> Parser.load('dep-biaffine-en').evaluate('ptb/test.conllx', verbose=False)
 loss: 0.2393 - UCM: 60.51% LCM: 50.37% UAS: 96.01% LAS: 94.41%
 ```
 
@@ -211,14 +212,14 @@ During evaluation, punctuation is ignored in all metrics for PTB.
 
 | Name                      |  UAS  |   LAS | Sents/s |
 | ------------------------- | :---: | ----: | :-----: |
-| `biaffine-dep-en`         | 96.01 | 94.41 | 1831.91 |
-| `crf2o-dep-en`            | 96.07 | 94.51 | 531.59  |
-| `biaffine-dep-roberta-en` | 97.33 | 95.86 | 271.80  |
-| `biaffine-dep-zh`         | 88.64 | 85.47 | 1180.57 |
-| `crf2o-dep-zh`            | 89.22 | 86.15 | 237.40  |
-| `biaffine-dep-electra-zh` | 92.45 | 89.55 | 160.56  |
+| `dep-biaffine-en`         | 96.01 | 94.41 | 1831.91 |
+| `dep-crf2o-en`            | 96.07 | 94.51 | 531.59  |
+| `dep-biaffine-roberta-en` | 97.33 | 95.86 | 271.80  |
+| `dep-biaffine-zh`         | 88.64 | 85.47 | 1180.57 |
+| `dep-crf2o-zh`            | 89.22 | 86.15 | 237.40  |
+| `dep-biaffine-electra-zh` | 92.45 | 89.55 | 160.56  |
 
-The multilingual dependency parsing model, named `biaffine-dep-xlmr`, is trained on merged 12 selected treebanks from Universal Dependencies (UD) v2.3 dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
+The multilingual dependency parsing model, named `dep-biaffine-xlmr`, is trained on merged 12 selected treebanks from Universal Dependencies (UD) v2.3 dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
 The following table lists results of each treebank.
 Languages are represented by [ISO 639-1 Language Codes](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
 
@@ -244,12 +245,12 @@ Below are the results.
 
 | Name                 |   P   |   R   | F<sub>1 | Sents/s |
 | -------------------- | :---: | :---: | :-----: | ------: |
-| `crf-con-en`         | 94.16 | 93.98 |  94.07  |  841.88 |
-| `crf-con-roberta-en` | 96.42 | 96.13 |  96.28  |  233.34 |
-| `crf-con-zh`         | 88.82 | 88.42 |  88.62  |  590.05 |
-| `crf-con-electra-zh` | 92.18 | 91.66 |  91.92  |  140.45 |
+| `con-crf-en`         | 94.16 | 93.98 |  94.07  |  841.88 |
+| `con-crf-roberta-en` | 96.42 | 96.13 |  96.28  |  233.34 |
+| `con-crf-zh`         | 88.82 | 88.42 |  88.62  |  590.05 |
+| `con-crf-electra-zh` | 92.18 | 91.66 |  91.92  |  140.45 |
 
-The multilingual model `crf-con-xlmr` is trained on SPMRL dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
+The multilingual model `con-crf-xlmr` is trained on SPMRL dataset by finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large).
 We follow instructions of [Benepar](https://github.com/nikitakit/self-attentive-parser) to preprocess the data.
 For simplicity, we then directly merge train/dev/test treebanks of all languages in SPMRL into big ones to train the model.
 The results of each treebank are as follows.
@@ -272,12 +273,12 @@ Our data preprocessing steps follow [Second_Order_SDP](https://github.com/wangxi
 
 | Name                |   P   |   R   | F<sub>1 | Sents/s |
 | ------------------- | :---: | :---: | :-----: | ------: |
-| `biaffine-sdp-en`   | 94.35 | 93.12 |  93.73  | 1067.06 |
-| `vi-sdp-en`         | 94.36 | 93.52 |  93.94  |  821.73 |
-| `vi-sdp-roberta-en` | 95.18 | 95.20 |  95.19  |  264.13 |
-| `biaffine-sdp-zh`   | 72.93 | 66.29 |  69.45  |  523.36 |
-| `vi-sdp-zh`         | 72.05 | 67.97 |  69.95  |  411.94 |
-| `vi-sdp-electra-zh` | 73.29 | 70.53 |  71.89  |  139.52 |
+| `sdp-biaffine-en`   | 94.35 | 93.12 |  93.73  | 1067.06 |
+| `sdp-vi-en`         | 94.36 | 93.52 |  93.94  |  821.73 |
+| `sdp-vi-roberta-en` | 95.18 | 95.20 |  95.19  |  264.13 |
+| `sdp-biaffine-zh`   | 72.93 | 66.29 |  69.45  |  523.36 |
+| `sdp-vi-zh`         | 72.05 | 67.97 |  69.95  |  411.94 |
+| `sdp-vi-electra-zh` | 73.29 | 70.53 |  71.89  |  139.52 |
 
 ## Citation
 

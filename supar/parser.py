@@ -529,7 +529,7 @@ class Parser(object):
         Args:
             path (str):
                 - a string with the shortcut name of a pretrained model defined in ``supar.MODEL``
-                  to load from cache or download, e.g., ``'biaffine-dep-en'``.
+                  to load from cache or download, e.g., ``'dep-biaffine-en'``.
                 - a local path to a pretrained model, e.g., ``./<path>/model``.
             reload (bool):
                 Whether to discard the existing cache and force a fresh download. Default: ``False``.
@@ -543,7 +543,7 @@ class Parser(object):
 
         Examples:
             >>> from supar import Parser
-            >>> parser = Parser.load('biaffine-dep-en')
+            >>> parser = Parser.load('dep-biaffine-en')
             >>> parser = Parser.load('./ptb.biaffine.dep.lstm.char')
         """
 

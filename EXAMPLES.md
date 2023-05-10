@@ -10,13 +10,13 @@ Below are examples of training `biaffine`  and `crf2o` dependency parsers on PTB
 
 ```sh
 # biaffine
-$ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-en -p model -f char  \
+$ python -u -m supar.cmds.dep.biaffine train -b -d 0 -c dep-biaffine-en -p model -f char  \
     --train ptb/train.conllx  \
     --dev ptb/dev.conllx  \
     --test ptb/test.conllx  \
     --embed glove-6b-100
 # crf2o
-$ python -u -m supar.cmds.crf2o_dep train -b -d 0 -c crf2o-dep-en -p model -f char  \
+$ python -u -m supar.cmds.dep.crf2o train -b -d 0 -c dep-crf2o-en -p model -f char  \
     --train ptb/train.conllx  \
     --dev ptb/dev.conllx  \
     --test ptb/test.conllx  \
@@ -32,7 +32,7 @@ The model trained by finetuning [`robert-large`](https://huggingface.co/roberta-
 Here we provide some recommended hyper-parameters (not the best, but good enough).
 You are allowed to set values of registered/unregistered parameters in bash to suppress default configs in the file.
 ```sh
-$ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-roberta-en -p model  \
+$ python -u -m supar.cmds.dep.biaffine train -b -d 0 -c dep-biaffine-roberta-en -p model  \
     --train ptb/train.conllx  \
     --dev ptb/dev.conllx  \
     --test ptb/test.conllx  \
@@ -44,10 +44,10 @@ $ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-roberta-en 
     --epochs=10  \
     --update-steps=4
 ```
-The pretrained multilingual model `biaffine-dep-xlmr` takes [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large) as backbone architecture and finetunes it.
+The pretrained multilingual model `dep-biaffine-xlmr` takes [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large) as backbone architecture and finetunes it.
 The training command is as following:
 ```sh
-$ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-xlmr -p model  \
+$ python -u -m supar.cmds.dep.biaffine train -b -d 0 -c dep-biaffine-xlmr -p model  \
     --train ud2.3/train.conllx  \
     --dev ud2.3/dev.conllx  \
     --test ud2.3/test.conllx  \
@@ -63,9 +63,9 @@ $ python -u -m supar.cmds.biaffine_dep train -b -d 0 -c biaffine-dep-xlmr -p mod
 To evaluate:
 ```sh
 # biaffine
-python -u -m supar.cmds.biaffine_dep evaluate -d 0 -p biaffine-dep-en --data ptb/test.conllx --tree  --proj
+python -u -m supar.cmds.dep.biaffine evaluate -d 0 -p dep-biaffine-en --data ptb/test.conllx --tree  --proj
 # crf2o
-python -u -m supar.cmds.crf2o_dep evaluate -d 0 -p crf2o-dep-en --data ptb/test.conllx --mbr --tree --proj
+python -u -m supar.cmds.dep.crf2o evaluate -d 0 -p dep-crf2o-en --data ptb/test.conllx --mbr --tree --proj
 ```
 `--tree` and `--proj` ensures to output well-formed and projective trees respectively.
 
@@ -78,7 +78,7 @@ We follow instructions of [Benepar](https://github.com/nikitakit/self-attentive-
 
 To train a BiLSTM-based model:
 ```sh
-$ python -u -m supar.cmds.crf_con train -b -d 0 -c crf-con-en -p model -f char --mbr
+$ python -u -m supar.cmds.const.crf train -b -d 0 -c con-crf-en -p model -f char --mbr
     --train ptb/train.pid  \
     --dev ptb/dev.pid  \
     --test ptb/test.pid  \
@@ -88,7 +88,7 @@ $ python -u -m supar.cmds.crf_con train -b -d 0 -c crf-con-en -p model -f char -
 
 To finetune [`robert-large`](https://huggingface.co/roberta-large):
 ```sh
-$ python -u -m supar.cmds.crf_con train -b -d 0 -c crf-con-roberta-en -p model  \
+$ python -u -m supar.cmds.const.crf train -b -d 0 -c con-crf-roberta-en -p model  \
     --train ptb/train.pid  \
     --dev ptb/dev.pid  \
     --test ptb/test.pid  \
@@ -103,7 +103,7 @@ $ python -u -m supar.cmds.crf_con train -b -d 0 -c crf-con-roberta-en -p model  
 
 The command for finetuning [`xlm-roberta-large`](https://huggingface.co/xlm-roberta-large) on merged treebanks of 9 languages in SPMRL dataset is:
 ```sh
-$ python -u -m supar.cmds.crf_con train -b -d 0 -c crf-con-roberta-en -p model  \
+$ python -u -m supar.cmds.const.crf train -b -d 0 -c con-crf-roberta-en -p model  \
     --train spmrl/train.pid  \
     --dev spmrl/dev.pid  \
     --test spmrl/test.pid  \
@@ -121,12 +121,12 @@ As different treebanks do not share the same evaluation parameters, it is recomm
 
 To evaluate English and Chinese models:
 ```py
->>> Parser.load('crf-con-en').evaluate('ptb/test.pid',
+>>> Parser.load('con-crf-en').evaluate('ptb/test.pid',
                                        delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                                        equal={'ADVP': 'PRT'},
                                        verbose=False)
 (0.21318972731630007, UCM: 50.08% LCM: 47.56% UP: 94.89% UR: 94.71% UF: 94.80% LP: 94.16% LR: 93.98% LF: 94.07%)
->>> Parser.load('crf-con-zh').evaluate('ctb7/test.pid',
+>>> Parser.load('con-crf-zh').evaluate('ctb7/test.pid',
                                        delete={'TOP', 'S1', '-NONE-', ',', ':', '``', "''", '.', '?', '!', ''},
                                        equal={'ADVP': 'PRT'},
                                        verbose=False)
@@ -135,7 +135,7 @@ To evaluate English and Chinese models:
 
 To evaluate the multilingual model:
 ```py
->>> Parser.load('crf-con-xlmr').evaluate('spmrl/eu/test.pid',
+>>> Parser.load('con-crf-xlmr').evaluate('spmrl/eu/test.pid',
                                          delete={'TOP', 'ROOT', 'S1', '-NONE-', 'VROOT'},
                                          equal={},
                                          verbose=False)
@@ -172,13 +172,13 @@ By default, BiLSTM-based semantic dependency parsing models take POS tag, lemma,
 Below are examples of training `biaffine` and `vi` semantic dependency parsing models:
 ```sh
 # biaffine
-$ python -u -m supar.cmds.biaffine_sdp train -b -c biaffine-sdp-en -d 0 -f tag char lemma -p model  \
+$ python -u -m supar.cmds.sdp.biaffine train -b -c sdp-biaffine-en -d 0 -f tag char lemma -p model  \
     --train dm/train.conllu  \
     --dev dm/dev.conllu  \
     --test dm/test.conllu  \
     --embed glove-6b-100
 # vi
-$ python -u -m supar.cmds.vi_sdp train -b -c vi-sdp-en -d 1 -f tag char lemma -p model  \
+$ python -u -m supar.cmds.sdp.vi train -b -c sdp-vi-en -d 1 -f tag char lemma -p model  \
     --train dm/train.conllu  \
     --dev dm/dev.conllu  \
     --test dm/test.conllu  \
@@ -188,7 +188,7 @@ $ python -u -m supar.cmds.vi_sdp train -b -c vi-sdp-en -d 1 -f tag char lemma -p
 
 To finetune [`robert-large`](https://huggingface.co/roberta-large):
 ```sh
-$ python -u -m supar.cmds.biaffine_sdp train -b -d 0 -c biaffine-sdp-roberta-en -p model  \
+$ python -u -m supar.cmds.sdp.biaffine train -b -d 0 -c sdp-biaffine-roberta-en -p model  \
     --train dm/train.conllu  \
     --dev dm/dev.conllu  \
     --test dm/test.conllu  \
@@ -203,5 +203,5 @@ $ python -u -m supar.cmds.biaffine_sdp train -b -d 0 -c biaffine-sdp-roberta-en 
 
 To evaluate:
 ```sh
-python -u -m supar.cmds.biaffine_sdp evaluate -d 0 -p biaffine-sdp-en --data dm/test.conllu
+python -u -m supar.cmds.sdp.biaffine evaluate -d 0 -p sdp-biaffine-en --data dm/test.conllu
 ```
