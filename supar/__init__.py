@@ -89,6 +89,7 @@ def compatible():
     import sys
     supar = sys.modules[__name__]
     if supar.__version__ < '1.2':
+        sys.modules['supar.utils.config'] = supar.config
         sys.modules['supar.utils.transform'].CoNLL = supar.models.dep.biaffine.transform.CoNLL
         sys.modules['supar.utils.transform'].Tree = supar.models.const.crf.transform.Tree
         sys.modules['supar.parsers'] = supar.models

@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import argparse
-import yaml
 import os
 from ast import literal_eval
 from configparser import ConfigParser
 from typing import Any, Dict, Optional, Sequence
 
-import supar
+import yaml
 from omegaconf import OmegaConf
+
+import supar
 from supar.utils.fn import download
 
 

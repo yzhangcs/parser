@@ -3,11 +3,10 @@
 from typing import Iterable, Union
 
 import torch
-
+from supar.config import Config
 from supar.models.dep.biaffine.parser import BiaffineDependencyParser
 from supar.models.dep.crf.model import CRFDependencyModel
 from supar.structs import DependencyCRF, MatrixTree
-from supar.utils import Config
 from supar.utils.fn import ispunct
 from supar.utils.logging import get_logger
 from supar.utils.metric import AttachmentMetric

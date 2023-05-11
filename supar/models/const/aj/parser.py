@@ -4,11 +4,11 @@ import os
 from typing import Dict, Iterable, Set, Union
 
 import torch
-
+from supar.config import Config
 from supar.models.const.aj.model import AttachJuxtaposeConstituencyModel
 from supar.models.const.aj.transform import AttachJuxtaposeTree
 from supar.parser import Parser
-from supar.utils import Config, Dataset, Embedding
+from supar.utils import Dataset, Embedding
 from supar.utils.common import BOS, EOS, NUL, PAD, UNK
 from supar.utils.field import Field, RawField, SubwordField
 from supar.utils.logging import get_logger

@@ -2,10 +2,10 @@
 
 import torch
 import torch.nn as nn
+from supar.config import Config
 from supar.models.const.crf.model import CRFConstituencyModel
 from supar.modules import MLP, Biaffine, Triaffine
 from supar.structs import ConstituencyCRF, ConstituencyLBP, ConstituencyMFVI
-from supar.utils import Config
 
 
 class VIConstituencyModel(CRFConstituencyModel):

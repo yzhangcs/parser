@@ -20,7 +20,8 @@ from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import ExponentialLR, _LRScheduler
 
 import supar
-from supar.utils import Config, Dataset
+from supar.config import Config
+from supar.utils import Dataset
 from supar.utils.field import Field
 from supar.utils.fn import download, get_rng_state, set_rng_state
 from supar.utils.logging import get_logger, init_logger, progress_bar
@@ -172,10 +173,12 @@ class Parser(object):
                              find_unused_parameters=args.get('find_unused_parameters', True),
                              static_graph=args.get('static_graph', False))
             if args.amp:
-                from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
+                from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import \
+                    fp16_compress_hook
                 self.model.register_comm_hook(dist.group.WORLD, fp16_compress_hook)
         if args.wandb and is_master():
             import wandb
+
             # start a new wandb run to track this script
             wandb.init(config=args.primitive_config,
                        project=args.get('project', self.NAME),

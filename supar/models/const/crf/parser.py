@@ -4,12 +4,12 @@ import os
 from typing import Dict, Iterable, Set, Union
 
 import torch
-
+from supar.config import Config
 from supar.models.const.crf.model import CRFConstituencyModel
 from supar.models.const.crf.transform import Tree
 from supar.parser import Parser
 from supar.structs import ConstituencyCRF
-from supar.utils import Config, Dataset, Embedding
+from supar.utils import Dataset, Embedding
 from supar.utils.common import BOS, EOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.logging import get_logger

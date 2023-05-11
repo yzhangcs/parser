@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import torch.nn as nn
+from supar.config import Config
 from supar.model import Model
 from supar.modules import MLP, Biaffine
-from supar.utils import Config
 
 
 class BiaffineSemanticDependencyModel(Model):

@@ -2,11 +2,11 @@
 
 import torch
 import torch.nn as nn
+from supar.config import Config
 from supar.models.dep.biaffine.model import BiaffineDependencyModel
 from supar.models.dep.biaffine.transform import CoNLL
 from supar.modules import MLP, Biaffine, Triaffine
 from supar.structs import Dependency2oCRF, MatrixTree
-from supar.utils import Config
 from supar.utils.common import MIN
 
 

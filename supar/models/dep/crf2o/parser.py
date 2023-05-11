@@ -4,12 +4,12 @@ import os
 from typing import Iterable, Union
 
 import torch
-
+from supar.config import Config
 from supar.models.dep.biaffine.parser import BiaffineDependencyParser
 from supar.models.dep.biaffine.transform import CoNLL
 from supar.models.dep.crf2o.model import CRF2oDependencyModel
 from supar.structs import Dependency2oCRF
-from supar.utils import Config, Dataset, Embedding
+from supar.utils import Dataset, Embedding
 from supar.utils.common import BOS, PAD, UNK
 from supar.utils.field import ChartField, Field, RawField, SubwordField
 from supar.utils.fn import ispunct

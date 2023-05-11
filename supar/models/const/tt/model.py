@@ -4,9 +4,8 @@ from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-
+from supar.config import Config
 from supar.model import Model
-from supar.utils import Config
 from supar.utils.common import INF
 
 

@@ -7,17 +7,19 @@ from .tree import (BiLexicalizedConstituencyCRF, ConstituencyCRF,
 from .vi import (ConstituencyLBP, ConstituencyMFVI, DependencyLBP,
                  DependencyMFVI, SemanticDependencyLBP, SemanticDependencyMFVI)
 
-__all__ = ['StructuredDistribution',
-           'LinearChainCRF',
-           'SemiMarkovCRF',
-           'MatrixTree',
-           'DependencyCRF',
-           'Dependency2oCRF',
-           'ConstituencyCRF',
-           'BiLexicalizedConstituencyCRF',
-           'DependencyMFVI',
-           'DependencyLBP',
-           'ConstituencyMFVI',
-           'ConstituencyLBP',
-           'SemanticDependencyMFVI',
-           'SemanticDependencyLBP', ]
+__all__ = [
+    'StructuredDistribution',
+    'LinearChainCRF',
+    'SemiMarkovCRF',
+    'MatrixTree',
+    'DependencyCRF',
+    'Dependency2oCRF',
+    'ConstituencyCRF',
+    'BiLexicalizedConstituencyCRF',
+    'DependencyMFVI',
+    'DependencyLBP',
+    'ConstituencyMFVI',
+    'ConstituencyLBP',
+    'SemanticDependencyMFVI',
+    'SemanticDependencyLBP'
+]

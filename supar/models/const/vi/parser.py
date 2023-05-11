@@ -3,11 +3,10 @@
 from typing import Dict, Iterable, Set, Union
 
 import torch
-
+from supar.config import Config
 from supar.models.const.crf.parser import CRFConstituencyParser
 from supar.models.const.crf.transform import Tree
 from supar.models.const.vi.model import VIConstituencyModel
-from supar.utils import Config
 from supar.utils.logging import get_logger
 from supar.utils.metric import SpanMetric
 from supar.utils.transform import Batch
