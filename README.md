@@ -194,7 +194,7 @@ The evaluation process resembles prediction:
 loss: 0.2393 - UCM: 60.51% LCM: 50.37% UAS: 96.01% LAS: 94.41%
 ```
 
-See [EXAMPLES](EXAMPLES.md) for more instructions on training and evaluation.
+See [examples](examples) for more instructions on training and evaluation.
 
 ## Performance
 
