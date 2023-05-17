@@ -235,6 +235,73 @@ def expanded_stripe(x: torch.Tensor, n: int, w: int, offset: Tuple = (0, 0)) -> 
                         storage_offset=(offset[1])*stride[0])
 
 
+def binarize(
+    data: Union[List[str], Dict[str, Iterable]],
+    fbin: str = None,
+    merge: bool = False
+) -> Tuple[str, torch.Tensor]:
+    start, meta = 0, defaultdict(list)
+    # the binarized file is organized as:
+    # `data`: pickled objects
+    # `meta`: a dict containing the pointers of each kind of data
+    # `index`: fixed size integers representing the storage positions of the meta data
+    with open(fbin, 'wb') as f:
+        # in this case, data should be a list of binarized files
+        if merge:
+            for file in data:
+                if not os.path.exists(file):
+                    raise RuntimeError("Some files are missing. Please check the paths")
+                mi = debinarize(file, meta=True)
+                for key, val in mi.items():
+                    val[:, 0] += start
+                    meta[key].append(val)
+                with open(file, 'rb') as fi:
+                    length = int(sum(val[:, 1].sum() for val in mi.values()))
+                    f.write(fi.read(length))
+                start = start + length
+            meta = {key: torch.cat(val) for key, val in meta.items()}
+        else:
+            for key, val in data.items():
+                for i in val:
+                    buf = i if isinstance(i, (bytes, bytearray)) else pickle.dumps(i)
+                    f.write(buf)
+                    meta[key].append((start, len(buf)))
+                    start = start + len(buf)
+            meta = {key: torch.tensor(val) for key, val in meta.items()}
+        pickled = pickle.dumps(meta)
+        # append the meta data to the end of the bin file
+        f.write(pickled)
+        # record the positions of the meta data
+        f.write(struct.pack('LL', start, len(pickled)))
+    return fbin, meta
+
+
+def debinarize(
+    fbin: str,
+    pos_or_key: Optional[Union[Tuple[int, int], str]] = (0, 0),
+    meta: bool = False,
+    unpickle: bool = False
+) -> Union[Any, Iterable[Any]]:
+    with open(fbin, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+        if meta or isinstance(pos_or_key, str):
+            length = len(struct.pack('LL', 0, 0))
+            mm.seek(-length, os.SEEK_END)
+            offset, length = struct.unpack('LL', mm.read(length))
+            mm.seek(offset)
+            if meta:
+                return pickle.loads(mm.read(length))
+            # fetch by key
+            objs, meta = [], pickle.loads(mm.read(length))[pos_or_key]
+            for offset, length in meta.tolist():
+                mm.seek(offset)
+                objs.append(mm.read(length) if unpickle else pickle.loads(mm.read(length)))
+            return objs
+        # fetch by positions
+        offset, length = pos_or_key
+        mm.seek(offset)
+        return mm.read(length) if unpickle else pickle.loads(mm.read(length))
+
+
 def pad(
     tensors: List[torch.Tensor],
     padding_value: int = 0,
@@ -290,72 +357,6 @@ def extract(path: str, reload: bool = False, clean: bool = False) -> str:
     if clean:
         os.remove(path)
     return extracted
-
-
-def binarize(
-    data: Union[List[str], Dict[str, Iterable]],
-    fbin: str = None,
-    merge: bool = False
-) -> Tuple[str, torch.Tensor]:
-    start, meta = 0, defaultdict(list)
-    # the binarized file is organized as:
-    # `data`: pickled objects
-    # `meta`: a dict containing the pointers of each kind of data
-    # `index`: fixed size integers representing the storage positions of the meta data
-    with open(fbin, 'wb') as f:
-        # in this case, data should be a list of binarized files
-        if merge:
-            for file in data:
-                if not os.path.exists(file):
-                    raise RuntimeError("Some files are missing. Please check the paths")
-                mi = debinarize(file, meta=True)
-                for key, val in mi.items():
-                    val[:, 0] += start
-                    meta[key].append(val)
-                with open(file, 'rb') as fi:
-                    length = int(sum(val[:, 1].sum() for val in mi.values()))
-                    f.write(fi.read(length))
-                start = start + length
-            meta = {key: torch.cat(val) for key, val in meta.items()}
-        else:
-            for key, val in data.items():
-                for i in val:
-                    bytes = pickle.dumps(i)
-                    f.write(bytes)
-                    meta[key].append((start, len(bytes)))
-                    start = start + len(bytes)
-            meta = {key: torch.tensor(val) for key, val in meta.items()}
-        pickled = pickle.dumps(meta)
-        # append the meta data to the end of the bin file
-        f.write(pickled)
-        # record the positions of the meta data
-        f.write(struct.pack('LL', start, len(pickled)))
-    return fbin, meta
-
-
-def debinarize(
-    fbin: str,
-    pos_or_key: Optional[Union[Tuple[int, int], str]] = (0, 0),
-    meta: bool = False
-) -> Union[Any, Iterable[Any]]:
-    with open(fbin, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-        if meta or isinstance(pos_or_key, str):
-            length = len(struct.pack('LL', 0, 0))
-            mm.seek(-length, os.SEEK_END)
-            offset, length = struct.unpack('LL', mm.read(length))
-            mm.seek(offset)
-            if meta:
-                return pickle.loads(mm.read(length))
-            # fetch by key
-            objs, meta = [], pickle.loads(mm.read(length))[pos_or_key]
-            for offset, length in meta.tolist():
-                mm.seek(offset)
-                objs.append(pickle.loads(mm.read(length)))
-            return objs
-        # fetch by positions
-        offset, length = pos_or_key
-        mm.seek(offset)
-        return pickle.loads(mm.read(length))
 
 
 def resolve_config(args: Union[Dict, DictConfig]) -> DictConfig:
