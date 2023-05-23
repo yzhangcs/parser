@@ -5,7 +5,6 @@ from __future__ import annotations
 import itertools
 import os
 import queue
-import shutil
 import tempfile
 import threading
 from contextlib import contextmanager
@@ -14,12 +13,13 @@ from typing import Dict, Iterable, List, Union
 import pathos.multiprocessing as mp
 import torch
 import torch.distributed as dist
+from torch.distributions.utils import lazy_property
+
 from supar.utils.common import INF
 from supar.utils.fn import binarize, debinarize, kmeans
 from supar.utils.logging import get_logger, progress_bar
 from supar.utils.parallel import is_dist, is_master
 from supar.utils.transform import Batch, Transform
-from torch.distributions.utils import lazy_property
 
 logger = get_logger(__name__)
 
@@ -81,7 +81,7 @@ class Dataset(torch.utils.data.Dataset):
 
         if cache:
             if not isinstance(data, str) or not os.path.exists(data):
-                raise FileNotFoundError("Only files are allowed for binarization, but not found")
+                raise FileNotFoundError("Please specify a valid file path for caching!")
             if self.bin is None:
                 self.fbin = data + '.pt'
             else:
@@ -150,21 +150,19 @@ class Dataset(torch.utils.data.Dataset):
         even: bool = True,
         n_workers: int = 0,
         pin_memory: bool = True,
-        chunk_size: int = 1000,
+        chunk_size: int = 10000,
     ) -> Dataset:
-        # numericalize all fields
-        if not self.cache:
-            self.sentences = [i for i in self.transform(self.sentences) if len(i) < self.max_len]
+        # if not forced and the binarized file already exists, directly load the meta file
+        if self.cache and os.path.exists(self.fbin) and not self.binarize:
+            self.sentences = debinarize(self.fbin, meta=True)['sentences']
         else:
-            # if not forced to do binarization and the binarized file already exists, directly load the meta file
-            if os.path.exists(self.fbin) and not self.binarize:
-                self.sentences = debinarize(self.fbin, meta=True)['sentences']
-            else:
+            with tempfile.TemporaryDirectory() as ftemp:
+                fbin = self.fbin if self.cache else os.path.join(ftemp, 'data.pt')
+
                 @contextmanager
                 def cache(sentences):
-                    ftemp = tempfile.mkdtemp()
                     fs = os.path.join(ftemp, 'sentences')
-                    fb = os.path.join(ftemp, os.path.basename(self.fbin))
+                    fb = os.path.join(ftemp, os.path.basename(fbin))
                     global global_transform
                     global_transform = self.transform
                     sentences = binarize({'sentences': progress_bar(sentences)}, fs)[1]['sentences']
@@ -173,23 +171,23 @@ class Dataset(torch.utils.data.Dataset):
                                for i, s in enumerate(range(0, len(sentences), chunk_size)))
                     finally:
                         del global_transform
-                        shutil.rmtree(ftemp)
 
                 def numericalize(sentences, fs, fb, max_len):
                     sentences = global_transform((debinarize(fs, sentence) for sentence in sentences))
                     sentences = [i for i in sentences if len(i) < max_len]
                     return binarize({'sentences': sentences, 'sizes': [sentence.size for sentence in sentences]}, fb)[0]
 
-                logger.info(f"Seeking to cache the data to {self.fbin} first")
+                logger.info(f"Caching the data to {fbin}")
                 # numericalize the fields of each sentence
                 if is_master():
                     with cache(self.transform.load(self.data, **self.kwargs)) as chunks, mp.Pool(32) as pool:
                         results = [pool.apply_async(numericalize, chunk) for chunk in chunks]
-                        self.sentences = binarize((r.get() for r in results), self.fbin, merge=True)[1]['sentences']
+                        self.sentences = binarize((r.get() for r in results), fbin, merge=True)[1]['sentences']
                 if is_dist():
                     dist.barrier()
-                if not is_master():
-                    self.sentences = debinarize(self.fbin, meta=True)['sentences']
+                self.sentences = debinarize(fbin, meta=True)['sentences']
+                if not self.cache:
+                    self.sentences = [debinarize(fbin, i) for i in progress_bar(self.sentences)]
         # NOTE: the final bucket count is roughly equal to n_buckets
         self.buckets = dict(zip(*kmeans(self.sizes, n_buckets)))
         self.loader = DataLoader(transform=self.transform,
