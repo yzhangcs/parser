@@ -149,8 +149,9 @@ class Dataset(torch.utils.data.Dataset):
         distributed: bool = False,
         even: bool = True,
         n_workers: int = 0,
+        seed: int = 1,
         pin_memory: bool = True,
-        chunk_size: int = 10000,
+        chunk_size: int = 10000
     ) -> Dataset:
         # if not forced and the binarized file already exists, directly load the meta file
         if self.cache and os.path.exists(self.fbin) and not self.binarize:
@@ -192,7 +193,7 @@ class Dataset(torch.utils.data.Dataset):
         self.buckets = dict(zip(*kmeans(self.sizes, n_buckets)))
         self.loader = DataLoader(transform=self.transform,
                                  dataset=self,
-                                 batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed, even),
+                                 batch_sampler=Sampler(self.buckets, batch_size, shuffle, distributed, even, seed),
                                  num_workers=n_workers,
                                  collate_fn=collate_fn,
                                  pin_memory=pin_memory)
@@ -218,6 +219,8 @@ class Sampler(torch.utils.data.Sampler):
         even (bool):
             If ``True``, the sampler will add extra indices to make the data evenly divisible across the replicas.
             Default: ``True``.
+        seed (int):
+            Random seed used to shuffle the samples. Default: ``1``.
     """
 
     def __init__(
@@ -226,12 +229,14 @@ class Sampler(torch.utils.data.Sampler):
         batch_size: int,
         shuffle: bool = False,
         distributed: bool = False,
-        even: bool = True
+        even: bool = True,
+        seed: int = 1
     ) -> Sampler:
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.distributed = distributed
         self.even = even
+        self.seed = seed
         self.sizes, self.buckets = zip(*[(size, bucket) for size, bucket in buckets.items()])
         # number of batches in each bucket, clipped by range [1, len(bucket)]
         self.n_batches = [min(len(bucket), max(round(size * len(bucket) / batch_size), 1))
@@ -243,7 +248,7 @@ class Sampler(torch.utils.data.Sampler):
             self.n_samples = self.n_total_samples // self.n_replicas
             if self.n_total_samples % self.n_replicas != 0:
                 self.n_samples += 1 if even else int(self.rank < self.n_total_samples % self.n_replicas)
-        self.epoch = 1
+        self.epoch = self.seed
 
     def __iter__(self):
         g = torch.Generator()

@@ -141,28 +141,35 @@ class Parser(object):
         if args.cache:
             args.bin = os.path.join(os.path.dirname(args.path), 'bin')
         args.even = args.get('even', is_dist())
-        train = Dataset(self.transform, args.train, **args).build(batch_size=batch_size,
-                                                                  n_buckets=buckets,
-                                                                  shuffle=True,
-                                                                  distributed=is_dist(),
-                                                                  even=args.even,
-                                                                  n_workers=workers)
-        dev = Dataset(self.transform, args.dev, **args).build(batch_size=eval_batch_size,
-                                                              n_buckets=buckets,
-                                                              shuffle=False,
-                                                              distributed=is_dist(),
-                                                              even=False,
-                                                              n_workers=workers)
+        train = Dataset(self.transform, args.train, **args).build(
+            batch_size=batch_size,
+            n_buckets=buckets,
+            shuffle=True,
+            distributed=is_dist(),
+            even=args.even,
+            seed=args.seed,
+            n_workers=workers
+        )
+        dev = Dataset(self.transform, args.dev, **args).build(
+            batch_size=eval_batch_size,
+            n_buckets=buckets,
+            shuffle=False,
+            distributed=is_dist(),
+            even=False,
+            n_workers=workers
+        )
         logger.info(f"{'train:':6} {train}")
         if not args.test:
             logger.info(f"{'dev:':6} {dev}\n")
         else:
-            test = Dataset(self.transform, args.test, **args).build(batch_size=eval_batch_size,
-                                                                    n_buckets=buckets,
-                                                                    shuffle=False,
-                                                                    distributed=is_dist(),
-                                                                    even=False,
-                                                                    n_workers=workers)
+            test = Dataset(self.transform, args.test, **args).build(
+                batch_size=eval_batch_size,
+                n_buckets=buckets,
+                shuffle=False,
+                distributed=is_dist(),
+                even=False,
+                n_workers=workers
+            )
             logger.info(f"{'dev:':6} {dev}")
             logger.info(f"{'test:':6} {test}\n")
         loader, sampler = train.loader, train.loader.batch_sampler
@@ -179,12 +186,10 @@ class Parser(object):
                              find_unused_parameters=args.get('find_unused_parameters', True),
                              static_graph=args.get('static_graph', False))
             if args.amp:
-                from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import \
-                    fp16_compress_hook
+                from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
                 self.model.register_comm_hook(dist.group.WORLD, fp16_compress_hook)
         if args.wandb and is_master():
             import wandb
-
             # start a new wandb run to track this script
             wandb.init(config=args.primitive_config,
                        project=args.get('project', self.NAME),
