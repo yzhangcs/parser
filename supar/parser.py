@@ -44,6 +44,12 @@ class Parser(object):
         self.model = model
         self.transform = transform
 
+    def __repr__(self):
+        s = f'{self.__class__.__name__}(\n'
+        s += '\n'.join(['  '+i for i in str(self.model).split('\n')]) + '\n'
+        s += '\n'.join(['  '+i for i in str(self.transform).split('\n')]) + '\n)'
+        return s
+
     @property
     def device(self):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
