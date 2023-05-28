@@ -44,7 +44,7 @@ class Dataset(torch.utils.data.Dataset):
         binarize (bool):
             If ``True``, binarizes the dataset once building it. Only works if ``cache=True``. Default: ``False``.
         bin (str):
-            Path for saving binarized files, required if ``cache=True``. Default: ``None``.
+            Path to binarized files, required if ``cache=True``. Default: ``None``.
         max_len (int):
             Sentences exceeding the length will be discarded. Default: ``None``.
         kwargs (Dict):

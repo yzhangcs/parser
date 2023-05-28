@@ -320,7 +320,7 @@ class Parser(object):
         self.transform.train()
         logger.info("Loading the data")
         if args.cache:
-            args.bin = os.path.join(os.path.dirname(args.path), 'bin')
+            args.bin = args.get('bin', os.path.join(os.path.dirname(args.path), 'bin'))
         if is_dist():
             batch_size = batch_size // dist.get_world_size()
         data = Dataset(self.transform, **args)
