@@ -264,7 +264,7 @@ class Sampler(torch.utils.data.Sampler):
                 for i in range_fn(length).tolist():
                     yield i
 
-        for i in cycle(range(len(self.buckets))):
+        for i in cycle(len(self.buckets)):
             bucket = self.buckets[i]
             split_sizes = [(len(bucket) - j - 1) // self.n_batches[i] + 1 for j in range(self.n_batches[i])]
             # DON'T use `torch.chunk` which may return wrong number of batches
