@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import os
 import queue
 import tempfile
@@ -259,7 +258,13 @@ class Sampler(torch.utils.data.Sampler):
         # if `shuffle=True`, shuffle both the buckets and samples in each bucket
         # for distributed training, make sure each process generates the same random sequence at each epoch
         range_fn = torch.arange if not self.shuffle else lambda x: torch.randperm(x, generator=g)
-        for i in itertools.cycle(range(len(self.buckets))):
+
+        def cycle(length):
+            while True:
+                for i in range_fn(length).tolist():
+                    yield i
+
+        for i in cycle(range(len(self.buckets))):
             bucket = self.buckets[i]
             split_sizes = [(len(bucket) - j - 1) // self.n_batches[i] + 1 for j in range(self.n_batches[i])]
             # DON'T use `torch.chunk` which may return wrong number of batches
