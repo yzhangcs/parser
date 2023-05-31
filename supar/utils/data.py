@@ -247,11 +247,11 @@ class Sampler(torch.utils.data.Sampler):
             self.n_samples = self.n_total_samples // self.n_replicas
             if self.n_total_samples % self.n_replicas != 0:
                 self.n_samples += 1 if even else int(self.rank < self.n_total_samples % self.n_replicas)
-        self.epoch = self.seed
+        self.epoch = 1
 
     def __iter__(self):
         g = torch.Generator()
-        g.manual_seed(self.epoch)
+        g.manual_seed(self.epoch + self.seed)
         self.epoch += 1
 
         total, batches = 0, []
