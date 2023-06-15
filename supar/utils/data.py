@@ -17,7 +17,7 @@ from torch.distributions.utils import lazy_property
 from supar.utils.common import INF
 from supar.utils.fn import binarize, debinarize, kmeans
 from supar.utils.logging import get_logger, progress_bar
-from supar.utils.parallel import is_dist, is_master
+from supar.utils.parallel import gather, is_dist, is_master
 from supar.utils.transform import Batch, Transform
 
 logger = get_logger(__name__)
@@ -157,6 +157,7 @@ class Dataset(torch.utils.data.Dataset):
             self.sentences = debinarize(self.fbin, meta=True)['sentences']
         else:
             with tempfile.TemporaryDirectory() as ftemp:
+                ftemp = gather(ftemp)[0] if is_dist() else ftemp
                 fbin = self.fbin if self.cache else os.path.join(ftemp, 'data.pt')
 
                 @contextmanager
@@ -188,6 +189,8 @@ class Dataset(torch.utils.data.Dataset):
                 self.sentences = debinarize(fbin, meta=True)['sentences']
                 if not self.cache:
                     self.sentences = [debinarize(fbin, i) for i in progress_bar(self.sentences)]
+                if is_dist():
+                    dist.barrier()
         # NOTE: the final bucket count is roughly equal to n_buckets
         self.buckets = dict(zip(*kmeans(self.sizes, n_buckets)))
         self.loader = DataLoader(transform=self.transform,
