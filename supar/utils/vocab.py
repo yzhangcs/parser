@@ -43,7 +43,7 @@ class Vocab(object):
             return self.stoi[key]
         elif not isinstance(key, Iterable):
             return self.itos[key]
-        elif isinstance(key[0], str):
+        elif len(key) > 0 and isinstance(key[0], str):
             return [self.stoi[i] for i in key]
         else:
             return [self.itos[i] for i in key]
