@@ -16,7 +16,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 from torch.cuda.amp import GradScaler
-from torch.optim import Adam, Optimizer
+from torch.optim import Adam, AdamW, Optimizer
 from torch.optim.lr_scheduler import ExponentialLR, _LRScheduler
 
 import supar
@@ -501,8 +501,6 @@ class Parser(object):
                              eps=self.args.get('eps', 1e-8),
                              weight_decay=self.args.get('weight_decay', 0))
         else:
-            # we found that Huggingface's AdamW is more robust and empirically better than the native implementation
-            from transformers import AdamW
             optimizer = AdamW(params=[{'params': p, 'lr': self.args.lr * (1 if n.startswith('encoder') else self.args.lr_rate)}
                                       for n, p in self.model.named_parameters()],
                               lr=self.args.lr,
