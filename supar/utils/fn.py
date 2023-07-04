@@ -12,16 +12,17 @@ import unicodedata
 import urllib
 import zipfile
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import torch
 from omegaconf import DictConfig, OmegaConf
+
 from supar.utils.common import CACHE
 from supar.utils.parallel import wait
 
 
-def ispunct(token: str) -> bool:
-    return all(unicodedata.category(char).startswith('P') for char in token)
+def ispunct(token: str, pos: str = None, puncts: Set = {'``', "''", ':', ',', '.', 'PU'}) -> bool:
+    return all(unicodedata.category(char).startswith('P') for char in token) if pos is None else pos in puncts
 
 
 def isfullwidth(token: str) -> bool:
