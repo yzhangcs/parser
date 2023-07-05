@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from io import StringIO
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Sequence, Tuple, Union
 
 from supar.utils.logging import get_logger
 from supar.utils.tokenizer import Tokenizer
@@ -132,12 +132,12 @@ class CoNLL(Transform):
         return sequence
 
     @classmethod
-    def toconll(cls, tokens: List[Union[str, Tuple]]) -> str:
+    def toconll(cls, tokens: Sequence[Union[str, Tuple]]) -> str:
         r"""
         Converts a list of tokens to a string in CoNLL-X format with missing fields filled with underscores.
 
         Args:
-            tokens (List[Union[str, Tuple]]):
+            tokens (Sequence[Union[str, Tuple]]):
                 This can be either a list of words, word/pos pairs or word/lemma/pos triples.
 
         Returns:
@@ -178,7 +178,7 @@ class CoNLL(Transform):
         return s + '\n'
 
     @classmethod
-    def isprojective(cls, sequence: List[int]) -> bool:
+    def isprojective(cls, sequence: Sequence[int]) -> bool:
         r"""
         Checks if a dependency tree is projective.
         This also works for partial annotation.
@@ -187,7 +187,7 @@ class CoNLL(Transform):
         which are hard to detect in the scenario of partial annotation.
 
         Args:
-            sequence (List[int]):
+            sequence (Sequence[int]):
                 A list of head indices.
 
         Returns:
@@ -213,12 +213,12 @@ class CoNLL(Transform):
         return True
 
     @classmethod
-    def istree(cls, sequence: List[int], proj: bool = False, multiroot: bool = False) -> bool:
+    def istree(cls, sequence: Sequence[int], proj: bool = False, multiroot: bool = False) -> bool:
         r"""
         Checks if the arcs form an valid dependency tree.
 
         Args:
-            sequence (List[int]):
+            sequence (Sequence[int]):
                 A list of head indices.
             proj (bool):
                 If ``True``, requires the tree to be projective. Default: ``False``.
@@ -246,6 +246,42 @@ class CoNLL(Transform):
         if any(i == head for i, head in enumerate(sequence, 1)):
             return False
         return next(tarjan(sequence), None) is None
+
+    @classmethod
+    def projective_order(cls, sequence: Sequence[int]) -> Sequence:
+        r"""
+        Returns the projective order corresponding to the tree :cite:`nivre-2009-non`.
+
+        Args:
+            sequence (Sequence[int]):
+                A list of head indices.
+
+        Returns:
+            The projective order of the tree.
+
+        Examples:
+            >>> CoNLL.projective_order([2, 0, 2, 3])
+            [1, 2, 3, 4]
+            >>> CoNLL.projective_order([3, 0, 0, 3])
+            [2, 1, 3, 4]
+            >>> CoNLL.projective_order([2, 3, 0, 3, 2, 7, 5, 4, 3])
+            [1, 2, 5, 6, 7, 3, 4, 8, 9]
+        """
+
+        adjs = [[] for _ in range(len(sequence) + 1)]
+        for dep, head in enumerate(sequence, 1):
+            adjs[head].append(dep)
+
+        def order(adjs, head):
+            i = 0
+            for dep in adjs[head]:
+                if head < dep:
+                    break
+                i += 1
+            left = [j for dep in adjs[head][:i] for j in order(adjs, dep)]
+            right = [j for dep in adjs[head][i:] for j in order(adjs, dep)]
+            return left + [head] + right
+        return [i for head in adjs[0] for i in order(adjs, head)]
 
     def load(
         self,
@@ -313,7 +349,7 @@ class CoNLLSentence(Sentence):
     Args:
         transform (CoNLL):
             A :class:`~supar.utils.transform.CoNLL` object.
-        lines (List[str]):
+        lines (Sequence[str]):
             A list of strings composing a sentence in CoNLL-X format.
             Comments and non-integer IDs are permitted.
         index (Optional[int]):
@@ -355,7 +391,7 @@ class CoNLLSentence(Sentence):
         12      .       _       _       _       _       3       punct   _       _
     """
 
-    def __init__(self, transform: CoNLL, lines: List[str], index: Optional[int] = None) -> CoNLLSentence:
+    def __init__(self, transform: CoNLL, lines: Sequence[str], index: Optional[int] = None) -> CoNLLSentence:
         super().__init__(transform, index)
 
         self.values = []
