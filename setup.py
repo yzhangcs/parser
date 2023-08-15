@@ -26,8 +26,7 @@ setup(
     install_requires=[
         'numpy>1.21.6',
         'torch>=1.13.1',
-        'transformers>=4.0.0',
-        'hydra-core>=1.2',
+        'transformers>=4.30.0',
         'nltk',
         'stanza',
         'omegaconf',
