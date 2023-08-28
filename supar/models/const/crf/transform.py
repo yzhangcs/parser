@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import (TYPE_CHECKING, Dict, Iterable, List, Optional, Set, Tuple,
-                    Union)
+from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set,
+                    Tuple, Union)
 
 import nltk
 
@@ -492,3 +492,7 @@ class TreeSentence(Sentence):
 
     def pretty_print(self):
         self.values[-2].pretty_print()
+
+    def pretty_format(self, sentence: Any = None, highlight: Any = (), **kwargs) -> str:
+        from nltk.treeprettyprinter import TreePrettyPrinter
+        return TreePrettyPrinter(self.values[-2], sentence, highlight).text(**kwargs)
