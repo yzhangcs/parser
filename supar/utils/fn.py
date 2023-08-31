@@ -21,7 +21,7 @@ from supar.utils.common import CACHE
 from supar.utils.parallel import wait
 
 
-def ispunct(token: str, pos: str = None, puncts: Set = {'``', "''", ':', ',', '.', 'PU'}) -> bool:
+def ispunct(token: str, pos: str = None, puncts: Set = {'``', "''", ':', ',', '.', 'PU', 'PUNCT'}) -> bool:
     return all(unicodedata.category(char).startswith('P') for char in token) if pos is None else pos in puncts
 
 
