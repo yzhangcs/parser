@@ -78,6 +78,7 @@ class AttachmentMetric(Metric):
         preds: Optional[Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]]] = None,
         golds: Optional[Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]]] = None,
         mask: Optional[torch.BoolTensor] = None,
+        subtype: Optional[bool] = True,
         reverse: bool = False,
         eps: float = 1e-12
     ) -> AttachmentMetric:
@@ -90,14 +91,15 @@ class AttachmentMetric(Metric):
         self.correct_rels = 0.0
 
         if loss is not None:
-            self(loss, preds, golds, mask)
+            self(loss, preds, golds, mask, subtype)
 
     def __call__(
         self,
         loss: float,
         preds: Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]],
         golds: Tuple[Union[List, torch.Tensor], Union[List, torch.Tensor]],
-        mask: torch.BoolTensor
+        mask: Optional[torch.BoolTensor] = None,
+        subtype: Optional[bool] = True
     ) -> AttachmentMetric:
         lens = mask.sum(1)
         arc_preds, rel_preds, arc_golds, rel_golds = *preds, *golds
@@ -105,6 +107,9 @@ class AttachmentMetric(Metric):
             arc_mask = arc_preds.eq(arc_golds)
             rel_mask = rel_preds.eq(rel_golds)
         else:
+            if not subtype:
+                rel_preds = [[i.split(':', 1)[0] for i in rels] for rels in rel_preds]
+                rel_golds = [[i.split(':', 1)[0] for i in rels] for rels in rel_golds]
             arc_mask = pad([mask.new_tensor([i == j for i, j in zip(pred, gold)]) for pred, gold in zip(arc_preds, arc_golds)])
             rel_mask = pad([mask.new_tensor([i == j for i, j in zip(pred, gold)]) for pred, gold in zip(rel_preds, rel_golds)])
         arc_mask = arc_mask & mask
