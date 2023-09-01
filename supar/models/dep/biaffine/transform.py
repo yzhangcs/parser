@@ -348,7 +348,9 @@ class CoNLL(Transform):
             fproj, file = os.path.join(tdir, 'proj.conll'), os.path.join(tdir, 'nonproj.conll')
             with open(fproj, 'w') as f:
                 f.write('\n'.join([s.conll_format(arcs[i], rels[i]) for i, s in enumerate(sentences)]))
-            subprocess.check_output([f"cd {path}; java -jar {parser} -c {cfg} -m deproj -i {fproj} -o {file}"],
+            # in cases when cfg files are deleted by new java executions
+            subprocess.check_output([f"cd {path}; if [ ! -f {cfg}.mco ]; then sleep 30; fi;"
+                                     f"java -jar {parser} -c {cfg} -m deproj -i {fproj} -o {file}"],
                                     stderr=subprocess.STDOUT,
                                     shell=True)
             arcs, rels, sent = [], [], []
