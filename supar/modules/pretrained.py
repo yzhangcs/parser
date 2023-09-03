@@ -26,7 +26,10 @@ class TransformerEmbedding(nn.Module):
             with a window size of ``stride``. Default: 10.
         pooling (str):
             Pooling way to get from token piece embeddings to token embedding.
-            ``first``: take the first subtoken. ``last``: take the last subtoken. ``mean``: take a mean over all.
+            ``first``: take the first subtoken.
+            ``last``: take the last subtoken.
+            ``mean``: take a mean over all.
+            ``None``: no reduction applied.
             Default: ``mean``.
         pad_index (int):
             The index of the padding token in BERT vocabulary. Default: 0.
@@ -95,7 +98,7 @@ class TransformerEmbedding(nn.Module):
 
         mask = tokens.ne(self.pad_index)
         lens = mask.sum((1, 2))
-        # [batch_size, n_subwords]
+        # [batch_size, n_tokens]
         tokens = pad(tokens[mask].split(lens.tolist()), self.pad_index, padding_side=self.tokenizer.padding_side)
         token_mask = pad(mask[mask].split(lens.tolist()), 0, padding_side=self.tokenizer.padding_side)
 
@@ -103,7 +106,7 @@ class TransformerEmbedding(nn.Module):
         x = self.model(tokens[:, :self.max_len], attention_mask=token_mask[:, :self.max_len].float())[-1]
         # [batch_size, max_len, hidden_size]
         x = self.scalar_mix(x[-self.n_layers:])
-        # [batch_size, n_subwords, hidden_size]
+        # [batch_size, n_tokens, hidden_size]
         for i in range(self.stride, (tokens.shape[1]-self.max_len+self.stride-1)//self.stride*self.stride+1, self.stride):
             part = self.model(tokens[:, i:i+self.max_len], attention_mask=token_mask[:, i:i+self.max_len].float())[-1]
             x = torch.cat((x, self.scalar_mix(part[-self.n_layers:])[:, self.max_len-self.stride:]), 1)
@@ -119,7 +122,7 @@ class TransformerEmbedding(nn.Module):
             x = x.gather(2, (lens-1).unsqueeze(-1).repeat(1, 1, self.hidden_size).unsqueeze(2)).squeeze(2)
         elif self.pooling == 'mean':
             x = x.sum(2) / lens.unsqueeze(-1)
-        else:
+        elif self.pooling:
             raise RuntimeError(f'Unsupported pooling method "{self.pooling}"!')
         return self.projection(x)
 
