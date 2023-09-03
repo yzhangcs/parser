@@ -78,8 +78,13 @@ class TransformerEmbedding(nn.Module):
         self.projection = nn.Linear(self.hidden_size, self.n_out, False) if self.hidden_size != n_out else nn.Identity()
 
     def __repr__(self):
-        s = f"{self.name}, n_layers={self.n_layers}, n_out={self.n_out}, "
-        s += f"stride={self.stride}, pooling={self.pooling}, pad_index={self.pad_index}"
+        s = f"{self.name}"
+        if self.n_layers > 1:
+            s += f", n_layers={self.n_layers}"
+        s += f", n_out={self.n_out}, stride={self.stride}"
+        if self.pooling:
+            s += f", pooling={self.pooling}"
+        s += f", pad_index={self.pad_index}"
         if self.mix_dropout > 0:
             s += f", mix_dropout={self.mix_dropout}"
         if self.finetune:
